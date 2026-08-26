@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -195,9 +193,10 @@ fun TypeSummaryCard(scooters: List<Scooter>, modifier: Modifier = Modifier) {
 
 // ── Activity feed ──────────────────────────────────────────
 @Composable
-fun ActivityFeedCard(log: List<ActivityLogEntry>, modifier: Modifier = Modifier, maxHeight: androidx.compose.ui.unit.Dp = 420.dp) {
+fun ActivityFeedCard(log: List<ActivityLogEntry>, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
+            .fillMaxWidth()
             .background(Surface, RoundedCornerShape(14.dp))
             .border(1.dp, Border, RoundedCornerShape(14.dp)),
     ) {
@@ -217,8 +216,8 @@ fun ActivityFeedCard(log: List<ActivityLogEntry>, modifier: Modifier = Modifier,
                 modifier = Modifier.padding(24.dp),
             )
         } else {
-            LazyColumn(modifier = Modifier.height(maxHeight)) {
-                items(log.take(50)) { entry ->
+            Column {
+                log.take(15).forEach { entry ->
                     FeedRow(entry)
                 }
             }

@@ -13,10 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -115,7 +111,7 @@ fun DashboardScreen(
                 ErrorState(message = state.error ?: "", onRetry = { viewModel.refresh() })
             }
             state.loading && state.scooters.isEmpty() -> {
-                LoadingState("Memuat Data Lokal...")
+                LoadingState("Memuat data scooter...")
             }
             else -> {
                 // Realtime sync warning banner
@@ -237,14 +233,23 @@ fun DashboardScreen(
                                 .padding(28.dp),
                         )
                     } else {
-                        LazyVerticalGrid(
-                            columns = GridCells.Adaptive(minSize = 150.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                            userScrollEnabled = false,
-                        ) {
-                            items(filteredScooters, key = { it.id }) { scooter ->
-                                ScooterCard(scooter = scooter, onClick = { onOpenDetail(scooter.id) })
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            filteredScooters.chunked(2).forEach { row ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    row.forEach { scooter ->
+                                        ScooterCard(
+                                            scooter = scooter,
+                                            onClick = { onOpenDetail(scooter.id) },
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                    }
+                                    if (row.size == 1) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                    }
+                                }
                             }
                         }
                     }
