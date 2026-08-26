@@ -56,11 +56,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.evrenhouse.trackscooter.data.SaveDeviceConditionRequest
 import com.evrenhouse.trackscooter.ui.common.AppViewModelFactory
+import com.evrenhouse.trackscooter.ui.common.LiveTimer
 import com.evrenhouse.trackscooter.ui.common.LoadingState
 import com.evrenhouse.trackscooter.ui.common.StatusChip
 import com.evrenhouse.trackscooter.ui.common.TypeBadge
 import com.evrenhouse.trackscooter.ui.common.repository
-import com.evrenhouse.trackscooter.ui.manage.SimpleDropdown
 import com.evrenhouse.trackscooter.ui.theme.Accent
 import com.evrenhouse.trackscooter.ui.theme.Border
 import com.evrenhouse.trackscooter.ui.theme.Green
@@ -180,7 +180,7 @@ fun ScooterDetailScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    com.evrenhouse.trackscooter.ui.common.LiveTimer(scooter.status, scooter.lastUpdated)
+                    LiveTimer(scooter.status, scooter.lastUpdated)
                     if (scooter.activeMaintenance != null) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -312,6 +312,7 @@ fun ScooterDetailScreen(
             },
             dismissButton = {
                 TextButton(onClick = { confirmComplete = false }) { Text("Batal", color = TextMuted, fontSize = 12.sp) }
+            },
         )
     }
 }
