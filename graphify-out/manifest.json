@@ -1,0 +1,224 @@
+{
+  "app/build.gradle.kts": {
+    "mtime": 1787704214.3530922,
+    "seen": 1787704340.8138897,
+    "ast_hash": "92149a351306be8cf8197afe4513adf2",
+    "semantic_hash": "92149a351306be8cf8197afe4513adf2"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/MainActivity.kt": {
+    "mtime": 1787704214.3530922,
+    "seen": 1787704340.8138957,
+    "ast_hash": "c86be8795f466c43302501f2a85603dc",
+    "semantic_hash": "c86be8795f466c43302501f2a85603dc"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/TrackScooterApp.kt": {
+    "mtime": 1787704214.3530922,
+    "seen": 1787704340.8138983,
+    "ast_hash": "758c3c76087361f9a63489838a1779cd",
+    "semantic_hash": "758c3c76087361f9a63489838a1779cd"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/data/ApiClient.kt": {
+    "mtime": 1787704214.3530922,
+    "seen": 1787704340.8139002,
+    "ast_hash": "9dfc349d2db90ba407cb7a933593e018",
+    "semantic_hash": "9dfc349d2db90ba407cb7a933593e018"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/data/ApiService.kt": {
+    "mtime": 1787704214.3530922,
+    "seen": 1787704340.813902,
+    "ast_hash": "822d6e0c566c063e3eb62e87f7d3afd6",
+    "semantic_hash": "822d6e0c566c063e3eb62e87f7d3afd6"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/data/Models.kt": {
+    "mtime": 1787704214.3530922,
+    "seen": 1787704340.8139036,
+    "ast_hash": "924d7573fbc93a7035efae7b2ad84c42",
+    "semantic_hash": "924d7573fbc93a7035efae7b2ad84c42"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/data/ScooterRepository.kt": {
+    "mtime": 1787704214.3530922,
+    "seen": 1787704340.8139057,
+    "ast_hash": "3a9976732b21ea63fc5e76a4631ba34b",
+    "semantic_hash": "3a9976732b21ea63fc5e76a4631ba34b"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/ui/common/AppViewModelFactory.kt": {
+    "mtime": 1787704214.3530922,
+    "seen": 1787704340.8139071,
+    "ast_hash": "544e882d9fd05662bd6bcee51eb69e66",
+    "semantic_hash": "544e882d9fd05662bd6bcee51eb69e66"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/ui/common/Components.kt": {
+    "mtime": 1787704214.3540921,
+    "seen": 1787704340.8139088,
+    "ast_hash": "7fdec2e437699998753bba2527db3f8b",
+    "semantic_hash": "7fdec2e437699998753bba2527db3f8b"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/ui/common/ScooterDataViewModel.kt": {
+    "mtime": 1787704214.3540921,
+    "seen": 1787704340.8139105,
+    "ast_hash": "a21b10178baf721ed154d1a3c782ccc3",
+    "semantic_hash": "a21b10178baf721ed154d1a3c782ccc3"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/ui/dashboard/DashboardComponents.kt": {
+    "mtime": 1787704214.3540921,
+    "seen": 1787704340.8139122,
+    "ast_hash": "0902a7e4452fdebc9881ceca2b180806",
+    "semantic_hash": "0902a7e4452fdebc9881ceca2b180806"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/ui/dashboard/DashboardScreen.kt": {
+    "mtime": 1787704214.3540921,
+    "seen": 1787704340.813914,
+    "ast_hash": "53b67b469cfec61257b1ba025bd6ed22",
+    "semantic_hash": "53b67b469cfec61257b1ba025bd6ed22"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/ui/detail/ScooterDetailScreen.kt": {
+    "mtime": 1787704214.355092,
+    "seen": 1787704340.8139157,
+    "ast_hash": "2644192da139b927620affbc5ee55dc3",
+    "semantic_hash": "2644192da139b927620affbc5ee55dc3"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/ui/detail/ScooterDetailViewModel.kt": {
+    "mtime": 1787704214.355092,
+    "seen": 1787704340.8139174,
+    "ast_hash": "4930b4db7a14328c13cf3c348f0c5cf5",
+    "semantic_hash": "4930b4db7a14328c13cf3c348f0c5cf5"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/ui/manage/ManageScreen.kt": {
+    "mtime": 1787704214.355092,
+    "seen": 1787704340.813919,
+    "ast_hash": "deecb8848a17015d76d8bfb93a1b5202",
+    "semantic_hash": "deecb8848a17015d76d8bfb93a1b5202"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/ui/manage/ManageViewModel.kt": {
+    "mtime": 1787704214.3560922,
+    "seen": 1787704340.8139207,
+    "ast_hash": "83b4dbc49aab84746eded74e12e65cbb",
+    "semantic_hash": "83b4dbc49aab84746eded74e12e65cbb"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/ui/monitor/MonitorScreen.kt": {
+    "mtime": 1787704214.3560922,
+    "seen": 1787704340.8139224,
+    "ast_hash": "2a59469d27d02309ed367879ec64cea1",
+    "semantic_hash": "2a59469d27d02309ed367879ec64cea1"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/ui/navigation/AppNavHost.kt": {
+    "mtime": 1787704214.3560922,
+    "seen": 1787704340.813924,
+    "ast_hash": "db2c6305412ad0e2dbf8d87d2442afcd",
+    "semantic_hash": "db2c6305412ad0e2dbf8d87d2442afcd"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/ui/navigation/Routes.kt": {
+    "mtime": 1787704214.3560922,
+    "seen": 1787704340.813926,
+    "ast_hash": "f9a5461e663aa3e05df09715c66e4d8b",
+    "semantic_hash": "f9a5461e663aa3e05df09715c66e4d8b"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/ui/scan/CameraScanner.kt": {
+    "mtime": 1787704214.3560922,
+    "seen": 1787704340.8139277,
+    "ast_hash": "2880d7dc34488131d28ab4874f037473",
+    "semantic_hash": "2880d7dc34488131d28ab4874f037473"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/ui/scan/ScanScreen.kt": {
+    "mtime": 1787704214.3560922,
+    "seen": 1787704340.8139298,
+    "ast_hash": "2756b891cc89d3e64b01fae84cdcffe1",
+    "semantic_hash": "2756b891cc89d3e64b01fae84cdcffe1"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/ui/scan/ScanViewModel.kt": {
+    "mtime": 1787704214.3570921,
+    "seen": 1787704340.8139315,
+    "ast_hash": "d98af5489887b66d1ab53d38e4829679",
+    "semantic_hash": "d98af5489887b66d1ab53d38e4829679"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/ui/theme/Color.kt": {
+    "mtime": 1787704214.3570921,
+    "seen": 1787704340.8139338,
+    "ast_hash": "afddda7f9e56b31e202bddd6f85c8af6",
+    "semantic_hash": "afddda7f9e56b31e202bddd6f85c8af6"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/ui/theme/Theme.kt": {
+    "mtime": 1787704214.3570921,
+    "seen": 1787704340.8139355,
+    "ast_hash": "ffcb844057753fa9c5662d6e5ae52078",
+    "semantic_hash": "ffcb844057753fa9c5662d6e5ae52078"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/ui/theme/Type.kt": {
+    "mtime": 1787704214.3570921,
+    "seen": 1787704340.8139374,
+    "ast_hash": "a7a785750d78d0998c3e1145802db508",
+    "semantic_hash": "a7a785750d78d0998c3e1145802db508"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/util/Constants.kt": {
+    "mtime": 1787704214.3570921,
+    "seen": 1787704340.8139389,
+    "ast_hash": "5a3ffd5f0f0c9549073eb22cf2765661",
+    "semantic_hash": "5a3ffd5f0f0c9549073eb22cf2765661"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/util/DateUtils.kt": {
+    "mtime": 1787704214.3570921,
+    "seen": 1787704340.8139415,
+    "ast_hash": "81caf406ea3a0ca5fc0bff8fb13de566",
+    "semantic_hash": "81caf406ea3a0ca5fc0bff8fb13de566"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/util/DeviceCondition.kt": {
+    "mtime": 1787704214.3570921,
+    "seen": 1787704340.8139443,
+    "ast_hash": "8fe8a79e94c83ad476aebb122fd850e0",
+    "semantic_hash": "8fe8a79e94c83ad476aebb122fd850e0"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/util/Exporter.kt": {
+    "mtime": 1787704214.3570921,
+    "seen": 1787704340.8139472,
+    "ast_hash": "c4b867d76f5d8c29d16e3d106dab181c",
+    "semantic_hash": "c4b867d76f5d8c29d16e3d106dab181c"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/util/QrUtils.kt": {
+    "mtime": 1787704214.358092,
+    "seen": 1787704340.81395,
+    "ast_hash": "4b0d7e44bbf8b26a88b2135fdfadb85b",
+    "semantic_hash": "4b0d7e44bbf8b26a88b2135fdfadb85b"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/util/QrZip.kt": {
+    "mtime": 1787704214.358092,
+    "seen": 1787704340.8139527,
+    "ast_hash": "75581da2bdfb9acc98456e09d1a4d0e5",
+    "semantic_hash": "75581da2bdfb9acc98456e09d1a4d0e5"
+  },
+  "app/src/main/java/com/evrenhouse/trackscooter/util/Toast.kt": {
+    "mtime": 1787704214.358092,
+    "seen": 1787704340.8139553,
+    "ast_hash": "9073d424ee90298b11cef79e001290f4",
+    "semantic_hash": "9073d424ee90298b11cef79e001290f4"
+  },
+  "build.gradle.kts": {
+    "mtime": 1787704214.359092,
+    "seen": 1787704340.8139582,
+    "ast_hash": "8e4a12f9fa667db7d1efc54c19ce427b",
+    "semantic_hash": "8e4a12f9fa667db7d1efc54c19ce427b"
+  },
+  "gradlew": {
+    "mtime": 1787704214.3600922,
+    "seen": 1787704340.8139613,
+    "ast_hash": "1411a3f3046becc2cdf4823d3b31f6b0",
+    "semantic_hash": "1411a3f3046becc2cdf4823d3b31f6b0"
+  },
+  "settings.gradle.kts": {
+    "mtime": 1787704214.3600922,
+    "seen": 1787704340.8139646,
+    "ast_hash": "cc26987bedc8d073dd7a4e39463db1c9",
+    "semantic_hash": "cc26987bedc8d073dd7a4e39463db1c9"
+  },
+  ".github/workflows/android.yml": {
+    "mtime": 1787704214.352092,
+    "seen": 1787704340.813967,
+    "ast_hash": "4052820d2bd55baa36557bbeb1596ac2",
+    "semantic_hash": "4052820d2bd55baa36557bbeb1596ac2"
+  },
+  "README.md": {
+    "mtime": 1787704214.352092,
+    "seen": 1787704340.8139699,
+    "ast_hash": "5114e502ce669218efca10b56118a1e1",
+    "semantic_hash": "5114e502ce669218efca10b56118a1e1"
+  }
+}

@@ -31,3 +31,11 @@ object QrUtils {
         bmp
     }
 }
+
+/** Convert an Android Bitmap to raw PNG bytes. */
+fun Bitmap.toPngBytes(): ByteArray {
+    val baos = java.io.ByteArrayOutputStream()
+    compress(Bitmap.CompressFormat.PNG, 100, baos)
+    return baos.toByteArray()
+}
+

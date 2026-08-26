@@ -143,3 +143,10 @@ data class CompleteMaintenanceResponse(
 data class ApiError(
     @SerialName("error") val error: String? = null,
 )
+
+data class DashboardData(
+    val scooters: List<Scooter>,
+    val activityLog: List<ActivityLogEntry>,
+    val maintenanceRecords: List<MaintenanceRecord>,
+)
+

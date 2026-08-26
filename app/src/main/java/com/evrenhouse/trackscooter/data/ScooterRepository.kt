@@ -67,28 +67,3 @@ class ScooterRepository(private val api: ApiService = ApiClient.service) {
     suspend fun downloadBackup(): ResponseBody = withContext(Dispatchers.IO) { api.downloadBackup() }
 }
 
-data class DashboardData(
-    val scooters: List<Scooter>,
-    val activityLog: List<ActivityLogEntry>,
-    val maintenanceRecords: List<MaintenanceRecord>,
-)
-
-/** Convert a thrown exception into a short, user-facing Indonesian message. */
-fun Throwable.toUserMessage(): String = when (this) {
-    is IOException -> "Tidak dapat terhubung ke server API. Periksa koneksi internet."
-    is HttpException -> {
-        val body = errorBodyMessage()
-        if (!body.isNullOrBlank()) body else "Permintaan gagal (${code()})."
-    }
-    else -> message ?: "Terjadi kesalahan. Silakan coba lagi."
-}
-
-private fun HttpException.errorBodyMessage(): String? = runCatching {
-    val raw = response()?.errorBody()?.string() ?: return null
-    Json { ignoreUnknownKeys = true }.decodeFromString<ApiError>(raw).error
-}.getOrNull()
-
-/** Helper to read a raw (streamed) response body safely. */
-suspend fun Response<ResponseBody>.readBytesOrNull(): ByteArray? = withContext(Dispatchers.IO) {
-    runCatching { body()?.bytes() }.getOrNull()
-}
