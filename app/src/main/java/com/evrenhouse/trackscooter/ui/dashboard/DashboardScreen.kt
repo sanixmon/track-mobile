@@ -44,6 +44,7 @@ import com.evrenhouse.trackscooter.data.ScooterStatus
 import com.evrenhouse.trackscooter.ui.common.ErrorState
 import com.evrenhouse.trackscooter.ui.common.FilledAction
 import com.evrenhouse.trackscooter.ui.common.LoadingState
+import com.evrenhouse.trackscooter.ui.common.OutlinedAction
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
 import com.evrenhouse.trackscooter.ui.common.SectionCard
 import com.evrenhouse.trackscooter.ui.common.SectionTitle

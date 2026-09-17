@@ -17,9 +17,6 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -267,16 +264,11 @@ fun CameraScanner(
             )
 
             // Live Detected Badge at Bottom of Viewfinder
-            AnimatedVisibility(
-                visible = liveDetectedBarcode != null,
-                enter = fadeIn(),
-                exit = fadeOut(),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 14.dp),
-            ) {
+            if (liveDetectedBarcode != null) {
                 Row(
                     modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 14.dp)
                         .background(Color(0xEE0A0A0A), RoundedCornerShape(20.dp))
                         .border(1.dp, Green.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
                         .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -292,19 +284,12 @@ fun CameraScanner(
                         fontFamily = FontFamily.Monospace,
                     )
                 }
-            }
-
-            // Scanning Prompt when no QR in view
-            AnimatedVisibility(
-                visible = liveDetectedBarcode == null && isCameraBound,
-                enter = fadeIn(),
-                exit = fadeOut(),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 14.dp),
-            ) {
+            } else if (isCameraBound) {
+                // Scanning Prompt when no QR in view
                 Box(
                     modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 14.dp)
                         .background(Color(0xCC000000), RoundedCornerShape(20.dp))
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                 ) {
