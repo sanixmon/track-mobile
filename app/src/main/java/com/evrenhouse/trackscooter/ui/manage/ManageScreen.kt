@@ -19,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
@@ -148,63 +149,112 @@ fun ManageScreen(
             Text("Tambah unit scooter baru, ubah status unit, dan unduh QR code untuk operasional", color = TextMuted, fontSize = 13.sp)
         }
 
-        // Action buttons
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            ManageActionButton(
-                text = "Export Kondisi",
-                icon = { tint -> Icon(Icons.Filled.GridView, null, Modifier.size(14.dp), tint = tint) },
-                enabled = data.scooters.isNotEmpty() && !busyAction,
-                onClick = {
-                    scope.launch {
-                        busyAction = true
-                        runCatching {
-                            val csv = Exporter.buildConditionsCsv(data.scooters)
-                            Exporter.saveToDownloads(context, "Kondisi-Scooter-${todayKey}.csv", csv)
+        var dataMenuExpanded by remember { mutableStateOf(false) }
+
+        // Compact Data Actions Dropdown
+        Box {
+            OutlinedButton(
+                onClick = { dataMenuExpanded = !dataMenuExpanded },
+                shape = RoundedCornerShape(12.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = Surface,
+                    contentColor = TextPrimary,
+                ),
+            ) {
+                if (busyAction) {
+                    CircularProgressIndicator(color = Accent, modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Memproses...", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                } else {
+                    Icon(Icons.Filled.Download, contentDescription = null, tint = Accent, modifier = Modifier.size(15.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Aksi Data", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.width(4.dp))
+                    Icon(Icons.Filled.ArrowDropDown, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
+                }
+            }
+
+            DropdownMenu(
+                expanded = dataMenuExpanded,
+                onDismissRequest = { dataMenuExpanded = false },
+                modifier = Modifier
+                    .background(Surface, RoundedCornerShape(12.dp))
+                    .border(1.dp, Border, RoundedCornerShape(12.dp)),
+            ) {
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text("Export Kondisi Unit", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                            Text("Unduh laporan kondisi (.csv)", fontSize = 10.sp, color = TextMuted)
                         }
-                            .onSuccess { context.showToast("File CSV berhasil diunduh") }
-                            .onFailure { context.showToast(it.toUserMessage(), long = true) }
-                        busyAction = false
-                    }
-                },
-            )
-            ManageActionButton(
-                text = "Unduh Semua QR",
-                icon = { tint -> Icon(Icons.Filled.FolderZip, null, Modifier.size(14.dp), tint = tint) },
-                enabled = data.scooters.isNotEmpty() && !busyAction,
-                onClick = {
-                    scope.launch {
-                        busyAction = true
-                        runCatching {
-                            QrZip.zipAllQrs(context, data.scooters.map { it.id to it.type })
+                    },
+                    leadingIcon = { Icon(Icons.Filled.GridView, null, tint = Accent, modifier = Modifier.size(16.dp)) },
+                    onClick = {
+                        dataMenuExpanded = false
+                        scope.launch {
+                            busyAction = true
+                            runCatching {
+                                val csv = Exporter.buildConditionsCsv(data.scooters)
+                                Exporter.saveToDownloads(context, "Kondisi-Scooter-${todayKey}.csv", csv)
+                            }
+                                .onSuccess { context.showToast("File CSV berhasil diunduh") }
+                                .onFailure { context.showToast(it.toUserMessage(), long = true) }
+                            busyAction = false
                         }
-                            .onSuccess { context.showToast("Semua QR Code diunduh ($it)") }
-                            .onFailure { context.showToast(it.toUserMessage(), long = true) }
-                        busyAction = false
-                    }
-                },
-            )
-            ManageActionButton(
-                text = "Backup DB",
-                icon = { tint -> Icon(Icons.Filled.CloudDownload, null, Modifier.size(14.dp), tint = tint) },
-                enabled = !busyAction,
-                onClick = {
-                    scope.launch {
-                        busyAction = true
-                        runCatching {
-                            val bytes = manageViewModel.downloadBackupBytes()
-                                ?: throw IllegalStateException("Gagal mengunduh backup.")
-                            val filename = "trackscooter_backup_${todayKey}.db"
-                            Exporter.saveBytesToDownloads(context, filename, bytes, "application/octet-stream")
+                    },
+                    enabled = data.scooters.isNotEmpty() && !busyAction,
+                )
+
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text("Unduh Semua QR", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                            Text("Arsip semua kode QR (.zip)", fontSize = 10.sp, color = TextMuted)
                         }
-                            .onSuccess { context.showToast("Backup DB Berhasil") }
-                            .onFailure { context.showToast(it.toUserMessage(), long = true) }
-                        busyAction = false
-                    }
-                },
-            )
+                    },
+                    leadingIcon = { Icon(Icons.Filled.FolderZip, null, tint = Accent, modifier = Modifier.size(16.dp)) },
+                    onClick = {
+                        dataMenuExpanded = false
+                        scope.launch {
+                            busyAction = true
+                            runCatching {
+                                QrZip.zipAllQrs(context, data.scooters.map { it.id to it.type })
+                            }
+                                .onSuccess { context.showToast("Semua QR Code diunduh ($it)") }
+                                .onFailure { context.showToast(it.toUserMessage(), long = true) }
+                            busyAction = false
+                        }
+                    },
+                    enabled = data.scooters.isNotEmpty() && !busyAction,
+                )
+
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text("Backup Basis Data", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                            Text("Cadangan database (.db)", fontSize = 10.sp, color = TextMuted)
+                        }
+                    },
+                    leadingIcon = { Icon(Icons.Filled.CloudDownload, null, tint = Accent, modifier = Modifier.size(16.dp)) },
+                    onClick = {
+                        dataMenuExpanded = false
+                        scope.launch {
+                            busyAction = true
+                            runCatching {
+                                val bytes = manageViewModel.downloadBackupBytes()
+                                    ?: throw IllegalStateException("Gagal mengunduh backup.")
+                                val filename = "trackscooter_backup_${todayKey}.db"
+                                Exporter.saveBytesToDownloads(context, filename, bytes, "application/octet-stream")
+                            }
+                                .onSuccess { context.showToast("Backup DB Berhasil") }
+                                .onFailure { context.showToast(it.toUserMessage(), long = true) }
+                            busyAction = false
+                        }
+                    },
+                    enabled = !busyAction,
+                )
+            }
         }
 
         when {

@@ -33,9 +33,18 @@ object ApiClient {
         builder.build()
     }
 
+    val baseUrl: String get() = BuildConfig.API_BASE_URL.trimEnd('/')
+
+    val sseClient: OkHttpClient by lazy {
+        okHttp.newBuilder()
+            .readTimeout(0, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
+    }
+
     val service: ApiService by lazy {
         Retrofit.Builder()
-            .baseUrl(BuildConfig.API_BASE_URL.trimEnd('/') + "/")
+            .baseUrl("$baseUrl/")
             .client(okHttp)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()

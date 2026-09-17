@@ -149,27 +149,18 @@ fun MonitorScreen(
             fontSize = 13.sp,
         )
 
-        // Date navigator
-        Row(
+        // Date navigator (Row 1: Date pills, Row 2: Steppers, Picker & Export)
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Surface, RoundedCornerShape(14.dp))
                 .border(1.dp, Border, RoundedCornerShape(14.dp))
-                .padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            IconButton(onClick = {
-                when {
-                    currentIdx == -1 && availableDates.isNotEmpty() -> selectedDate = availableDates.first()
-                    canGoPrev -> selectedDate = availableDates[currentIdx + 1]
-                }
-            }, enabled = currentIdx == -1 || canGoPrev) {
-                Icon(Icons.Filled.ChevronLeft, contentDescription = "Sebelumnya", tint = TextMuted, modifier = Modifier.size(18.dp))
-            }
-
+            // Row 1: Horizontal scrollable date pills
             LazyRow(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 item {
@@ -189,41 +180,62 @@ fun MonitorScreen(
                 }
             }
 
-            IconButton(onClick = { showDatePicker = true }) {
-                Icon(Icons.Filled.CalendarMonth, contentDescription = "Pilih tanggal", tint = Accent, modifier = Modifier.size(18.dp))
-            }
-
-            IconButton(onClick = {
-                if (currentIdx > 0) selectedDate = availableDates[currentIdx - 1] else selectedDate = null
-            }, enabled = !isLiveView) {
-                Icon(Icons.Filled.ChevronRight, contentDescription = "Berikutnya", tint = TextMuted, modifier = Modifier.size(18.dp))
-            }
-
-            // Excel export
-            androidx.compose.material3.Button(
-                onClick = {
-                    scope.launch {
-                        exporting = true
-                        runCatching {
-                            val filename = "Laporan-Harian-${DateUtils.localDateKey(activeDate)}.csv"
-                            Exporter.saveToDownloads(context, filename, Exporter.buildDailyReportCsv(activeDate, state.activityLog, state.scooters))
-                        }
-                            .onSuccess { context.showToast("Laporan Excel diunduh ($it)") }
-                            .onFailure { context.showToast(it.toUserMessage(), long = true) }
-                        exporting = false
-                    }
-                },
-                enabled = !exporting,
-                shape = RoundedCornerShape(8.dp),
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+            // Row 2: Controls & Export Button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (exporting) {
-                    androidx.compose.material3.CircularProgressIndicator(modifier = Modifier.size(12.dp), color = androidx.compose.ui.graphics.Color.White, strokeWidth = 2.dp)
-                } else {
-                    Icon(Icons.Filled.FileDownload, contentDescription = null, modifier = Modifier.size(13.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    IconButton(onClick = {
+                        when {
+                            currentIdx == -1 && availableDates.isNotEmpty() -> selectedDate = availableDates.first()
+                            canGoPrev -> selectedDate = availableDates[currentIdx + 1]
+                        }
+                    }, enabled = currentIdx == -1 || canGoPrev) {
+                        Icon(Icons.Filled.ChevronLeft, contentDescription = "Sebelumnya", tint = TextMuted, modifier = Modifier.size(18.dp))
+                    }
+
+                    IconButton(onClick = { showDatePicker = true }) {
+                        Icon(Icons.Filled.CalendarMonth, contentDescription = "Pilih tanggal", tint = Accent, modifier = Modifier.size(18.dp))
+                    }
+
+                    IconButton(onClick = {
+                        if (currentIdx > 0) selectedDate = availableDates[currentIdx - 1] else selectedDate = null
+                    }, enabled = !isLiveView) {
+                        Icon(Icons.Filled.ChevronRight, contentDescription = "Berikutnya", tint = TextMuted, modifier = Modifier.size(18.dp))
+                    }
                 }
-                Spacer(Modifier.width(4.dp))
-                Text(if (exporting) "Membuat..." else "Excel", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+
+                // Excel export
+                androidx.compose.material3.Button(
+                    onClick = {
+                        scope.launch {
+                            exporting = true
+                            runCatching {
+                                val filename = "Laporan-Harian-${DateUtils.localDateKey(activeDate)}.csv"
+                                Exporter.saveToDownloads(context, filename, Exporter.buildDailyReportCsv(activeDate, state.activityLog, state.scooters))
+                            }
+                                .onSuccess { context.showToast("Laporan Excel diunduh ($it)") }
+                                .onFailure { context.showToast(it.toUserMessage(), long = true) }
+                            exporting = false
+                        }
+                    },
+                    enabled = !exporting,
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                ) {
+                    if (exporting) {
+                        androidx.compose.material3.CircularProgressIndicator(modifier = Modifier.size(12.dp), color = androidx.compose.ui.graphics.Color.White, strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Filled.FileDownload, contentDescription = null, modifier = Modifier.size(13.dp))
+                    }
+                    Spacer(Modifier.width(4.dp))
+                    Text(if (exporting) "Membuat..." else "Export", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
 

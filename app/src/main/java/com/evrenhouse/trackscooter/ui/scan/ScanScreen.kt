@@ -138,24 +138,10 @@ fun ScanScreen(viewModel: ScanViewModel = viewModel(factory = AppViewModelFactor
 
         // Camera scanner
         if (mode == "camera") {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Surface, RoundedCornerShape(14.dp))
-                    .border(1.dp, Border, RoundedCornerShape(14.dp))
-                    .padding(10.dp),
-            ) {
-                CameraScanner(
-                    onScan = { viewModel.onScanned(it) },
-                    onError = { context.showToast(it, long = true) },
-                )
-            }
-            Text(
-                "Arahkan kamera ke QR code scooter",
-                color = TextMuted,
-                fontSize = 12.sp,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            CameraScanner(
+                isProcessing = state.busy || !state.scanning,
+                onScan = { viewModel.onScanned(it) },
+                onError = { context.showToast(it, long = true) },
             )
             OutlinedAction(text = "Ganti metode scan", onClick = { mode = null }, color = TextMuted)
         }

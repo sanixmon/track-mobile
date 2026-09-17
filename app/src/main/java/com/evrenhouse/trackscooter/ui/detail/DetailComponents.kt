@@ -65,7 +65,6 @@ fun ConditionEditor(
     isDirty: Boolean,
     hasCondition: Boolean,
     saving: Boolean,
-    onMarkAllNormal: () -> Unit,
     onSave: () -> Unit,
 ) {
     val dc = condition
@@ -96,37 +95,22 @@ fun ConditionEditor(
                     )
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                OutlinedButton(
-                    onClick = onMarkAllNormal,
-                    enabled = !saving,
-                    shape = RoundedCornerShape(8.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Green),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                ) {
+            Button(
+                onClick = onSave,
+                enabled = !saving && isDirty,
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Accent),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+            ) {
+                if (saving) {
+                    CircularProgressIndicator(modifier = Modifier.size(11.dp), color = Color.White, strokeWidth = 2.dp)
+                } else {
                     Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(11.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Semua Normal", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 }
-                Button(
-                    onClick = onSave,
-                    enabled = !saving && isDirty,
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Accent),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                ) {
-                    if (saving) {
-                        CircularProgressIndicator(modifier = Modifier.size(11.dp), color = Color.White, strokeWidth = 2.dp)
-                    } else {
-                        Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(11.dp))
-                    }
-                    Spacer(Modifier.width(4.dp))
-                    Text(if (saving) "Menyimpan..." else "Simpan", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                }
+                Spacer(Modifier.width(4.dp))
+                Text(if (saving) "Menyimpan..." else "Simpan", fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
         }
-        Text("Pilih nilai pada tiap kolom, lalu tekan Simpan", color = TextSubtle, fontSize = 10.sp)
 
         // 2-column grid
         DeviceFields.ALL.chunked(2).forEach { rowFields ->
@@ -143,32 +127,24 @@ fun ConditionEditor(
                         modifier = Modifier.weight(1f),
                     )
                 }
-                if (rowFields.size == 1) Spacer(Modifier.weight(1f))
+                if (rowFields.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
             }
         }
 
-        // Monitor detail input
+        // Monitor detail text field when monitor is 'lain'
         if (dc["monitor"] == "lain") {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Warning.copy(alpha = 0.08f), RoundedCornerShape(10.dp))
-                    .border(1.dp, Warning.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
-                    .padding(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Icon(Icons.Filled.WarningAmber, contentDescription = null, tint = Warning, modifier = Modifier.size(14.dp))
-                OutlinedTextField(
-                    value = monitorDetail,
-                    onValueChange = onMonitorDetailChange,
-                    placeholder = { Text("Ketik jenis error lainnya...", color = TextSubtle, fontSize = 12.sp) },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    shape = RoundedCornerShape(8.dp),
-                    textStyle = MaterialTheme.typography.bodySmall,
-                )
-            }
+            OutlinedTextField(
+                value = monitorDetail,
+                onValueChange = onMonitorDetailChange,
+                label = { Text("Keterangan Masalah Monitor (Wajib)", fontSize = 11.sp) },
+                placeholder = { Text("Contoh: Layar bergaris, redup, pecah...", fontSize = 11.sp) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(8.dp),
+                textStyle = MaterialTheme.typography.bodySmall,
+            )
         }
     }
 }
@@ -183,19 +159,20 @@ fun FieldEditor(
 ) {
     val tone = DeviceConditionHelper.fieldTone(field.key, value, hasCondition)
     val toneColor = when (tone) {
+        FieldTone.GOOD -> Green
         FieldTone.BAD -> Red
         FieldTone.WARN -> Warning
-        else -> TextPrimary
+        FieldTone.NONE -> TextSubtle
     }
 
     Column(
         modifier = modifier
-            .background(Surface2.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-            .border(1.dp, Border, RoundedCornerShape(12.dp))
+            .background(Surface2.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+            .border(1.dp, Border, RoundedCornerShape(8.dp))
             .padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(field.label, color = TextMuted, fontSize = 10.sp)
+        Text(field.label, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
         SimpleDropdown(
             label = field.options.firstOrNull { it.first == value }?.second ?: "Belum dicek",
             options = if (value.isEmpty()) {
@@ -206,16 +183,6 @@ fun FieldEditor(
             selected = value,
             onSelect = onChange,
             modifier = Modifier.fillMaxWidth(),
-        )
-        Text(
-            text = when (tone) {
-                FieldTone.BAD -> "⚠ ${field.options.firstOrNull { it.first == value }?.second ?: ""}"
-                FieldTone.WARN -> "⚠ ${field.options.firstOrNull { it.first == value }?.second ?: ""}"
-                else -> ""
-            },
-            color = toneColor,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
         )
     }
 }
@@ -243,7 +210,7 @@ fun HistorySection(
             TextButton(onClick = onExport, contentPadding = PaddingValues(0.dp)) {
                 Icon(Icons.Filled.FileDownload, contentDescription = null, tint = Green, modifier = Modifier.size(12.dp))
                 Spacer(Modifier.width(4.dp))
-                Text("Export Excel", color = Green, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                Text("Export", color = Green, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
             }
         }
 
@@ -258,25 +225,34 @@ fun HistorySection(
                     .padding(20.dp),
             )
         } else {
-            log.forEach { entry ->
-                val isCheckout = entry.action == ActionLabels.CHECKOUT
-                HistoryRow(
-                    icon = { Icon(Icons.Filled.Schedule, contentDescription = null, tint = if (isCheckout) Red else Green, modifier = Modifier.size(13.dp)) },
-                    title = if (isCheckout) "Keluar (Sewa)" else "Masuk (Kembali)",
-                    subtitle = DateUtils.formatFull(entry.timestamp),
-                    iconColor = if (isCheckout) Red else Green,
-                )
-            }
-            maintenance.forEach { m ->
-                val isDone = m.status == "done"
-                HistoryRow(
-                    icon = { Icon(Icons.Filled.Construction, contentDescription = null, tint = if (isDone) Green else Warning, modifier = Modifier.size(13.dp)) },
-                    title = "Maintenance · ${m.issue ?: "Perbaikan"}",
-                    subtitle = "${if (m.location == "outlet") "Di Outlet" else "Keluar / Di Luar"} · ${DateUtils.formatFull(m.startedAt)}" +
-                        (if (isDone && m.resolvedAt != null) " → Selesai ${DateUtils.formatFull(m.resolvedAt)}" else ""),
-                    iconColor = if (isDone) Green else Warning,
-                    badge = if (isDone) "Selesai" to Green else "Repair" to Warning,
-                )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 58.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    log.forEach { entry ->
+                        val isCheckout = entry.action == ActionLabels.CHECKOUT
+                        HistoryRow(
+                            icon = { Icon(Icons.Filled.Schedule, contentDescription = null, tint = if (isCheckout) Red else Green, modifier = Modifier.size(13.dp)) },
+                            title = if (isCheckout) "Keluar (Sewa)" else "Masuk (Kembali)",
+                            subtitle = DateUtils.formatFull(entry.timestamp),
+                            iconColor = if (isCheckout) Red else Green,
+                        )
+                    }
+                    maintenance.forEach { m ->
+                        val isDone = m.status == "done"
+                        HistoryRow(
+                            icon = { Icon(Icons.Filled.Construction, contentDescription = null, tint = if (isDone) Green else Warning, modifier = Modifier.size(13.dp)) },
+                            title = "Maintenance · ${m.issue ?: "Perbaikan"}",
+                            subtitle = "${if (m.location == "outlet") "Di Outlet" else "Keluar / Di Luar"} · ${DateUtils.formatFull(m.startedAt)}" +
+                                (if (isDone && m.resolvedAt != null) " → Selesai ${DateUtils.formatFull(m.resolvedAt)}" else ""),
+                            iconColor = if (isDone) Green else Warning,
+                            badge = if (isDone) "Selesai" to Green else "Repair" to Warning,
+                        )
+                    }
+                }
             }
         }
     }

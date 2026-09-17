@@ -210,14 +210,6 @@ fun ScooterDetailScreen(
                     isDirty = isDirty,
                     hasCondition = hasCondition,
                     saving = state.saving,
-                    onMarkAllNormal = {
-                        condition = mapOf(
-                            "setelan" to "ada", "lampu" to "nyala", "baterai" to "normal",
-                            "monitor" to "normal", "rem" to "normal", "ban" to "aman",
-                        )
-                        monitorDetail = ""
-                        edited = true
-                    },
                     onSave = {
                         viewModel.saveCondition(
                             SaveDeviceConditionRequest(

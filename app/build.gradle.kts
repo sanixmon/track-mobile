@@ -71,6 +71,7 @@ dependencies {
     implementation(libs.retrofit.kotlinx.serialization)
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
+    implementation(libs.okhttp.sse)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.androidx.concurrent.futures.ktx)

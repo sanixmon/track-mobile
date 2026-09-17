@@ -1,5 +1,6 @@
 package com.evrenhouse.trackscooter.ui.common
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.evrenhouse.trackscooter.data.ActivityLogEntry
@@ -12,6 +13,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
 data class ScooterDataUiState(
@@ -24,7 +26,8 @@ data class ScooterDataUiState(
 
 /**
  * Shared data holder for Dashboard / Monitor / Manage. Fetches everything the
- * app needs and silently polls every 30s (mirrors web useScooterData).
+ * app needs with real-time SSE streaming (zero-delay) and silent background
+ * polling fallback every 30s.
  */
 class ScooterDataViewModel(
     private val repository: ScooterRepository,
@@ -34,9 +37,11 @@ class ScooterDataViewModel(
     val state: StateFlow<ScooterDataUiState> = _state.asStateFlow()
 
     private var pollingJob: Job? = null
+    private var streamJob: Job? = null
 
     init {
         refresh()
+        observeStream()
         startPolling()
     }
 
@@ -65,6 +70,17 @@ class ScooterDataViewModel(
         }
     }
 
+    private fun observeStream() {
+        streamJob?.cancel()
+        streamJob = viewModelScope.launch {
+            repository.observeEvents()
+                .catch { err -> Log.w("ScooterDataVM", "SSE stream exception: ${err.message}") }
+                .collect { _ ->
+                    refresh()
+                }
+        }
+    }
+
     private fun startPolling() {
         pollingJob = viewModelScope.launch {
             while (true) {
@@ -75,6 +91,7 @@ class ScooterDataViewModel(
     }
 
     override fun onCleared() {
+        streamJob?.cancel()
         pollingJob?.cancel()
         super.onCleared()
     }
