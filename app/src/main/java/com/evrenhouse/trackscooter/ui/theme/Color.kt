@@ -25,5 +25,6 @@ val RedSubtle = Color(0x26EF4444) // rgba(239,68,68,0.15)
 
 val Warning = Color(0xFFF59E0B)
 val WarningSubtle = Color(0x26F59E0B) // rgba(245,158,11,0.15)
+val Yellow = Warning
 
 val BlueLive = Color(0xFF3B82F6)
