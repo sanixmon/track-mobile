@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -38,7 +40,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -61,6 +62,7 @@ import com.evrenhouse.trackscooter.ui.theme.Surface3
 import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
+import com.evrenhouse.trackscooter.ui.theme.Warning
 import com.evrenhouse.trackscooter.ui.theme.Yellow
 import com.evrenhouse.trackscooter.util.ActionLabels
 import com.evrenhouse.trackscooter.util.DateUtils
@@ -179,7 +181,7 @@ fun LivePulseHeader(
                     .size(12.dp)
                     .background(
                         color = when {
-                            isReconnecting -> Yellow.copy(alpha = pulseAlpha)
+                            isReconnecting -> Warning.copy(alpha = pulseAlpha)
                             isLiveConnected -> BlueLive.copy(alpha = pulseAlpha)
                             else -> Green.copy(alpha = pulseAlpha)
                         },
@@ -192,7 +194,7 @@ fun LivePulseHeader(
                         .size(6.dp)
                         .background(
                             color = when {
-                                isReconnecting -> Yellow
+                                isReconnecting -> Warning
                                 isLiveConnected -> BlueLive
                                 else -> Green
                             },
@@ -217,7 +219,7 @@ fun LivePulseHeader(
                     "Arsip: ${DateUtils.formatWeekdayFull(activeDate)}"
                 },
                 color = TextPrimary,
-                fontSize = 19.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
             )
             Text(
@@ -228,7 +230,7 @@ fun LivePulseHeader(
                 } else {
                     "Data riwayat transaksi operasional masa lalu"
                 },
-                color = if (isReconnecting) Yellow else TextMuted,
+                color = if (isReconnecting) Warning else TextMuted,
                 fontSize = 12.sp,
             )
         }
@@ -260,7 +262,7 @@ fun LiveSessionCard(
 
     val barColor = when {
         totalMins >= 60 -> Red
-        totalMins >= 45 -> Yellow
+        totalMins >= 45 -> Warning
         else -> BlueLive
     }
 
@@ -485,7 +487,7 @@ fun ActivityItemRow(
     }
 }
 
-/** ── Status Unit Filter Panel ── */
+/** ── Responsive Status Unit Filter Panel (Horizontal Scrolling Chips) ── */
 @Composable
 fun MonitorFilterPanel(
     scooters: List<Scooter>,
@@ -503,25 +505,49 @@ fun MonitorFilterPanel(
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // Status filters in responsive horizontal scrollable LazyRow
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("FILTER STATUS", color = TextSubtle, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MonitorFilterTab("Semua", "all", statusFilter, onStatusFilter, count = scooters.size)
-                MonitorFilterTab("Tersedia", "available", statusFilter, onStatusFilter, count = scooters.count { it.status == "available" })
-                MonitorFilterTab("Online", "in-use", statusFilter, onStatusFilter, count = scooters.count { it.status == "in-use" })
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MonitorFilterTab("Rusak", "rusak", statusFilter, onStatusFilter, count = scooters.count { it.status == "rusak" })
-                MonitorFilterTab("Maintenance", "maintenance", statusFilter, onStatusFilter, count = scooters.count { it.status == "maintenance" })
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                item {
+                    MonitorFilterTab("Semua", "all", statusFilter, onStatusFilter, count = scooters.size)
+                }
+                item {
+                    MonitorFilterTab("Tersedia", "available", statusFilter, onStatusFilter, count = scooters.count { it.status == "available" })
+                }
+                item {
+                    MonitorFilterTab("Online", "in-use", statusFilter, onStatusFilter, count = scooters.count { it.status == "in-use" })
+                }
+                item {
+                    MonitorFilterTab("Rusak", "rusak", statusFilter, onStatusFilter, count = scooters.count { it.status == "rusak" })
+                }
+                item {
+                    MonitorFilterTab("Maintenance", "maintenance", statusFilter, onStatusFilter, count = scooters.count { it.status == "maintenance" })
+                }
             }
         }
+
         Box(Modifier.fillMaxWidth().height(1.dp).background(Border))
+
+        // Type filters in responsive horizontal scrollable LazyRow
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("FILTER JENIS", color = TextSubtle, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MonitorFilterTab("Semua Jenis", "all", typeFilter, onTypeFilter)
-                MonitorFilterTab("Standar (SD)", "sd", typeFilter, onTypeFilter, count = scooters.count { it.type == "sd" })
-                MonitorFilterTab("Jumbo (SJ)", "sj", typeFilter, onTypeFilter, count = scooters.count { it.type == "sj" })
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                item {
+                    MonitorFilterTab("Semua Jenis", "all", typeFilter, onTypeFilter)
+                }
+                item {
+                    MonitorFilterTab("Standar (SD)", "sd", typeFilter, onTypeFilter, count = scooters.count { it.type == "sd" })
+                }
+                item {
+                    MonitorFilterTab("Jumbo (SJ)", "sj", typeFilter, onTypeFilter, count = scooters.count { it.type == "sj" })
+                }
             }
         }
     }
@@ -561,7 +587,7 @@ fun MonitorFilterTab(label: String, value: String, selected: String, onSelect: (
     }
 }
 
-/** ── Historical Summary Table for Past Dates ── */
+/** ── Clean Historical Summary Table for Past Dates ── */
 @Composable
 fun HistoricalSummary(logForDate: List<ActivityLogEntry>, modifier: Modifier = Modifier) {
     val perUnit = logForDate.groupBy { it.scooterId }
@@ -576,30 +602,39 @@ fun HistoricalSummary(logForDate: List<ActivityLogEntry>, modifier: Modifier = M
             .background(Surface, RoundedCornerShape(14.dp))
             .border(1.dp, Border, RoundedCornerShape(14.dp)),
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(14.dp)) {
             Text("RINGKASAN PER UNIT", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
             Text("${logForDate.size} transaksi tercatat", color = TextMuted, fontSize = 11.sp)
         }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Border))
         if (logForDate.isEmpty()) {
             Text("Tidak ada aktivitas pada tanggal ini.", color = TextMuted, fontSize = 12.sp, modifier = Modifier.padding(24.dp))
         } else {
-            perUnit.forEach { (id, type, counts) ->
+            perUnit.forEachIndexed { index, (id, type, counts) ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(id, color = Accent, fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                        Text(id, color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                         TypeBadge(type)
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("↗ ${counts.first}x", color = Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        Text("↙ ${counts.second}x", color = Green, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(Icons.Filled.ArrowUpward, contentDescription = "Keluar", tint = Red, modifier = Modifier.size(13.dp))
+                            Text("${counts.first}x", color = Red, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(Icons.Filled.ArrowDownward, contentDescription = "Masuk", tint = Green, modifier = Modifier.size(13.dp))
+                            Text("${counts.second}x", color = Green, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
-                Box(Modifier.fillMaxWidth().height(1.dp).background(Border))
+                if (index < perUnit.size - 1) {
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(Border))
+                }
             }
         }
     }

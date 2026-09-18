@@ -1,5 +1,6 @@
 package com.evrenhouse.trackscooter.ui.monitor
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,6 +19,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -27,11 +30,14 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -50,6 +56,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -92,7 +99,9 @@ fun MonitorScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedTab by rememberSaveable { mutableStateOf(MonitorTab.LIVE_SESSION) }
+    val pagerState = rememberPagerState(initialPage = 0) { MonitorTab.entries.size }
+    val currentTab by remember { derivedStateOf { MonitorTab.entries[pagerState.currentPage] } }
+
     var selectedDate by rememberSaveable(stateSaver = NullableLocalDateSaver) { mutableStateOf<LocalDate?>(null) } // null = live today
     var statusFilter by rememberSaveable { mutableStateOf("all") }
     var typeFilter by rememberSaveable { mutableStateOf("all") }
@@ -170,26 +179,28 @@ fun MonitorScreen(
         onRefresh = { viewModel.refresh() },
         modifier = Modifier.fillMaxSize(),
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            // ── Top Header with Live Pulse ──
-            item {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // ── Fixed Top Header & Tab Selector ──
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
                 LivePulseHeader(
                     isLiveView = isLiveView,
                     isLiveConnected = state.isLiveConnected,
                     isReconnecting = state.isReconnecting,
                     activeDate = activeDate,
                 )
-            }
 
-            // ── 3-Tab Selector ──
-            item {
                 MonitorTabSelector(
-                    selectedTab = selectedTab,
-                    onSelectTab = { selectedTab = it },
+                    selectedTab = currentTab,
+                    onSelectTab = { tab ->
+                        scope.launch {
+                            pagerState.animateScrollToPage(tab.ordinal)
+                        }
+                    },
                     liveCount = inUseScooters.size,
                     recentCount = logForDate.size,
                 )
@@ -197,264 +208,333 @@ fun MonitorScreen(
 
             when {
                 state.error != null && state.scooters.isEmpty() -> {
-                    item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
                         ErrorState(message = state.error ?: "", onRetry = { viewModel.refresh() })
                     }
                 }
                 state.loading && state.scooters.isEmpty() -> {
-                    item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
                         LoadingState("Memuat data monitor...")
                     }
                 }
                 else -> {
-                    // ── Tab 1: LIVE SESSION ──
-                    if (selectedTab == MonitorTab.LIVE_SESSION) {
-                        if (inUseScooters.isEmpty()) {
-                            item {
-                                LiveSessionEmptyState()
-                            }
-                        } else {
-                            item {
-                                Text(
-                                    text = "SESI AKTIF BERJALAN (${inUseScooters.size} UNIT)",
-                                    color = TextSubtle,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.1.sp,
-                                )
-                            }
-                            items(
-                                items = inUseScooters,
-                                key = { "live_${it.id}" },
-                            ) { scooter ->
-                                LiveSessionCard(
-                                    scooter = scooter,
-                                    nowMillis = nowMillis,
-                                    onClick = { onOpenDetail(scooter.id) },
-                                )
-                            }
-                        }
-                    }
-
-                    // ── Tab 2: RECENT (Aktivitas Terkini) ──
-                    if (selectedTab == MonitorTab.RECENT) {
-                        item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = if (isLiveView) "AKTIVITAS TERKINI HARI INI" else "RIWAYAT AKTIVITAS",
-                                    color = TextSubtle,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.1.sp,
-                                )
-                                Text(
-                                    text = "${logForDate.size} transaksi",
-                                    color = TextMuted,
-                                    fontSize = 11.sp,
-                                )
-                            }
-                        }
-
-                        if (logForDate.isEmpty()) {
-                            item {
-                                Text(
-                                    text = if (isLiveView) "Belum ada aktivitas hari ini." else "Tidak ada aktivitas pada tanggal ini.",
-                                    color = TextMuted,
-                                    fontSize = 12.sp,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(Surface, RoundedCornerShape(14.dp))
-                                        .border(1.dp, Border, RoundedCornerShape(14.dp))
-                                        .padding(28.dp),
-                                )
-                            }
-                        } else {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(Surface, RoundedCornerShape(14.dp))
-                                        .border(1.dp, Border, RoundedCornerShape(14.dp)),
+                    // ── Horizontal Pager for swipe / scroll between tabs ──
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize(),
+                        verticalAlignment = Alignment.Top,
+                    ) { page ->
+                        when (MonitorTab.entries[page]) {
+                            // ══════════════════════════════════════
+                            // TAB 1: LIVE SESSION
+                            // ══════════════════════════════════════
+                            MonitorTab.LIVE_SESSION -> {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
-                                    Column {
-                                        logForDate.forEachIndexed { index, entry ->
-                                            ActivityItemRow(entry = entry, isLiveView = isLiveView)
-                                            if (index < logForDate.size - 1) {
-                                                Box(
-                                                    Modifier
+                                    if (inUseScooters.isEmpty()) {
+                                        item {
+                                            LiveSessionEmptyState(modifier = Modifier.padding(top = 16.dp))
+                                        }
+                                    } else {
+                                        item {
+                                            Text(
+                                                text = "SESI SEWA BERJALAN (${inUseScooters.size} UNIT)",
+                                                color = TextSubtle,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                letterSpacing = 1.1.sp,
+                                                modifier = Modifier.padding(bottom = 2.dp),
+                                            )
+                                        }
+                                        items(
+                                            items = inUseScooters,
+                                            key = { "live_${it.id}" },
+                                        ) { scooter ->
+                                            LiveSessionCard(
+                                                scooter = scooter,
+                                                nowMillis = nowMillis,
+                                                onClick = { onOpenDetail(scooter.id) },
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // ══════════════════════════════════════
+                            // TAB 2: RECENT (Aktivitas Terkini)
+                            // ══════════════════════════════════════
+                            MonitorTab.RECENT -> {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    item {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Text(
+                                                text = if (isLiveView) "AKTIVITAS TERKINI HARI INI" else "RIWAYAT AKTIVITAS",
+                                                color = TextSubtle,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                letterSpacing = 1.1.sp,
+                                            )
+                                            Text(
+                                                text = "${logForDate.size} transaksi",
+                                                color = TextMuted,
+                                                fontSize = 11.sp,
+                                            )
+                                        }
+                                    }
+
+                                    if (logForDate.isEmpty()) {
+                                        item {
+                                            Text(
+                                                text = if (isLiveView) "Belum ada aktivitas hari ini." else "Tidak ada aktivitas pada tanggal ini.",
+                                                color = TextMuted,
+                                                fontSize = 12.sp,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .background(Surface, RoundedCornerShape(14.dp))
+                                                    .border(1.dp, Border, RoundedCornerShape(14.dp))
+                                                    .padding(28.dp),
+                                            )
+                                        }
+                                    } else {
+                                        item {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .background(Surface, RoundedCornerShape(14.dp))
+                                                    .border(1.dp, Border, RoundedCornerShape(14.dp)),
+                                            ) {
+                                                Column {
+                                                    logForDate.forEachIndexed { index, entry ->
+                                                        ActivityItemRow(entry = entry, isLiveView = isLiveView)
+                                                        if (index < logForDate.size - 1) {
+                                                            Box(
+                                                                Modifier
+                                                                    .fillMaxWidth()
+                                                                    .height(1.dp)
+                                                                    .background(Border)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // ══════════════════════════════════════
+                            // TAB 3: SUMMARY (Responsive Layout)
+                            // ══════════════════════════════════════
+                            MonitorTab.SUMMARY -> {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                                ) {
+                                    // 1. Date Navigator Card (Clean 3-row layout)
+                                    item {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .background(Surface, RoundedCornerShape(14.dp))
+                                                .border(1.dp, Border, RoundedCornerShape(14.dp))
+                                                .padding(14.dp),
+                                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                                        ) {
+                                            // Row 1: Active Date Label + Export Button
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically,
+                                            ) {
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        text = if (isLiveView) "HARI INI (LIVE)" else DateUtils.formatWeekdayFull(activeDate).uppercase(),
+                                                        color = Accent,
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        letterSpacing = 0.8.sp,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                    )
+                                                    Text(
+                                                        text = if (isLiveView) "Data operasional hari ini" else DateUtils.formatDateFull(activeDate.atStartOfDay().toString()),
+                                                        color = TextMuted,
+                                                        fontSize = 12.sp,
+                                                    )
+                                                }
+
+                                                Button(
+                                                    onClick = {
+                                                        scope.launch {
+                                                            exporting = true
+                                                            runCatching {
+                                                                val filename = "Laporan-Harian-${DateUtils.localDateKey(activeDate)}.csv"
+                                                                Exporter.saveToDownloads(context, filename, Exporter.buildDailyReportCsv(activeDate, state.activityLog, state.scooters))
+                                                            }
+                                                                .onSuccess { context.showToast("Laporan Excel diunduh ($it)") }
+                                                                .onFailure { context.showToast(it.toUserMessage(), long = true) }
+                                                            exporting = false
+                                                        }
+                                                    },
+                                                    enabled = !exporting,
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                                ) {
+                                                    if (exporting) {
+                                                        CircularProgressIndicator(modifier = Modifier.size(12.dp), color = Color.White, strokeWidth = 2.dp)
+                                                    } else {
+                                                        Icon(Icons.Filled.FileDownload, contentDescription = null, modifier = Modifier.size(13.dp))
+                                                    }
+                                                    Spacer(Modifier.width(4.dp))
+                                                    Text(if (exporting) "Membuat..." else "Export", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+
+                                            Box(Modifier.fillMaxWidth().height(1.dp).background(Border))
+
+                                            // Row 2: Horizontal scrollable date pills
+                                            LazyRow(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            ) {
+                                                item(key = "date_live") {
+                                                    DatePill(
+                                                        label = "Hari Ini (Live)",
+                                                        active = isLiveView,
+                                                        live = true,
+                                                        onClick = { selectedDate = null },
+                                                    )
+                                                }
+                                                items(
+                                                    items = displayDates,
+                                                    key = { it.toString() },
+                                                ) { d ->
+                                                    DatePill(
+                                                        label = DateUtils.formatPill(d),
+                                                        active = selectedDate == d,
+                                                        onClick = { selectedDate = d },
+                                                    )
+                                                }
+                                            }
+
+                                            // Row 3: Day Steppers & Date Picker Button
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically,
+                                            ) {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                                ) {
+                                                    IconButton(onClick = {
+                                                        when {
+                                                            currentIdx == -1 && availableDates.isNotEmpty() -> selectedDate = availableDates.first()
+                                                            canGoPrev -> selectedDate = availableDates[currentIdx + 1]
+                                                        }
+                                                    }, enabled = currentIdx == -1 || canGoPrev) {
+                                                        Icon(Icons.Filled.ChevronLeft, contentDescription = "Sebelumnya", tint = TextMuted, modifier = Modifier.size(18.dp))
+                                                    }
+
+                                                    Text("Ganti Hari", color = TextMuted, fontSize = 11.sp)
+
+                                                    IconButton(onClick = {
+                                                        if (currentIdx > 0) selectedDate = availableDates[currentIdx - 1] else selectedDate = null
+                                                    }, enabled = !isLiveView) {
+                                                        Icon(Icons.Filled.ChevronRight, contentDescription = "Berikutnya", tint = TextMuted, modifier = Modifier.size(18.dp))
+                                                    }
+                                                }
+
+                                                OutlinedButton(
+                                                    onClick = { showDatePicker = true },
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    border = BorderStroke(1.dp, Border),
+                                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                                ) {
+                                                    Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = Accent, modifier = Modifier.size(14.dp))
+                                                    Spacer(Modifier.width(4.dp))
+                                                    Text("Pilih Tanggal", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // 2. Daily Stats KPI Strip
+                                    item {
+                                        DailyKpiStrip(
+                                            total = logForDate.size,
+                                            checkoutCount = checkoutCount,
+                                            returnCount = returnCount,
+                                        )
+                                    }
+
+                                    // 3. Status Unit Section
+                                    if (isLiveView) {
+                                        item {
+                                            MonitorFilterPanel(
+                                                scooters = state.scooters,
+                                                statusFilter = statusFilter,
+                                                onStatusFilter = { statusFilter = it },
+                                                typeFilter = typeFilter,
+                                                onTypeFilter = { typeFilter = it },
+                                            )
+                                        }
+
+                                        if (filteredScooters.isEmpty()) {
+                                            item {
+                                                Text(
+                                                    text = "Tidak ada unit scooter yang cocok dengan filter aktif.",
+                                                    color = TextMuted,
+                                                    fontSize = 12.sp,
+                                                    modifier = Modifier
                                                         .fillMaxWidth()
-                                                        .height(1.dp)
-                                                        .background(Border)
+                                                        .background(Surface, RoundedCornerShape(14.dp))
+                                                        .border(1.dp, Border, RoundedCornerShape(14.dp))
+                                                        .padding(28.dp),
+                                                )
+                                            }
+                                        } else {
+                                            // 1-column full width cards for superior readability and responsiveness
+                                            items(
+                                                items = filteredScooters,
+                                                key = { "summary_${it.id}" },
+                                            ) { scooter ->
+                                                ScooterCard(
+                                                    scooter = scooter,
+                                                    onClick = { onOpenDetail(scooter.id) },
+                                                    modifier = Modifier.fillMaxWidth(),
                                                 )
                                             }
                                         }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // ── Tab 3: SUMMARY (Date Picker, Total Transaksi, Status Unit) ──
-                    if (selectedTab == MonitorTab.SUMMARY) {
-                        // Date Navigator
-                        item {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(Surface, RoundedCornerShape(14.dp))
-                                    .border(1.dp, Border, RoundedCornerShape(14.dp))
-                                    .padding(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                // Row 1: Horizontal scrollable date pills
-                                LazyRow(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                ) {
-                                    item(key = "date_live") {
-                                        DatePill(
-                                            label = "Hari Ini (Live)",
-                                            active = isLiveView,
-                                            live = true,
-                                            onClick = { selectedDate = null },
-                                        )
-                                    }
-                                    items(
-                                        items = displayDates,
-                                        key = { it.toString() },
-                                    ) { d ->
-                                        DatePill(
-                                            label = DateUtils.formatPill(d),
-                                            active = selectedDate == d,
-                                            onClick = { selectedDate = d },
-                                        )
-                                    }
-                                }
-
-                                // Row 2: Controls & Export Button
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    ) {
-                                        IconButton(onClick = {
-                                            when {
-                                                currentIdx == -1 && availableDates.isNotEmpty() -> selectedDate = availableDates.first()
-                                                canGoPrev -> selectedDate = availableDates[currentIdx + 1]
-                                            }
-                                        }, enabled = currentIdx == -1 || canGoPrev) {
-                                            Icon(Icons.Filled.ChevronLeft, contentDescription = "Sebelumnya", tint = TextMuted, modifier = Modifier.size(18.dp))
-                                        }
-
-                                        IconButton(onClick = { showDatePicker = true }) {
-                                            Icon(Icons.Filled.CalendarMonth, contentDescription = "Pilih tanggal", tint = Accent, modifier = Modifier.size(18.dp))
-                                        }
-
-                                        IconButton(onClick = {
-                                            if (currentIdx > 0) selectedDate = availableDates[currentIdx - 1] else selectedDate = null
-                                        }, enabled = !isLiveView) {
-                                            Icon(Icons.Filled.ChevronRight, contentDescription = "Berikutnya", tint = TextMuted, modifier = Modifier.size(18.dp))
-                                        }
-                                    }
-
-                                    // Excel / CSV Export
-                                    androidx.compose.material3.Button(
-                                        onClick = {
-                                            scope.launch {
-                                                exporting = true
-                                                runCatching {
-                                                    val filename = "Laporan-Harian-${DateUtils.localDateKey(activeDate)}.csv"
-                                                    Exporter.saveToDownloads(context, filename, Exporter.buildDailyReportCsv(activeDate, state.activityLog, state.scooters))
-                                                }
-                                                    .onSuccess { context.showToast("Laporan Excel diunduh ($it)") }
-                                                    .onFailure { context.showToast(it.toUserMessage(), long = true) }
-                                                exporting = false
-                                            }
-                                        },
-                                        enabled = !exporting,
-                                        shape = RoundedCornerShape(8.dp),
-                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                                    ) {
-                                        if (exporting) {
-                                            androidx.compose.material3.CircularProgressIndicator(modifier = Modifier.size(12.dp), color = androidx.compose.ui.graphics.Color.White, strokeWidth = 2.dp)
-                                        } else {
-                                            Icon(Icons.Filled.FileDownload, contentDescription = null, modifier = Modifier.size(13.dp))
-                                        }
-                                        Spacer(Modifier.width(4.dp))
-                                        Text(if (exporting) "Membuat..." else "Export", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                }
-                            }
-                        }
-
-                        // Daily Stats KPI Strip
-                        item {
-                            DailyKpiStrip(
-                                total = logForDate.size,
-                                checkoutCount = checkoutCount,
-                                returnCount = returnCount,
-                            )
-                        }
-
-                        // Status Unit Section
-                        if (isLiveView) {
-                            item {
-                                MonitorFilterPanel(
-                                    scooters = state.scooters,
-                                    statusFilter = statusFilter,
-                                    onStatusFilter = { statusFilter = it },
-                                    typeFilter = typeFilter,
-                                    onTypeFilter = { typeFilter = it },
-                                )
-                            }
-
-                            if (filteredScooters.isEmpty()) {
-                                item {
-                                    Text(
-                                        text = "Tidak ada unit scooter yang cocok dengan filter aktif.",
-                                        color = TextMuted,
-                                        fontSize = 12.sp,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .background(Surface, RoundedCornerShape(14.dp))
-                                            .border(1.dp, Border, RoundedCornerShape(14.dp))
-                                            .padding(28.dp),
-                                    )
-                                }
-                            } else {
-                                items(
-                                    items = filteredScooters.chunked(2),
-                                    key = { chunk -> chunk.joinToString { it.id } },
-                                ) { row ->
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                    ) {
-                                        row.forEach { scooter ->
-                                            ScooterCard(
-                                                scooter = scooter,
-                                                onClick = { onOpenDetail(scooter.id) },
-                                                modifier = Modifier.weight(1f),
-                                            )
-                                        }
-                                        if (row.size == 1) {
-                                            Spacer(modifier = Modifier.weight(1f))
+                                    } else {
+                                        // Historical summary table for past date
+                                        item {
+                                            HistoricalSummary(logForDate)
                                         }
                                     }
                                 }
-                            }
-                        } else {
-                            // Historical summary table for past date
-                            item {
-                                HistoricalSummary(logForDate)
                             }
                         }
                     }
