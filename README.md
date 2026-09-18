@@ -19,15 +19,16 @@ Client Android native (Kotlin) untuk **TrackScooter** — sistem manajemen inven
 - **CameraX** + **ML Kit** barcode scanning, **ZXing** untuk generate QR
 - **minSdk 26** (Android 8.0) · **targetSdk/compileSdk 35**
 
-## 🚀 Build
+## 🚀 Build & Rilis Otomatis
 
-Build dijalankan otomatis oleh **GitHub Actions** (`.github/workflows/android.yml`) — setiap push ke `main` menghasilkan APK debug & release (unsigned) sebagai artifact di tab **Actions**.
+- **Auto Releases** (`.github/workflows/release.yml`): Setiap push tag (contoh: `git tag v1.0.0 && git push origin v1.0.0`) atau trigger manual di GitHub Actions akan otomatis mengompilasi APK (signed release & debug) dan mempublikasikannya ke tab **[Releases](https://github.com/sanixmon/track-mobile/releases)** lengkap dengan catatan rilis otomatis dan checksum SHA-256.
+- **Continuous Integration** (`.github/workflows/android.yml`): Setiap push/PR ke `main` otomatis memvalidasi build dan mengunggah artifact APK.
 
 Build lokal:
 
 ```bash
 ./gradlew assembleDebug          # APK debug
-./gradlew assembleRelease        # APK release (unsigned)
+./gradlew assembleRelease        # APK release
 ```
 
 Hasil di `app/build/outputs/apk/`.
