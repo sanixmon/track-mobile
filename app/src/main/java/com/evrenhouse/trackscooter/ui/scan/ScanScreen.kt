@@ -37,6 +37,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,9 +70,9 @@ fun ScanScreen(viewModel: ScanViewModel = viewModel(factory = AppViewModelFactor
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
 
-    var mode by remember { mutableStateOf<String?>(null) } // null | "camera" | "image"
-    var manualValue by remember { mutableStateOf("") }
-    var showManual by remember { mutableStateOf(false) }
+    var mode by rememberSaveable { mutableStateOf<String?>(null) } // null | "camera" | "image"
+    var manualValue by rememberSaveable { mutableStateOf("") }
+    var showManual by rememberSaveable { mutableStateOf(false) }
     var decodingImage by remember { mutableStateOf(false) }
 
     val galleryLauncher = rememberLauncherForActivityResult(

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,10 +29,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,19 +77,27 @@ fun DashboardScreen(
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
 
-    var gridStatus by remember { mutableStateOf("all") }
-    var gridType by remember { mutableStateOf("all") }
+    var gridStatus by rememberSaveable { mutableStateOf("all") }
+    var gridType by rememberSaveable { mutableStateOf("all") }
+    var isScootersExpanded by rememberSaveable { mutableStateOf(false) }
     var historyFilters by remember { mutableStateOf(HistoryFilters()) }
     var completingId by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    val filteredScooters = state.scooters.filter { s ->
-        (gridStatus == "all" || s.status == gridStatus) &&
-            (gridType == "all" || s.type == gridType)
+    val filteredScooters by remember(state.scooters, gridStatus, gridType) {
+        derivedStateOf {
+            state.scooters.filter { s ->
+                (gridStatus == "all" || s.status == gridStatus) &&
+                    (gridType == "all" || s.type == gridType)
+            }
+        }
     }
 
-    var isScootersExpanded by remember { mutableStateOf(false) }
-    val displayScooters = if (isScootersExpanded) filteredScooters else filteredScooters.take(5)
+    val displayScooters by remember(filteredScooters, isScootersExpanded) {
+        derivedStateOf {
+            if (isScootersExpanded) filteredScooters else filteredScooters.take(5)
+        }
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -203,72 +214,75 @@ fun DashboardScreen(
                     }
                 }
 
-                // Scooter grid with filters and 5-unit collapse
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = "STATUS SCOOTER (${filteredScooters.size})",
-                                color = TextSubtle,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.2.sp,
+                // Scooter section header with filters
+                item(key = "scooters_filter_header") {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "STATUS SCOOTER (${filteredScooters.size})",
+                            color = TextSubtle,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.2.sp,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            CompactDropdown(
+                                label = if (gridStatus == "all") "Status" else StatusLabels.of(gridStatus),
+                                options = listOf(
+                                    "all" to "Semua Status",
+                                    "available" to "Tersedia",
+                                    "in-use" to "Online",
+                                    "rusak" to "Offline / Rusak",
+                                    "maintenance" to "Maintenance",
+                                ),
+                                selected = gridStatus,
+                                onSelect = { gridStatus = it },
                             )
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                CompactDropdown(
-                                    label = if (gridStatus == "all") "Status" else StatusLabels.of(gridStatus),
-                                    options = listOf(
-                                        "all" to "Semua Status",
-                                        "available" to "Tersedia",
-                                        "in-use" to "Online",
-                                        "rusak" to "Offline / Rusak",
-                                        "maintenance" to "Maintenance",
-                                    ),
-                                    selected = gridStatus,
-                                    onSelect = { gridStatus = it },
-                                )
-                                CompactDropdown(
-                                    label = if (gridType == "all") "Jenis" else gridType.uppercase(),
-                                    options = listOf("all" to "Semua Jenis", "sd" to "Standar (SD)", "sj" to "Jumbo (SJ)"),
-                                    selected = gridType,
-                                    onSelect = { gridType = it },
-                                )
-                            }
+                            CompactDropdown(
+                                label = if (gridType == "all") "Jenis" else gridType.uppercase(),
+                                options = listOf("all" to "Semua Jenis", "sd" to "Standar (SD)", "sj" to "Jumbo (SJ)"),
+                                selected = gridType,
+                                onSelect = { gridType = it },
+                            )
                         }
+                    }
+                }
 
-                        if (filteredScooters.isEmpty()) {
-                            Text(
-                                "Tidak ada scooter yang cocok dengan filter status/jenis.",
-                                color = TextMuted,
-                                fontSize = 12.sp,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(Surface, RoundedCornerShape(14.dp))
-                                    .border(1.dp, Border, RoundedCornerShape(14.dp))
-                                    .padding(28.dp),
+                if (filteredScooters.isEmpty()) {
+                    item(key = "scooters_empty") {
+                        Text(
+                            "Tidak ada scooter yang cocok dengan filter status/jenis.",
+                            color = TextMuted,
+                            fontSize = 12.sp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Surface, RoundedCornerShape(14.dp))
+                                .border(1.dp, Border, RoundedCornerShape(14.dp))
+                                .padding(28.dp),
+                        )
+                    }
+                } else {
+                    items(
+                        items = displayScooters,
+                        key = { it.id },
+                    ) { scooter ->
+                        ScooterCard(
+                            scooter = scooter,
+                            onClick = { onOpenDetail(scooter.id) },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+
+                    if (filteredScooters.size > 5) {
+                        item(key = "scooters_toggle") {
+                            OutlinedAction(
+                                text = if (isScootersExpanded) "Tampilkan Lebih Sedikit" else "Lihat Selengkapnya (${filteredScooters.size - 5} unit lainnya)",
+                                onClick = { isScootersExpanded = !isScootersExpanded },
+                                color = Accent,
                             )
-                        } else {
-                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                displayScooters.forEach { scooter ->
-                                    ScooterCard(
-                                        scooter = scooter,
-                                        onClick = { onOpenDetail(scooter.id) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                    )
-                                }
-
-                                if (filteredScooters.size > 5) {
-                                    OutlinedAction(
-                                        text = if (isScootersExpanded) "Tampilkan Lebih Sedikit" else "Lihat Selengkapnya (${filteredScooters.size - 5} unit lainnya)",
-                                        onClick = { isScootersExpanded = !isScootersExpanded },
-                                        color = Accent,
-                                    )
-                                }
-                            }
                         }
                     }
                 }

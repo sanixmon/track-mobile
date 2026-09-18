@@ -43,10 +43,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,6 +86,11 @@ import com.evrenhouse.trackscooter.util.showToast
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
+private val NullableLocalDateSaver = Saver<LocalDate?, String>(
+    save = { it?.toString() ?: "" },
+    restore = { if (it.isEmpty()) null else LocalDate.parse(it) },
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MonitorScreen(
@@ -93,34 +101,62 @@ fun MonitorScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var selectedDate by remember { mutableStateOf<LocalDate?>(null) } // null = live today
-    var statusFilter by remember { mutableStateOf("all") }
-    var typeFilter by remember { mutableStateOf("all") }
-    var showStatusPanel by remember { mutableStateOf(false) }
+    var selectedDate by rememberSaveable(stateSaver = NullableLocalDateSaver) { mutableStateOf<LocalDate?>(null) } // null = live today
+    var statusFilter by rememberSaveable { mutableStateOf("all") }
+    var typeFilter by rememberSaveable { mutableStateOf("all") }
+    var showStatusPanel by rememberSaveable { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var exporting by remember { mutableStateOf(false) }
 
-    val today = DateUtils.today()
+    val today = remember { DateUtils.today() }
 
     // Unique dates from the log, newest first
-    val availableDates = remember(state.activityLog) {
-        state.activityLog.mapNotNull { DateUtils.toLocalDate(it.timestamp) }.distinct().sortedDescending()
+    val availableDates by remember {
+        derivedStateOf {
+            state.activityLog.mapNotNull { DateUtils.toLocalDate(it.timestamp) }.distinct().sortedDescending()
+        }
     }
 
     val activeDate = selectedDate ?: today
     val isLiveView = selectedDate == null || activeDate == today
 
-    val logForDate = state.activityLog.filter { DateUtils.toLocalDate(it.timestamp) == activeDate }
-    val checkoutCount = logForDate.count { it.action == ActionLabels.CHECKOUT }
-    val returnCount = logForDate.count { it.action == ActionLabels.RETURN }
-
-    val filteredScooters = state.scooters.filter { s ->
-        (statusFilter == "all" || s.status == statusFilter) &&
-            (typeFilter == "all" || s.type == typeFilter)
+    val logForDate by remember {
+        derivedStateOf {
+            state.activityLog.filter { DateUtils.toLocalDate(it.timestamp) == activeDate }
+        }
+    }
+    val checkoutCount by remember {
+        derivedStateOf {
+            logForDate.count { it.action == ActionLabels.CHECKOUT }
+        }
+    }
+    val returnCount by remember {
+        derivedStateOf {
+            logForDate.count { it.action == ActionLabels.RETURN }
+        }
     }
 
-    val currentIdx = availableDates.indexOfFirst { it == activeDate }
-    val canGoPrev = currentIdx in 0 until availableDates.size - 1
+    val filteredScooters by remember {
+        derivedStateOf {
+            state.scooters.filter { s ->
+                (statusFilter == "all" || s.status == statusFilter) &&
+                    (typeFilter == "all" || s.type == typeFilter)
+            }
+        }
+    }
+
+    val currentIdx by remember {
+        derivedStateOf { availableDates.indexOfFirst { it == activeDate } }
+    }
+    val canGoPrev by remember {
+        derivedStateOf { currentIdx in 0 until availableDates.size - 1 }
+    }
+
+    val displayDates by remember {
+        derivedStateOf {
+            availableDates.filter { it != today }.take(7)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -140,14 +176,20 @@ fun MonitorScreen(
             } else {
                 Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = Accent, modifier = Modifier.size(16.dp))
             }
-            Text(if (isLiveView) "Live Monitor Lapangan" else "Riwayat Harian", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Column {
+                Text(
+                    if (isLiveView) "Live Monitor Lapangan" else "Arsip Operasional: ${DateUtils.formatWeekdayFull(activeDate)}",
+                    color = TextPrimary,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    if (isLiveView) "Statistik pemakaian dan log keluar/masuk hari ini secara real-time" else "Data riwayat pemakaian masa lalu",
+                    color = TextMuted,
+                    fontSize = 13.sp,
+                )
+            }
         }
-        Text(
-            if (isLiveView) "Pemantauan status dan log aktivitas secara real-time"
-            else "Menampilkan riwayat aktivitas — ${DateUtils.formatWeekdayFull(activeDate)}",
-            color = TextMuted,
-            fontSize = 13.sp,
-        )
 
         // Date navigator (Row 1: Date pills, Row 2: Steppers, Picker & Export)
         Column(
@@ -163,7 +205,7 @@ fun MonitorScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                item {
+                item(key = "date_live") {
                     DatePill(
                         label = "Hari Ini (Live)",
                         active = isLiveView,
@@ -171,7 +213,10 @@ fun MonitorScreen(
                         onClick = { selectedDate = null },
                     )
                 }
-                items(availableDates.filter { it != today }.take(7)) { d ->
+                items(
+                    items = displayDates,
+                    key = { it.toString() },
+                ) { d ->
                     DatePill(
                         label = DateUtils.formatPill(d),
                         active = selectedDate == d,

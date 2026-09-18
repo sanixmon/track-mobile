@@ -50,10 +50,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -106,12 +108,12 @@ fun ManageScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var idInput by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf("sd") }
-    var search by remember { mutableStateOf("") }
-    var filterStatus by remember { mutableStateOf("all") }
-    var filterType by remember { mutableStateOf("all") }
-    var sortBy by remember { mutableStateOf("id-asc") }
+    var idInput by rememberSaveable { mutableStateOf("") }
+    var type by rememberSaveable { mutableStateOf("sd") }
+    var search by rememberSaveable { mutableStateOf("") }
+    var filterStatus by rememberSaveable { mutableStateOf("all") }
+    var filterType by rememberSaveable { mutableStateOf("all") }
+    var sortBy by rememberSaveable { mutableStateOf("id-asc") }
 
     var confirmDelete by remember { mutableStateOf<Scooter?>(null) }
     var statusDialog by remember { mutableStateOf<StatusDialogData?>(null) }
@@ -128,13 +130,17 @@ fun ManageScreen(
     fun todayCheckoutCount(id: String): Int =
         data.activityLog.count { it.scooterId == id && it.action == "checkout" && DateUtils.dateKey(it.timestamp) == todayKey }
 
-    val filtered = data.scooters
-        .filter { s ->
-            s.id.contains(search, ignoreCase = true) &&
-                (filterStatus == "all" || s.status == filterStatus) &&
-                (filterType == "all" || s.type == filterType)
+    val filtered by remember {
+        derivedStateOf {
+            data.scooters
+                .filter { s ->
+                    s.id.contains(search, ignoreCase = true) &&
+                        (filterStatus == "all" || s.status == filterStatus) &&
+                        (filterType == "all" || s.type == filterType)
+                }
+                .sortedWith(compareScooters(sortBy, ::todayCheckoutCount))
         }
-        .sortedWith(compareScooters(sortBy, ::todayCheckoutCount))
+    }
 
     Column(
         modifier = Modifier

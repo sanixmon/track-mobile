@@ -39,6 +39,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -128,8 +129,12 @@ fun ScooterDetailScreen(
         }
     }
 
-    val hasCondition = state.scooter?.deviceCondition != null
-    val isDirty = edited || currentSnapshot() != savedSnapshot
+    val hasCondition by remember {
+        derivedStateOf { state.scooter?.deviceCondition != null }
+    }
+    val isDirty by remember {
+        derivedStateOf { edited || currentSnapshot() != savedSnapshot }
+    }
 
     Column(
         modifier = Modifier
