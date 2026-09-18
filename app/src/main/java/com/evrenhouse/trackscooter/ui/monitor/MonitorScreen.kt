@@ -76,10 +76,10 @@ import com.evrenhouse.trackscooter.ui.theme.Surface3
 import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
+import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
 import com.evrenhouse.trackscooter.util.ActionLabels
 import com.evrenhouse.trackscooter.util.DateUtils
 import com.evrenhouse.trackscooter.util.Exporter
-import com.evrenhouse.trackscooter.util.showToast
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -97,6 +97,7 @@ fun MonitorScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
+    val sweetAlert = LocalSweetAlert.current
     val scope = rememberCoroutineScope()
 
     val pagerState = rememberPagerState(initialPage = 0) { MonitorTab.entries.size }
@@ -393,8 +394,8 @@ fun MonitorScreen(
                                                                 val filename = "Laporan-Harian-${DateUtils.localDateKey(activeDate)}.csv"
                                                                 Exporter.saveToDownloads(context, filename, Exporter.buildDailyReportCsv(activeDate, state.activityLog, state.scooters))
                                                             }
-                                                                .onSuccess { context.showToast("Laporan Excel diunduh ($it)") }
-                                                                .onFailure { context.showToast(it.toUserMessage(), long = true) }
+                                                                .onSuccess { sweetAlert.showSuccess("Laporan Excel diunduh ($it)") }
+                                                                .onFailure { sweetAlert.showError(it.toUserMessage()) }
                                                             exporting = false
                                                         }
                                                     },

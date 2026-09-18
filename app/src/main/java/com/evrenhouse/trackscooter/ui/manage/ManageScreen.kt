@@ -91,10 +91,10 @@ import com.evrenhouse.trackscooter.util.DeviceConditionHelper
 import com.evrenhouse.trackscooter.util.QrZip
 import com.evrenhouse.trackscooter.util.QrUtils
 import com.evrenhouse.trackscooter.data.toUserMessage
+import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
 import com.evrenhouse.trackscooter.ui.common.repository
 import com.evrenhouse.trackscooter.util.StatusLabels
 import com.evrenhouse.trackscooter.util.TypeLabels
-import com.evrenhouse.trackscooter.util.showToast
 import kotlinx.coroutines.launch
 
 @Composable
@@ -106,6 +106,7 @@ fun ManageScreen(
     val data by viewModel.state.collectAsState()
     val mv by manageViewModel.state.collectAsState()
     val context = LocalContext.current
+    val sweetAlert = LocalSweetAlert.current
     val scope = rememberCoroutineScope()
 
     var idInput by rememberSaveable { mutableStateOf("") }
@@ -115,13 +116,16 @@ fun ManageScreen(
     var filterType by rememberSaveable { mutableStateOf("all") }
     var sortBy by rememberSaveable { mutableStateOf("id-asc") }
 
-    var confirmDelete by remember { mutableStateOf<Scooter?>(null) }
     var statusDialog by remember { mutableStateOf<StatusDialogData?>(null) }
     var busyAction by remember { mutableStateOf(false) }
 
     LaunchedEffect(mv.toast) {
         mv.toast?.let {
-            context.showToast(it)
+            if (it.contains("berhasil", ignoreCase = true) || it.contains("sukses", ignoreCase = true)) {
+                sweetAlert.showSuccess(it)
+            } else {
+                sweetAlert.showInfo(it)
+            }
             manageViewModel.consumeToast()
         }
     }
@@ -204,8 +208,8 @@ fun ManageScreen(
                                 val csv = Exporter.buildConditionsCsv(data.scooters)
                                 Exporter.saveToDownloads(context, "Kondisi-Scooter-${todayKey}.csv", csv)
                             }
-                                .onSuccess { context.showToast("File CSV berhasil diunduh") }
-                                .onFailure { context.showToast(it.toUserMessage(), long = true) }
+                                .onSuccess { sweetAlert.showSuccess("File CSV berhasil diunduh") }
+                                .onFailure { sweetAlert.showError(it.toUserMessage()) }
                             busyAction = false
                         }
                     },
@@ -227,8 +231,8 @@ fun ManageScreen(
                             runCatching {
                                 QrZip.zipAllQrs(context, data.scooters.map { it.id to it.type })
                             }
-                                .onSuccess { context.showToast("Semua QR Code diunduh ($it)") }
-                                .onFailure { context.showToast(it.toUserMessage(), long = true) }
+                                .onSuccess { sweetAlert.showSuccess("Semua QR Code diunduh ($it)") }
+                                .onFailure { sweetAlert.showError(it.toUserMessage()) }
                             busyAction = false
                         }
                     },
@@ -253,8 +257,8 @@ fun ManageScreen(
                                 val filename = "trackscooter_backup_${todayKey}.db"
                                 Exporter.saveBytesToDownloads(context, filename, bytes, "application/octet-stream")
                             }
-                                .onSuccess { context.showToast("Backup DB Berhasil") }
-                                .onFailure { context.showToast(it.toUserMessage(), long = true) }
+                                .onSuccess { sweetAlert.showSuccess("Backup DB Berhasil") }
+                                .onFailure { sweetAlert.showError(it.toUserMessage()) }
                             busyAction = false
                         }
                     },
@@ -271,93 +275,97 @@ fun ManageScreen(
                 LoadingState("Memuat data scooter...")
             }
             else -> {
-                // Add form
-                AddScooterForm(
-                    idInput = idInput,
-                    onIdInput = { idInput = it },
-                    type = type,
-                    onTypeChange = { type = it },
-                    error = mv.error,
-                    submitting = mv.busy,
-                    onSubmit = {
-                        scope.launch {
-                            manageViewModel.setBusy(true)
-                            val ok = manageViewModel.addScooter(idInput, type)
-                            manageViewModel.setBusy(false)
-                            if (ok) {
-                                idInput = ""
-                                type = "sd"
-                                viewModel.refresh()
-                                context.showToast("Scooter berhasil ditambahkan")
-                            } else {
-                                manageViewModel.setError("Gagal menambahkan scooter. Periksa koneksi atau ID sudah terdaftar.")
-                            }
-                        }
-                    },
-                )
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    // Stats summary card
+                    item {
+                        ManageStatsCard(scooters = data.scooters)
+                    }
 
-                // List
-                ScooterList(
-                    scooters = filtered,
-                    search = search,
-                    onSearch = { search = it },
-                    filterStatus = filterStatus,
-                    onFilterStatus = { filterStatus = it },
-                    filterType = filterType,
-                    onFilterType = { filterType = it },
-                    sortBy = sortBy,
-                    onSortBy = { sortBy = it },
-                    getTodayCount = ::todayCheckoutCount,
-                    onOpenDetail = onOpenDetail,
-                    onStatusChange = { scooter, newStatus ->
-                        statusDialog = StatusDialogData(scooter, newStatus)
-                    },
-                    onDelete = { confirmDelete = it },
-                    onDownloadQr = { scooter ->
-                        scope.launch {
-                            runCatching {
-                                val bmp = QrUtils.generate(scooter.id, 400)
-                                val png = bmp.toPngBytes()
-                                val filename = "QR-${scooter.id}-${scooter.type.uppercase()}.png"
-                                Exporter.saveBytesToDownloads(context, filename, png, "image/png")
-                            }
-                                .onSuccess { context.showToast("QR ${scooter.id} diunduh") }
-                                .onFailure { context.showToast(it.toUserMessage(), long = true) }
-                        }
-                    },
-                )
+                    item {
+                        // Add scooter form
+                        AddScooterForm(
+                            idInput = idInput,
+                            onIdInput = { idInput = it },
+                            type = type,
+                            onTypeChange = { type = it },
+                            error = mv.error,
+                            submitting = mv.busy,
+                            onSubmit = {
+                                scope.launch {
+                                    manageViewModel.setBusy(true)
+                                    val ok = manageViewModel.addScooter(idInput, type)
+                                    manageViewModel.setBusy(false)
+                                    if (ok) {
+                                        idInput = ""
+                                        type = "sd"
+                                        viewModel.refresh()
+                                        sweetAlert.showSuccess("Scooter berhasil ditambahkan")
+                                    } else {
+                                        sweetAlert.showError("Gagal menambahkan scooter. Periksa koneksi atau ID sudah terdaftar.")
+                                    }
+                                }
+                            },
+                        )
+                    }
+
+                    // List
+                    item {
+                        ScooterList(
+                            scooters = filtered,
+                            search = search,
+                            onSearch = { search = it },
+                            filterStatus = filterStatus,
+                            onFilterStatus = { filterStatus = it },
+                            filterType = filterType,
+                            onFilterType = { filterType = it },
+                            sortBy = sortBy,
+                            onSortBy = { sortBy = it },
+                            getTodayCount = ::todayCheckoutCount,
+                            onOpenDetail = onOpenDetail,
+                            onStatusChange = { scooter, newStatus ->
+                                statusDialog = StatusDialogData(scooter, newStatus)
+                            },
+                            onDelete = { scooter ->
+                                sweetAlert.showConfirm(
+                                    title = "Hapus Unit Scooter?",
+                                    message = "Apakah Anda yakin ingin menghapus scooter ${scooter.id}? Tindakan ini tidak dapat dibatalkan.",
+                                    confirmText = "Ya, Hapus Unit",
+                                    cancelText = "Batal",
+                                    isDanger = true,
+                                    onConfirm = {
+                                        scope.launch {
+                                            val ok = manageViewModel.deleteScooter(scooter.id)
+                                            if (ok) {
+                                                viewModel.refresh()
+                                                sweetAlert.showSuccess("Unit ${scooter.id} dihapus")
+                                            } else {
+                                                sweetAlert.showError("Gagal menghapus unit.")
+                                            }
+                                        }
+                                    },
+                                )
+                            },
+                            onDownloadQr = { scooter ->
+                                scope.launch {
+                                    runCatching {
+                                        val bmp = QrUtils.generate(scooter.id, 400)
+                                        val png = bmp.toPngBytes()
+                                        val filename = "QR-${scooter.id}-${scooter.type.uppercase()}.png"
+                                        Exporter.saveBytesToDownloads(context, filename, png, "image/png")
+                                    }
+                                        .onSuccess { sweetAlert.showSuccess("QR ${scooter.id} diunduh") }
+                                        .onFailure { sweetAlert.showError(it.toUserMessage()) }
+                                }
+                            },
+                        )
+                    }
+                }
             }
         }
-    }
-
-    // Delete confirmation
-    confirmDelete?.let { scooter ->
-        AlertDialog(
-            onDismissRequest = { confirmDelete = null },
-            containerColor = Surface,
-            titleContentColor = TextPrimary,
-            textContentColor = TextMuted,
-            icon = { Icon(Icons.Filled.Delete, contentDescription = null, tint = Red, modifier = Modifier.size(24.dp)) },
-            title = { Text("Hapus Unit Scooter?", fontSize = 15.sp, fontWeight = FontWeight.Bold) },
-            text = { Text("Apakah Anda yakin ingin menghapus scooter ${scooter.id}? Tindakan ini tidak dapat dibatalkan.", fontSize = 13.sp) },
-            confirmButton = {
-                TextButton(onClick = {
-                    scope.launch {
-                        val ok = manageViewModel.deleteScooter(scooter.id)
-                        confirmDelete = null
-                        if (ok) {
-                            viewModel.refresh()
-                            context.showToast("Unit ${scooter.id} dihapus")
-                        } else {
-                            context.showToast("Gagal menghapus unit.", long = true)
-                        }
-                    }
-                }) { Text("Ya, Hapus Unit", color = Red, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmDelete = null }) { Text("Batal", color = TextMuted, fontSize = 12.sp) }
-            },
-        )
     }
 
     // Status change dialog
@@ -386,9 +394,9 @@ fun ManageScreen(
                     statusDialog = null
                     if (ok) {
                         viewModel.refresh()
-                        context.showToast("Status ${d.scooter.id} diperbarui")
+                        sweetAlert.showSuccess("Status ${d.scooter.id} diperbarui")
                     } else {
-                        context.showToast("Gagal mengubah status.", long = true)
+                        sweetAlert.showError("Gagal mengubah status.")
                     }
                 }
             },

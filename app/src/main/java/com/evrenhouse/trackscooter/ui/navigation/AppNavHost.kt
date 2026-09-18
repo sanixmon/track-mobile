@@ -21,6 +21,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.evrenhouse.trackscooter.ui.common.AppViewModelFactory
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
+import com.evrenhouse.trackscooter.ui.common.SweetAlertProvider
 import com.evrenhouse.trackscooter.ui.common.repository
 import com.evrenhouse.trackscooter.ui.dashboard.DashboardScreen
 import com.evrenhouse.trackscooter.ui.detail.ScooterDetailScreen
@@ -37,20 +38,21 @@ private val bottomItems = listOf(
 
 @Composable
 fun AppNavHost() {
-    val navController = rememberNavController()
-    val backStackEntry by navController.currentBackStackEntryAsState()
-    val currentDestination = backStackEntry?.destination
+    SweetAlertProvider {
+        val navController = rememberNavController()
+        val backStackEntry by navController.currentBackStackEntryAsState()
+        val currentDestination = backStackEntry?.destination
 
-    // One shared data source across Dashboard / Monitor / Manage (single 30s poll)
-    val dataViewModel: ScooterDataViewModel = viewModel(factory = AppViewModelFactory(repository()))
+        // One shared data source across Dashboard / Monitor / Manage (single 30s poll)
+        val dataViewModel: ScooterDataViewModel = viewModel(factory = AppViewModelFactory(repository()))
 
-    // Hide bottom bar on the detail screen (full-screen modal-like page)
-    val showBottomBar = bottomItems.any { item ->
-        currentDestination?.hierarchy?.any { it.route == item.route } == true
-    }
+        // Hide bottom bar on the detail screen (full-screen modal-like page)
+        val showBottomBar = bottomItems.any { item ->
+            currentDestination?.hierarchy?.any { it.route == item.route } == true
+        }
 
-    Scaffold(
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
+        Scaffold(
+            containerColor = androidx.compose.ui.graphics.Color.Transparent,
         bottomBar = {
             if (showBottomBar) {
                 FloatingBottomBar(
@@ -106,4 +108,5 @@ fun AppNavHost() {
             }
         }
     }
+}
 }

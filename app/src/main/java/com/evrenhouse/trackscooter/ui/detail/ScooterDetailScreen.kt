@@ -76,12 +76,12 @@ import com.evrenhouse.trackscooter.ui.theme.Warning
 import com.evrenhouse.trackscooter.util.ActionLabels
 import com.evrenhouse.trackscooter.util.DateUtils
 import com.evrenhouse.trackscooter.util.DeviceConditionHelper
+import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
 import com.evrenhouse.trackscooter.util.DeviceFields
 import com.evrenhouse.trackscooter.util.Exporter
 import com.evrenhouse.trackscooter.util.FieldTone
 import com.evrenhouse.trackscooter.util.StatusLabels
 import com.evrenhouse.trackscooter.util.TypeLabels
-import com.evrenhouse.trackscooter.util.showToast
 import kotlinx.coroutines.launch
 
 @Composable
@@ -92,6 +92,7 @@ fun ScooterDetailScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
+    val sweetAlert = LocalSweetAlert.current
     val scope = rememberCoroutineScope()
 
     // Local editable condition (mirrors web ScooterDetailModal)
@@ -99,7 +100,6 @@ fun ScooterDetailScreen(
     var monitorDetail by remember { mutableStateOf("") }
     var edited by remember { mutableStateOf(false) }
     var savedSnapshot by remember { mutableStateOf<String?>(null) }
-    var confirmComplete by remember { mutableStateOf(false) }
 
     fun currentSnapshot(): String = (condition + ("monitorDetail" to monitorDetail)).toString()
 
@@ -124,7 +124,11 @@ fun ScooterDetailScreen(
 
     LaunchedEffect(state.toast) {
         state.toast?.let {
-            context.showToast(it)
+            if (it.contains("berhasil", ignoreCase = true) || it.contains("selesai", ignoreCase = true) || it.contains("sukses", ignoreCase = true)) {
+                sweetAlert.showSuccess(it)
+            } else {
+                sweetAlert.showInfo(it)
+            }
             viewModel.consumeToast()
         }
     }
@@ -256,7 +260,17 @@ fun ScooterDetailScreen(
                             }
                         }
                         Button(
-                            onClick = { confirmComplete = true },
+                            onClick = {
+                                sweetAlert.showConfirm(
+                                    title = "Selesaikan Maintenance?",
+                                    message = "Tandai perbaikan unit $scooterId selesai? Unit akan kembali tersedia.",
+                                    confirmText = "Ya, Selesai",
+                                    cancelText = "Batal",
+                                    onConfirm = {
+                                        state.scooter?.activeMaintenance?.id?.let { viewModel.completeMaintenance(it) }
+                                    },
+                                )
+                            },
                             enabled = !state.completing,
                             shape = RoundedCornerShape(8.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Warning),
@@ -284,33 +298,13 @@ fun ScooterDetailScreen(
                                 val filename = "Riwayat-${scooter.id}-${DateUtils.localDateKey(DateUtils.today())}.csv"
                                 Exporter.saveToDownloads(context, filename, csv)
                             }
-                                .onSuccess { context.showToast("Excel diunduh") }
-                                .onFailure { context.showToast(it.message ?: "Gagal export", long = true) }
+                                .onSuccess { sweetAlert.showSuccess("Excel diunduh") }
+                                .onFailure { sweetAlert.showError(it.message ?: "Gagal export") }
                         }
                     },
                 )
             }
         }
-    }
-
-    if (confirmComplete) {
-        AlertDialog(
-            onDismissRequest = { confirmComplete = false },
-            containerColor = Surface,
-            titleContentColor = TextPrimary,
-            textContentColor = TextMuted,
-            title = { Text("Selesaikan Maintenance?", fontSize = 15.sp, fontWeight = FontWeight.Bold) },
-            text = { Text("Tandai perbaikan unit ${scooterId} selesai? Unit akan kembali tersedia.", fontSize = 13.sp) },
-            confirmButton = {
-                TextButton(onClick = {
-                    state.scooter?.activeMaintenance?.id?.let { viewModel.completeMaintenance(it) }
-                    confirmComplete = false
-                }) { Text("Ya, Selesai", color = Accent, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmComplete = false }) { Text("Batal", color = TextMuted, fontSize = 12.sp) }
-            },
-        )
     }
 }
 

@@ -57,9 +57,9 @@ import com.evrenhouse.trackscooter.ui.theme.Surface
 import com.evrenhouse.trackscooter.ui.theme.Surface3
 import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
+import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
 import com.evrenhouse.trackscooter.ui.theme.Warning
-import com.evrenhouse.trackscooter.util.showToast
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
@@ -69,6 +69,7 @@ import java.util.concurrent.Executors
 fun ScanScreen(viewModel: ScanViewModel = viewModel(factory = AppViewModelFactory(repository()))) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
+    val sweetAlert = LocalSweetAlert.current
 
     var mode by rememberSaveable { mutableStateOf<String?>(null) } // null | "camera" | "image"
     var manualValue by rememberSaveable { mutableStateOf("") }
@@ -83,15 +84,21 @@ fun ScanScreen(viewModel: ScanViewModel = viewModel(factory = AppViewModelFactor
             decodeImageUri(context, uri) { id ->
                 decodingImage = false
                 id?.let { viewModel.onScanned(it) }
-                    ?: context.showToast("QR tidak ditemukan pada gambar.", long = true)
+                    ?: sweetAlert.showError("QR tidak ditemukan pada gambar.")
             }
         }
     }
 
-    // Toast events
+    // Alert events
     LaunchedEffect(state.toast) {
         state.toast?.let {
-            context.showToast(it)
+            if (it.contains("berhasil", ignoreCase = true) || it.contains("check", ignoreCase = true) || it.contains("sukses", ignoreCase = true)) {
+                sweetAlert.showSuccess(it)
+            } else if (it.contains("gagal", ignoreCase = true) || it.contains("tidak", ignoreCase = true) || it.contains("salah", ignoreCase = true)) {
+                sweetAlert.showError(it)
+            } else {
+                sweetAlert.showInfo(it)
+            }
             viewModel.consumeToast()
         }
     }
@@ -142,7 +149,7 @@ fun ScanScreen(viewModel: ScanViewModel = viewModel(factory = AppViewModelFactor
             CameraScanner(
                 isProcessing = state.busy || !state.scanning,
                 onScan = { viewModel.onScanned(it) },
-                onError = { context.showToast(it, long = true) },
+                onError = { sweetAlert.showError(it) },
             )
             OutlinedAction(text = "Ganti metode scan", onClick = { mode = null }, color = TextMuted)
         }
@@ -203,34 +210,24 @@ fun ScanScreen(viewModel: ScanViewModel = viewModel(factory = AppViewModelFactor
         Spacer(Modifier.height(24.dp))
     }
 
-    // Confirmation dialog for maintenance/rusak units
-    state.confirmation?.let { res ->
-        AlertDialog(
-            onDismissRequest = {
-                viewModel.consumeConfirmation()
-            },
-            containerColor = Surface,
-            titleContentColor = TextPrimary,
-            textContentColor = TextMuted,
-            icon = {
-                Icon(Icons.Filled.CameraAlt, contentDescription = null, tint = Warning, modifier = Modifier.size(24.dp))
-            },
-            title = { Text("Unit Tidak Tersedia", fontSize = 15.sp, fontWeight = FontWeight.Bold) },
-            text = { Text(res.message ?: "", fontSize = 13.sp) },
-            confirmButton = {
-                TextButton(
-                    onClick = { res.scooter?.id?.let { viewModel.forceToggle(it) } },
-                    enabled = !state.busy,
-                ) {
-                    Text("Sewa Unit Ini", color = Accent, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.consumeConfirmation() }) {
-                    Text("Batal", color = TextMuted, fontSize = 12.sp)
-                }
-            },
-        )
+    // Confirmation for maintenance/rusak units
+    LaunchedEffect(state.confirmation) {
+        state.confirmation?.let { res ->
+            sweetAlert.showConfirm(
+                title = "Unit Tidak Tersedia",
+                message = res.message ?: "Unit sedang tidak tersedia. Tetap ingin menyewa unit ini?",
+                confirmText = "Sewa Unit Ini",
+                cancelText = "Batal",
+                isDanger = false,
+                onConfirm = {
+                    res.scooter?.id?.let { viewModel.forceToggle(it) }
+                    viewModel.consumeConfirmation()
+                },
+                onCancel = {
+                    viewModel.consumeConfirmation()
+                },
+            )
+        }
     }
 }
 

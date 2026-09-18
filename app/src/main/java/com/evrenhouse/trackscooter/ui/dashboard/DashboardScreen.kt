@@ -65,7 +65,6 @@ import com.evrenhouse.trackscooter.ui.theme.TextSubtle
 import com.evrenhouse.trackscooter.ui.theme.Warning
 import com.evrenhouse.trackscooter.data.toUserMessage
 import com.evrenhouse.trackscooter.util.StatusLabels
-import com.evrenhouse.trackscooter.util.showToast
 import kotlinx.coroutines.launch
 
 @Composable
@@ -76,6 +75,7 @@ fun DashboardScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
+    val sweetAlert = LocalSweetAlert.current
 
     var gridStatus by rememberSaveable { mutableStateOf("all") }
     var gridType by rememberSaveable { mutableStateOf("all") }
@@ -311,13 +311,24 @@ fun DashboardScreen(
                         records = state.maintenanceRecords,
                         completingId = completingId,
                         onComplete = { rec ->
-                            scope.launch {
-                                completingId = rec.id
-                                runCatching { viewModel.completeMaintenance(rec.id) }
-                                    .onSuccess { viewModel.refresh() }
-                                    .onFailure { err -> context.showToast(err.toUserMessage()) }
-                                completingId = null
-                            }
+                            sweetAlert.showConfirm(
+                                title = "Selesaikan Maintenance?",
+                                message = "Tandai perbaikan unit ${rec.scooterId} selesai? Unit akan kembali tersedia.",
+                                confirmText = "Ya, Selesai",
+                                cancelText = "Batal",
+                                onConfirm = {
+                                    scope.launch {
+                                        completingId = rec.id
+                                        runCatching { viewModel.completeMaintenance(rec.id) }
+                                            .onSuccess {
+                                                viewModel.refresh()
+                                                sweetAlert.showSuccess("Maintenance unit ${rec.scooterId} selesai")
+                                            }
+                                            .onFailure { err -> sweetAlert.showError(err.toUserMessage()) }
+                                        completingId = null
+                                    }
+                                },
+                            )
                         },
                     )
                 }
