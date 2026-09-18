@@ -93,7 +93,7 @@ private val NullableLocalDateSaver = Saver<LocalDate?, String>(
 @Composable
 fun MonitorScreen(
     viewModel: ScooterDataViewModel,
-    onOpenDetail: (String) -> Unit,
+    onOpenDetail: ((String) -> Unit)? = null,
 ) {
     val state by viewModel.state.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -266,7 +266,7 @@ fun MonitorScreen(
                                             LiveSessionCard(
                                                 scooter = scooter,
                                                 nowMillis = nowMillis,
-                                                onClick = { onOpenDetail(scooter.id) },
+                                                onClick = null,
                                             )
                                         }
                                     }
@@ -523,7 +523,7 @@ fun MonitorScreen(
                                             ) { scooter ->
                                                 ScooterCard(
                                                     scooter = scooter,
-                                                    onClick = { onOpenDetail(scooter.id) },
+                                                    onClick = null,
                                                     modifier = Modifier.fillMaxWidth(),
                                                 )
                                             }

@@ -242,7 +242,7 @@ fun LivePulseHeader(
 fun LiveSessionCard(
     scooter: Scooter,
     nowMillis: Long,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val dt = DateUtils.parse(scooter.lastUpdated)
@@ -271,7 +271,7 @@ fun LiveSessionCard(
             .fillMaxWidth()
             .background(Surface, RoundedCornerShape(14.dp))
             .border(1.dp, Border, RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
+            .let { if (onClick != null) it.clickable(onClick = onClick) else it }
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -299,12 +299,14 @@ fun LiveSessionCard(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 StatusChip(scooter.status)
-                Icon(
-                    Icons.Filled.ChevronRight,
-                    contentDescription = null,
-                    tint = TextSubtle,
-                    modifier = Modifier.size(16.dp),
-                )
+                if (onClick != null) {
+                    Icon(
+                        Icons.Filled.ChevronRight,
+                        contentDescription = null,
+                        tint = TextSubtle,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
             }
         }
 

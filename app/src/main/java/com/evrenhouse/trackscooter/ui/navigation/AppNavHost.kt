@@ -116,7 +116,6 @@ fun AppNavHost() {
                 composable(Routes.MONITOR) {
                     MonitorScreen(
                         viewModel = dataViewModel,
-                        onOpenDetail = { id -> navController.navigate(Routes.detail(id)) },
                     )
                 }
                 composable(Routes.SCAN) {
