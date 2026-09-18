@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.evrenhouse.trackscooter.data.ActivityLogEntry
 import com.evrenhouse.trackscooter.data.MaintenanceRecord
+import com.evrenhouse.trackscooter.ui.common.SegmentedPillGroup
 import com.evrenhouse.trackscooter.ui.common.SimpleDropdown
 import com.evrenhouse.trackscooter.ui.theme.Accent
 import com.evrenhouse.trackscooter.ui.theme.Border
@@ -48,6 +49,7 @@ import com.evrenhouse.trackscooter.ui.theme.Green
 import com.evrenhouse.trackscooter.ui.theme.Red
 import com.evrenhouse.trackscooter.ui.theme.Surface
 import com.evrenhouse.trackscooter.ui.theme.Surface2
+import com.evrenhouse.trackscooter.ui.theme.Warning
 import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
@@ -115,25 +117,15 @@ fun ConditionEditor(
             }
         }
 
-        // 2-column grid
-        DeviceFields.ALL.chunked(2).forEach { rowFields ->
-            Row(
+        // 1-column segmented cards
+        DeviceFields.ALL.forEach { field ->
+            FieldEditor(
+                field = field,
+                value = dc[field.key] ?: "",
+                hasCondition = hasCondition,
+                onChange = { onFieldChange(field.key, it) },
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                rowFields.forEach { field ->
-                    FieldEditor(
-                        field = field,
-                        value = dc[field.key] ?: "",
-                        hasCondition = hasCondition,
-                        onChange = { onFieldChange(field.key, it) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                if (rowFields.size == 1) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
+            )
         }
 
         // Monitor detail text field when monitor is 'lain'
@@ -161,30 +153,46 @@ fun FieldEditor(
     modifier: Modifier = Modifier,
 ) {
     val tone = DeviceConditionHelper.fieldTone(field.key, value, hasCondition)
-    val toneColor = when (tone) {
+    val activeColor = when (tone) {
         FieldTone.GOOD -> Green
         FieldTone.BAD -> Red
         FieldTone.WARN -> Warning
-        FieldTone.NONE -> TextSubtle
+        FieldTone.NONE -> Accent
     }
 
     Column(
         modifier = modifier
-            .background(Surface2.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-            .border(1.dp, Border, RoundedCornerShape(8.dp))
-            .padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .fillMaxWidth()
+            .background(Surface2.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+            .border(1.dp, Border, RoundedCornerShape(10.dp))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text(field.label, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-        SimpleDropdown(
-            label = field.options.firstOrNull { it.first == value }?.second ?: "Belum dicek",
-            options = if (value.isEmpty()) {
-                listOf("" to "Belum dicek") + field.options
-            } else {
-                field.options
-            },
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = field.label,
+                color = TextPrimary,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            val currentLabel = field.options.firstOrNull { it.first == value }?.second
+            Text(
+                text = currentLabel ?: if (value.isEmpty()) "Belum dicek" else value,
+                color = if (value.isEmpty()) TextMuted else activeColor,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+
+        SegmentedPillGroup(
+            options = field.options,
             selected = value,
             onSelect = onChange,
+            activeColor = activeColor,
             modifier = Modifier.fillMaxWidth(),
         )
     }

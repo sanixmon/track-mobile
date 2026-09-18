@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.evrenhouse.trackscooter.data.MaintenanceRecord
 import com.evrenhouse.trackscooter.data.ScooterStatus
+import com.evrenhouse.trackscooter.ui.common.CompactDropdown
 import com.evrenhouse.trackscooter.ui.common.ErrorState
 import com.evrenhouse.trackscooter.ui.common.FilledAction
 import com.evrenhouse.trackscooter.ui.common.LoadingState
@@ -218,8 +219,8 @@ fun DashboardScreen(
                                 letterSpacing = 1.2.sp,
                             )
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                FilterDropdown(
-                                    label = if (gridStatus == "all") "Semua Status" else StatusLabels.of(gridStatus),
+                                CompactDropdown(
+                                    label = if (gridStatus == "all") "Status" else StatusLabels.of(gridStatus),
                                     options = listOf(
                                         "all" to "Semua Status",
                                         "available" to "Tersedia",
@@ -230,8 +231,8 @@ fun DashboardScreen(
                                     selected = gridStatus,
                                     onSelect = { gridStatus = it },
                                 )
-                                FilterDropdown(
-                                    label = if (gridType == "all") "Semua Jenis" else gridType.uppercase(),
+                                CompactDropdown(
+                                    label = if (gridType == "all") "Jenis" else gridType.uppercase(),
                                     options = listOf("all" to "Semua Jenis", "sd" to "Standar (SD)", "sj" to "Jumbo (SJ)"),
                                     selected = gridType,
                                     onSelect = { gridType = it },
@@ -252,22 +253,12 @@ fun DashboardScreen(
                             )
                         } else {
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                displayScooters.chunked(2).forEach { row ->
-                                    Row(
+                                displayScooters.forEach { scooter ->
+                                    ScooterCard(
+                                        scooter = scooter,
+                                        onClick = { onOpenDetail(scooter.id) },
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                    ) {
-                                        row.forEach { scooter ->
-                                            ScooterCard(
-                                                scooter = scooter,
-                                                onClick = { onOpenDetail(scooter.id) },
-                                                modifier = Modifier.weight(1f),
-                                            )
-                                        }
-                                        if (row.size == 1) {
-                                            Spacer(modifier = Modifier.weight(1f))
-                                        }
-                                    }
+                                    )
                                 }
 
                                 if (filteredScooters.size > 5) {

@@ -231,11 +231,11 @@ fun CameraScanner(
         verticalArrangement = Arrangement.spacedBy(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Camera Viewfinder Box (Locked Aspect Ratio to eliminate layout shift)
+        // Camera Viewfinder Box (Bounded height ~260dp to fit screen without scrolling)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(1f)
+                .height(260.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(Surface2)
                 .border(1.5.dp, if (liveDetectedBarcode != null) Green else Border, RoundedCornerShape(16.dp)),
@@ -256,10 +256,10 @@ fun CameraScanner(
                 }
             }
 
-            // Viewfinder Reticle Frame Overlay
+            // Viewfinder Reticle Frame Overlay (Square 190dp Target)
             Box(
                 modifier = Modifier
-                    .fillMaxSize(0.72f)
+                    .size(190.dp)
                     .border(1.5.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(12.dp)),
             )
 

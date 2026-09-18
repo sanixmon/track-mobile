@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Search
@@ -25,6 +26,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -50,6 +53,7 @@ import com.evrenhouse.trackscooter.data.Scooter
 import com.evrenhouse.trackscooter.data.ScooterStatus
 import com.evrenhouse.trackscooter.ui.common.SimpleDropdown
 import com.evrenhouse.trackscooter.ui.common.TypeBadge
+import com.evrenhouse.trackscooter.ui.common.statusColor
 import com.evrenhouse.trackscooter.ui.theme.Accent
 import com.evrenhouse.trackscooter.ui.theme.Border
 import com.evrenhouse.trackscooter.ui.theme.Red
@@ -289,15 +293,9 @@ fun ScooterRow(
                     Text("Online", color = Accent, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                 }
             } else {
-                SimpleDropdown(
-                    label = StatusLabels.of(scooter.status),
-                    options = listOf(
-                        "available" to "Tersedia",
-                        "rusak" to "Offline / Rusak",
-                        "maintenance" to "Maintenance",
-                    ),
-                    selected = scooter.status,
-                    onSelect = onStatusChange,
+                StatusPillButton(
+                    status = scooter.status,
+                    onStatusChange = onStatusChange,
                 )
             }
             Text(
@@ -440,3 +438,71 @@ fun compareScooters(sortBy: String, todayCount: (String) -> Int): Comparator<Sco
 }
 
 fun String.numericPart(): Int = this.filter(Char::isDigit).toIntOrNull() ?: 0
+
+@Composable
+fun StatusPillButton(
+    status: String,
+    onStatusChange: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val color = statusColor(status)
+
+    Box {
+        Row(
+            modifier = Modifier
+                .height(30.dp)
+                .background(color.subtle, RoundedCornerShape(8.dp))
+                .border(1.dp, color.color.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                .clickable { expanded = true }
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Box(modifier = Modifier.size(6.dp).background(color.color, CircleShapeCompat))
+            Text(
+                text = StatusLabels.of(status),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = color.color,
+            )
+            Icon(
+                Icons.Filled.ArrowDropDown,
+                contentDescription = null,
+                tint = color.color,
+                modifier = Modifier.size(14.dp),
+            )
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier
+                .background(Surface, RoundedCornerShape(10.dp))
+                .border(1.dp, Border, RoundedCornerShape(10.dp)),
+        ) {
+            listOf(
+                "available" to "Tersedia",
+                "rusak" to "Offline / Rusak",
+                "maintenance" to "Maintenance",
+            ).forEach { (value, label) ->
+                val optColor = statusColor(value)
+                DropdownMenuItem(
+                    text = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Box(modifier = Modifier.size(6.dp).background(optColor.color, CircleShapeCompat))
+                            Text(label, fontSize = 12.sp, color = if (value == status) Accent else TextPrimary)
+                        }
+                    },
+                    onClick = {
+                        onStatusChange(value)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
+

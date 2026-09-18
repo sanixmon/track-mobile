@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,9 +40,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.evrenhouse.trackscooter.data.ScooterStatus
@@ -305,37 +309,121 @@ fun StatCard(
     iconColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    Row(
+    Column(
         modifier = modifier
             .background(Surface, RoundedCornerShape(14.dp))
             .border(1.dp, Border, RoundedCornerShape(14.dp))
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .size(38.dp)
-                .background(iconBg, RoundedCornerShape(10.dp)),
-            contentAlignment = Alignment.Center,
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            icon(iconColor)
-        }
-        Column {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(iconBg, RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                icon(iconColor)
+            }
             Text(
                 text = value.toString(),
                 color = valueColor,
-                fontSize = 22.sp,
+                fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                lineHeight = 22.sp,
             )
-            Text(text = label, color = TextMuted, fontSize = 11.sp)
-            Text(text = sub, color = TextSubtle, fontSize = 10.sp)
+        }
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = label,
+            color = TextPrimary,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = sub,
+            color = TextMuted,
+            fontSize = 10.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+// ── Compact Dropdown Pill (replaces bulky 56dp OutlinedTextField) ──
+@Composable
+fun CompactDropdown(
+    label: String,
+    options: List<Pair<String, String>>,
+    selected: String,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    leadingIcon: (@Composable () -> Unit)? = null,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .height(34.dp)
+                .background(Surface2, RoundedCornerShape(8.dp))
+                .border(1.dp, Border, RoundedCornerShape(8.dp))
+                .clickable { expanded = true }
+                .padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            leadingIcon?.invoke()
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                color = TextPrimary,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Icon(
+                Icons.Filled.ArrowDropDown,
+                contentDescription = null,
+                tint = TextMuted,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier
+                .background(Surface, RoundedCornerShape(10.dp))
+                .border(1.dp, Border, RoundedCornerShape(10.dp)),
+        ) {
+            options.forEach { (value, text) ->
+                val isSelected = value == selected
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = text,
+                            fontSize = 12.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) Accent else TextPrimary,
+                        )
+                    },
+                    onClick = {
+                        onSelect(value)
+                        expanded = false
+                    },
+                )
+            }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+// Keep SimpleDropdown alias pointing to CompactDropdown for smooth migration
 @Composable
 fun SimpleDropdown(
     label: String,
@@ -344,25 +432,49 @@ fun SimpleDropdown(
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-        OutlinedTextField(
-            value = label,
-            onValueChange = {},
-            readOnly = true,
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable),
-            shape = RoundedCornerShape(10.dp),
-            textStyle = MaterialTheme.typography.bodySmall,
-        )
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            options.forEach { (value, text) ->
-                DropdownMenuItem(
-                    text = { Text(text, fontSize = 12.sp) },
-                    onClick = {
-                        onSelect(value)
-                        expanded = false
-                    },
+    CompactDropdown(
+        label = label,
+        options = options,
+        selected = selected,
+        onSelect = onSelect,
+        modifier = modifier,
+    )
+}
+
+// ── Segmented Pill Group for Fast Single-Touch Selection ──
+@Composable
+fun SegmentedPillGroup(
+    options: List<Pair<String, String>>,
+    selected: String,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    activeColor: Color = Accent,
+) {
+    Row(
+        modifier = modifier
+            .background(Surface2, RoundedCornerShape(8.dp))
+            .border(1.dp, Border, RoundedCornerShape(8.dp))
+            .padding(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        options.forEach { (value, label) ->
+            val isSelected = value == selected
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(30.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(if (isSelected) activeColor else Color.Transparent)
+                    .clickable { onSelect(value) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = label,
+                    fontSize = 11.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isSelected) Color.White else TextMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }

@@ -239,15 +239,12 @@ fun MonitorScreen(
             }
         }
 
-        // Daily stats
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            StatMini("Total Transaksi", logForDate.size, TextPrimary, Icons.Filled.BarChart, Accent, Modifier.weight(1f))
-            StatMini("Keluar (Sewa)", checkoutCount, Red, Icons.Filled.ArrowUpward, Red, Modifier.weight(1f))
-            StatMini("Masuk (Kembali)", returnCount, Green, Icons.Filled.ArrowDownward, Green, Modifier.weight(1f))
-        }
+        // Daily stats KPI Strip
+        DailyKpiStrip(
+            total = logForDate.size,
+            checkoutCount = checkoutCount,
+            returnCount = returnCount,
+        )
 
         // Status panel toggle
         Row(
@@ -382,26 +379,109 @@ private fun DatePill(label: String, active: Boolean, onClick: () -> Unit, live: 
 }
 
 @Composable
-private fun StatMini(label: String, value: Int, valueColor: androidx.compose.ui.graphics.Color, icon: androidx.compose.ui.graphics.vector.ImageVector, iconColor: androidx.compose.ui.graphics.Color, modifier: Modifier = Modifier) {
+private fun DailyKpiStrip(
+    total: Int,
+    checkoutCount: Int,
+    returnCount: Int,
+    modifier: Modifier = Modifier,
+) {
     Row(
         modifier = modifier
-            .background(Surface, RoundedCornerShape(14.dp))
-            .border(1.dp, Border, RoundedCornerShape(14.dp))
-            .padding(12.dp),
+            .fillMaxWidth()
+            .background(Surface, RoundedCornerShape(12.dp))
+            .border(1.dp, Border, RoundedCornerShape(12.dp))
+            .padding(vertical = 12.dp, horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        // Column 1: Total
+        Column(
+            modifier = Modifier.weight(1f),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = total.toString(),
+                color = TextPrimary,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = "Total Transaksi",
+                color = TextMuted,
+                fontSize = 10.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+
+        // Divider 1
         Box(
             modifier = Modifier
-                .size(32.dp)
-                .background(iconColor.copy(alpha = 0.12f), RoundedCornerShape(8.dp)),
-            contentAlignment = Alignment.Center,
+                .width(1.dp)
+                .height(26.dp)
+                .background(Border),
+        )
+
+        // Column 2: Keluar (Sewa)
+        Column(
+            modifier = Modifier.weight(1f),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(15.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Icon(Icons.Filled.ArrowUpward, contentDescription = null, tint = Red, modifier = Modifier.size(13.dp))
+                Text(
+                    text = checkoutCount.toString(),
+                    color = Red,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Text(
+                text = "Keluar (Sewa)",
+                color = TextMuted,
+                fontSize = 10.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
-        Column {
-            Text(value.toString(), color = valueColor, fontSize = 18.sp, fontWeight = FontWeight.Bold, lineHeight = 18.sp)
-            Text(label, color = TextMuted, fontSize = 10.sp)
+
+        // Divider 2
+        Box(
+            modifier = Modifier
+                .width(1.dp)
+                .height(26.dp)
+                .background(Border),
+        )
+
+        // Column 3: Masuk (Kembali)
+        Column(
+            modifier = Modifier.weight(1f),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Icon(Icons.Filled.ArrowDownward, contentDescription = null, tint = Green, modifier = Modifier.size(13.dp))
+                Text(
+                    text = returnCount.toString(),
+                    color = Green,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Text(
+                text = "Masuk (Kembali)",
+                color = TextMuted,
+                fontSize = 10.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

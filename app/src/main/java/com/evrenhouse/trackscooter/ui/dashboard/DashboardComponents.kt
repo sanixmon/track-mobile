@@ -63,57 +63,79 @@ import com.evrenhouse.trackscooter.util.DateUtils
 import com.evrenhouse.trackscooter.util.DeviceConditionHelper
 import com.evrenhouse.trackscooter.util.TypeLabels
 
-// ── Scooter card (dashboard grid + monitor panel) ──────────
+// ── Scooter card (dashboard 1-column list + monitor panel) ──
 @Composable
 fun ScooterCard(scooter: Scooter, onClick: (() -> Unit)? = null, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
+            .fillMaxWidth()
             .background(Surface, RoundedCornerShape(14.dp))
             .border(1.dp, Border, RoundedCornerShape(14.dp))
             .let { if (onClick != null) it.clickable(onClick = onClick) else it }
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        // Row 1: ID + Type Badge on left, StatusChip + Chevron on right
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Column {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 Text(
                     text = scooter.id,
                     color = Accent,
-                    fontSize = 15.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
                 )
-                Text(
-                    text = TypeLabels.of(scooter.type),
-                    color = TextMuted,
-                    fontSize = 11.sp,
-                )
-            }
-            if (onClick != null) {
-                Icon(Icons.Filled.ChevronRight, contentDescription = "Detail", tint = TextSubtle, modifier = Modifier.size(16.dp))
-            } else {
                 TypeBadge(scooter.type)
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                StatusChip(scooter.status)
+                if (onClick != null) {
+                    Icon(
+                        Icons.Filled.ChevronRight,
+                        contentDescription = "Detail",
+                        tint = TextSubtle,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
             }
         }
 
-        StatusChip(scooter.status)
-
+        // Row 2: Condition issues (if any)
         val issues = DeviceConditionHelper.buildIssueList(scooter.deviceCondition)
         if (issues.isNotEmpty()) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                issues.take(3).forEach { issue ->
-                    Text(
-                        text = issue.text,
-                        color = if (issue.tone == com.evrenhouse.trackscooter.util.FieldTone.WARN) Warning else Red,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                issues.take(4).forEach { issue ->
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                (if (issue.tone == com.evrenhouse.trackscooter.util.FieldTone.WARN) Warning else Red).copy(alpha = 0.12f),
+                                RoundedCornerShape(4.dp),
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Text(
+                            text = issue.text,
+                            color = if (issue.tone == com.evrenhouse.trackscooter.util.FieldTone.WARN) Warning else Red,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
         }
@@ -124,12 +146,24 @@ fun ScooterCard(scooter: Scooter, onClick: (() -> Unit)? = null, modifier: Modif
                 color = TextMuted,
                 fontSize = 11.sp,
                 fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                maxLines = 3,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }
 
-        LiveTimer(scooter.status, scooter.lastUpdated)
+        // Row 3: Live duration or last updated timer
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            LiveTimer(scooter.status, scooter.lastUpdated)
+            Text(
+                text = TypeLabels.of(scooter.type),
+                color = TextSubtle,
+                fontSize = 11.sp,
+            )
+        }
     }
 }
 
