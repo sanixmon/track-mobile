@@ -17,7 +17,15 @@ import okhttp3.sse.EventSourceListener
 import okhttp3.sse.EventSources
 import retrofit2.HttpException
 import retrofit2.Response
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import java.io.IOException
+
+sealed interface LocalDataUpdate {
+    data class Toggled(val response: ToggleResponse) : LocalDataUpdate
+    data object DataMutated : LocalDataUpdate
+}
 
 /**
  * Single gateway to the TrackScooter backend. Translates low-level HTTP
@@ -25,6 +33,17 @@ import java.io.IOException
  * storage.js behaviour.
  */
 class ScooterRepository(private val api: ApiService = ApiClient.service) {
+
+    private val _localUpdates = MutableSharedFlow<LocalDataUpdate>(extraBufferCapacity = 16)
+    val localUpdates: SharedFlow<LocalDataUpdate> = _localUpdates.asSharedFlow()
+
+    fun notifyScooterToggled(response: ToggleResponse) {
+        _localUpdates.tryEmit(LocalDataUpdate.Toggled(response))
+    }
+
+    fun notifyDataMutated() {
+        _localUpdates.tryEmit(LocalDataUpdate.DataMutated)
+    }
 
     /** Real-time SSE stream of backend database change events */
     fun observeEvents(): Flow<String> = callbackFlow {
@@ -44,10 +63,12 @@ class ScooterRepository(private val api: ApiService = ApiClient.service) {
 
             override fun onFailure(eventSource: EventSource, t: Throwable?, response: okhttp3.Response?) {
                 Log.w("ScooterRepo", "SSE stream disconnect/failure: ${t?.message}")
+                close(t ?: IOException("SSE disconnected"))
             }
 
             override fun onClosed(eventSource: EventSource) {
                 Log.d("ScooterRepo", "SSE stream closed")
+                close()
             }
         }
 

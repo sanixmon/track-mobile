@@ -50,6 +50,9 @@ class ScanViewModel(
                     if (res.requiresConfirmation) {
                         _state.value = _state.value.copy(busy = false, confirmation = res)
                     } else {
+                        if (res.success) {
+                            repository.notifyScooterToggled(res)
+                        }
                         _state.value = _state.value.copy(
                             busy = false,
                             toast = resultMessage(res),
@@ -72,6 +75,9 @@ class ScanViewModel(
         viewModelScope.launch {
             runCatching { repository.toggleScooter(id, forceMaintenance = true) }
                 .onSuccess { res ->
+                    if (res.success) {
+                        repository.notifyScooterToggled(res)
+                    }
                     _state.value = _state.value.copy(busy = false, toast = resultMessage(res))
                 }
                 .onFailure { err ->
