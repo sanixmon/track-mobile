@@ -74,6 +74,7 @@ import com.evrenhouse.trackscooter.ui.common.AppViewModelFactory
 import com.evrenhouse.trackscooter.ui.common.ErrorState
 import com.evrenhouse.trackscooter.ui.common.LoadingState
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
+import com.evrenhouse.trackscooter.ui.common.TroubleSwapDialog
 import com.evrenhouse.trackscooter.ui.common.TypeBadge
 import com.evrenhouse.trackscooter.ui.theme.Accent
 import com.evrenhouse.trackscooter.ui.theme.Border
@@ -117,6 +118,7 @@ fun ManageScreen(
     var sortBy by rememberSaveable { mutableStateOf("id-asc") }
 
     var statusDialog by remember { mutableStateOf<StatusDialogData?>(null) }
+    var troubleScooter by remember { mutableStateOf<Scooter?>(null) }
     var busyAction by remember { mutableStateOf(false) }
 
     LaunchedEffect(mv.toast) {
@@ -348,6 +350,7 @@ fun ManageScreen(
                                 .onFailure { sweetAlert.showError(it.toUserMessage()) }
                         }
                     },
+                    onTroubleSwap = { troubleScooter = it },
                 )
             }
         }
@@ -382,6 +385,36 @@ fun ManageScreen(
                         sweetAlert.showSuccess("Status ${d.scooter.id} diperbarui")
                     } else {
                         sweetAlert.showError("Gagal mengubah status.")
+                    }
+                }
+            },
+        )
+    }
+
+    // Trouble / Tukar Dialog
+    troubleScooter?.let { scooter ->
+        TroubleSwapDialog(
+            scooter = scooter,
+            availableScooters = data.scooters.filter { it.status == ScooterStatus.AVAILABLE },
+            onDismiss = { troubleScooter = null },
+            onConfirm = { mode, replacementId, structuredIssue, locationNote ->
+                scope.launch {
+                    runCatching {
+                        viewModel.handleTroubleSwap(
+                            scooterId = scooter.id,
+                            mode = mode,
+                            replacementId = replacementId,
+                            structuredIssue = structuredIssue,
+                            locationNote = locationNote,
+                        )
+                    }.onSuccess {
+                        troubleScooter = null
+                        sweetAlert.showSuccess(
+                            if (mode == "swap") "Unit ${scooter.id} berhasil ditukar ke $replacementId"
+                            else "Unit ${scooter.id} dihentikan & dicatat evakuasi"
+                        )
+                    }.onFailure { err ->
+                        sweetAlert.showError(err.toUserMessage())
                     }
                 }
             },

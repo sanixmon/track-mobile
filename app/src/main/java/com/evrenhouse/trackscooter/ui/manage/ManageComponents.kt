@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -151,6 +152,7 @@ fun ScooterList(
     onStatusChange: (Scooter, String) -> Unit,
     onDelete: (Scooter) -> Unit,
     onDownloadQr: (Scooter) -> Unit,
+    onTroubleSwap: ((Scooter) -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier
@@ -224,6 +226,7 @@ fun ScooterList(
                     onStatusChange = { onStatusChange(scooter, it) },
                     onDelete = { onDelete(scooter) },
                     onDownloadQr = { onDownloadQr(scooter) },
+                    onTroubleSwap = onTroubleSwap,
                 )
                 Box(
                     Modifier
@@ -244,6 +247,7 @@ fun ScooterRow(
     onStatusChange: (String) -> Unit,
     onDelete: () -> Unit,
     onDownloadQr: () -> Unit,
+    onTroubleSwap: ((Scooter) -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier
@@ -280,17 +284,37 @@ fun ScooterRow(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier
-                        .background(Accent.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
-                        .border(1.dp, Accent.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
                 ) {
-                    Box(
-                        Modifier
-                            .size(6.dp)
-                            .background(Accent, CircleShapeCompat),
-                    )
-                    Text("Online", color = Accent, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier
+                            .background(Accent.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+                            .border(1.dp, Accent.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                    ) {
+                        Box(
+                            Modifier
+                                .size(6.dp)
+                                .background(Accent, CircleShapeCompat),
+                        )
+                        Text("Online", color = Accent, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    }
+
+                    if (onTroubleSwap != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier
+                                .background(Warning.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+                                .border(1.dp, Warning.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                .clickable { onTroubleSwap(scooter) }
+                                .padding(horizontal = 8.dp, vertical = 6.dp),
+                        ) {
+                            Icon(Icons.Filled.WarningAmber, contentDescription = null, tint = Warning, modifier = Modifier.size(13.dp))
+                            Text("Tukar", color = Warning, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             } else {
                 StatusPillButton(

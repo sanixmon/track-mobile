@@ -34,6 +34,10 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -243,6 +247,7 @@ fun LiveSessionCard(
     scooter: Scooter,
     nowMillis: Long,
     onClick: (() -> Unit)? = null,
+    onTroubleSwap: ((Scooter) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val dt = DateUtils.parse(scooter.lastUpdated)
@@ -376,6 +381,24 @@ fun LiveSessionCard(
                     fontSize = 11.sp,
                     fontWeight = if (totalMins >= 60) FontWeight.Bold else FontWeight.Normal,
                 )
+            }
+        }
+
+        if (onTroubleSwap != null) {
+            Button(
+                onClick = { onTroubleSwap(scooter) },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Warning.copy(alpha = 0.12f),
+                    contentColor = Warning,
+                ),
+                shape = RoundedCornerShape(8.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Warning.copy(alpha = 0.4f)),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Filled.WarningAmber, contentDescription = null, modifier = Modifier.size(13.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Laporkan Trouble / Tukar Unit", fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
         }
     }

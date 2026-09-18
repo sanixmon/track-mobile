@@ -61,10 +61,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.evrenhouse.trackscooter.data.Scooter
+import com.evrenhouse.trackscooter.data.ScooterStatus
 import com.evrenhouse.trackscooter.data.toUserMessage
 import com.evrenhouse.trackscooter.ui.common.ErrorState
 import com.evrenhouse.trackscooter.ui.common.LoadingState
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
+import com.evrenhouse.trackscooter.ui.common.TroubleSwapDialog
 import com.evrenhouse.trackscooter.ui.dashboard.ScooterCard
 import com.evrenhouse.trackscooter.ui.theme.Accent
 import com.evrenhouse.trackscooter.ui.theme.BlueLive
@@ -108,6 +111,7 @@ fun MonitorScreen(
     var typeFilter by rememberSaveable { mutableStateOf("all") }
     var showDatePicker by remember { mutableStateOf(false) }
     var exporting by remember { mutableStateOf(false) }
+    var troubleScooter by remember { mutableStateOf<Scooter?>(null) }
 
     // Ticker to live-update rental duration without seconds every 5 seconds
     var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -267,7 +271,8 @@ fun MonitorScreen(
                                             LiveSessionCard(
                                                 scooter = scooter,
                                                 nowMillis = nowMillis,
-                                                onClick = null,
+                                                onClick = onOpenDetail?.let { open -> { open(scooter.id) } },
+                                                onTroubleSwap = { troubleScooter = it },
                                             )
                                         }
                                     }
@@ -564,6 +569,35 @@ fun MonitorScreen(
         ) {
             DatePicker(state = pickerState, showModeToggle = false)
         }
+    }
+
+    troubleScooter?.let { scooter ->
+        TroubleSwapDialog(
+            scooter = scooter,
+            availableScooters = state.scooters.filter { it.status == ScooterStatus.AVAILABLE },
+            onDismiss = { troubleScooter = null },
+            onConfirm = { mode, replacementId, structuredIssue, locationNote ->
+                scope.launch {
+                    runCatching {
+                        viewModel.handleTroubleSwap(
+                            scooterId = scooter.id,
+                            mode = mode,
+                            replacementId = replacementId,
+                            structuredIssue = structuredIssue,
+                            locationNote = locationNote,
+                        )
+                    }.onSuccess {
+                        troubleScooter = null
+                        sweetAlert.showSuccess(
+                            if (mode == "swap") "Unit ${scooter.id} berhasil ditukar ke $replacementId"
+                            else "Unit ${scooter.id} dihentikan & dicatat evakuasi"
+                        )
+                    }.onFailure { err ->
+                        sweetAlert.showError("Gagal memproses insiden: ${err.toUserMessage()}")
+                    }
+                }
+            },
+        )
     }
 }
 

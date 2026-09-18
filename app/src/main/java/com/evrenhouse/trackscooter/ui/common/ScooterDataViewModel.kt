@@ -8,6 +8,8 @@ import com.evrenhouse.trackscooter.data.LocalDataUpdate
 import com.evrenhouse.trackscooter.data.MaintenanceRecord
 import com.evrenhouse.trackscooter.data.Scooter
 import com.evrenhouse.trackscooter.data.ScooterRepository
+import com.evrenhouse.trackscooter.data.ScooterStatus
+import com.evrenhouse.trackscooter.data.UpdateScooterRequest
 import com.evrenhouse.trackscooter.data.toUserMessage
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -58,6 +60,44 @@ class ScooterDataViewModel(
     suspend fun completeMaintenance(recordId: String) {
         repository.completeMaintenance(recordId)
         repository.notifyDataMutated()
+    }
+
+    /** Handle trouble/battery drop on the road: return old unit, mark maintenance (luar), optional swap checkout. */
+    suspend fun handleTroubleSwap(
+        scooterId: String,
+        mode: String,
+        replacementId: String?,
+        structuredIssue: String,
+        locationNote: String,
+    ) {
+        // 1. Return old scooter to balance activity log
+        val returnRes = repository.toggleScooter(scooterId)
+        if (returnRes.success) {
+            repository.notifyScooterToggled(returnRes)
+        }
+
+        // 2. Mark old scooter as maintenance in field
+        repository.updateScooter(
+            scooterId,
+            UpdateScooterRequest(
+                status = ScooterStatus.MAINTENANCE,
+                location = "luar",
+                issue = structuredIssue,
+                note = locationNote.ifBlank { null },
+                maintenanceNote = structuredIssue,
+            ),
+        )
+
+        // 3. If mode == "swap", checkout replacement scooter
+        if (mode == "swap" && !replacementId.isNullOrBlank()) {
+            val checkoutRes = repository.toggleScooter(replacementId)
+            if (checkoutRes.success) {
+                repository.notifyScooterToggled(checkoutRes)
+            }
+        }
+
+        repository.notifyDataMutated()
+        refresh()
     }
 
     fun refresh(silent: Boolean = false) {

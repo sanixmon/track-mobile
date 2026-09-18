@@ -56,10 +56,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.evrenhouse.trackscooter.data.SaveDeviceConditionRequest
+import com.evrenhouse.trackscooter.data.ScooterStatus
 import com.evrenhouse.trackscooter.ui.common.AppViewModelFactory
 import com.evrenhouse.trackscooter.ui.common.LiveTimer
 import com.evrenhouse.trackscooter.ui.common.LoadingState
 import com.evrenhouse.trackscooter.ui.common.StatusChip
+import com.evrenhouse.trackscooter.ui.common.TroubleSwapDialog
 import com.evrenhouse.trackscooter.ui.common.TypeBadge
 import com.evrenhouse.trackscooter.ui.common.repository
 import com.evrenhouse.trackscooter.ui.theme.Accent
@@ -100,6 +102,7 @@ fun ScooterDetailScreen(
     var monitorDetail by remember { mutableStateOf("") }
     var edited by remember { mutableStateOf(false) }
     var savedSnapshot by remember { mutableStateOf<String?>(null) }
+    var showTroubleDialog by remember { mutableStateOf(false) }
 
     fun currentSnapshot(): String = (condition + ("monitorDetail" to monitorDetail)).toString()
 
@@ -190,16 +193,33 @@ fun ScooterDetailScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     LiveTimer(scooter.status, scooter.lastUpdated)
-                    if (scooter.activeMaintenance != null) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier
-                                .background(Warning.copy(alpha = 0.12f), RoundedCornerShape(50))
-                                .padding(horizontal = 8.dp, vertical = 3.dp),
-                        ) {
-                            Icon(Icons.Filled.Construction, contentDescription = null, tint = Warning, modifier = Modifier.size(11.dp))
-                            Text("Dalam Perbaikan", color = Warning, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        if (scooter.activeMaintenance != null) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier
+                                    .background(Warning.copy(alpha = 0.12f), RoundedCornerShape(50))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                            ) {
+                                Icon(Icons.Filled.Construction, contentDescription = null, tint = Warning, modifier = Modifier.size(11.dp))
+                                Text("Dalam Perbaikan", color = Warning, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        if (scooter.status == ScooterStatus.IN_USE) {
+                            Button(
+                                onClick = { showTroubleDialog = true },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Warning),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            ) {
+                                Icon(Icons.Filled.WarningAmber, contentDescription = null, modifier = Modifier.size(12.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Trouble / Tukar", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
@@ -305,6 +325,33 @@ fun ScooterDetailScreen(
                 )
             }
         }
+    }
+
+    if (showTroubleDialog && state.scooter != null) {
+        TroubleSwapDialog(
+            scooter = state.scooter!!,
+            availableScooters = state.allScooters.filter { it.status == ScooterStatus.AVAILABLE },
+            onDismiss = { showTroubleDialog = false },
+            onConfirm = { mode, replacementId, structuredIssue, locationNote ->
+                scope.launch {
+                    val ok = viewModel.handleTroubleSwap(
+                        mode = mode,
+                        replacementId = replacementId,
+                        structuredIssue = structuredIssue,
+                        locationNote = locationNote,
+                    )
+                    showTroubleDialog = false
+                    if (ok) {
+                        sweetAlert.showSuccess(
+                            if (mode == "swap") "Unit ${state.scooter?.id} berhasil ditukar ke $replacementId"
+                            else "Unit ${state.scooter?.id} dihentikan & dicatat evakuasi"
+                        )
+                    } else {
+                        sweetAlert.showError("Gagal memproses insiden.")
+                    }
+                }
+            },
+        )
     }
 }
 
