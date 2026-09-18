@@ -62,6 +62,7 @@ import com.evrenhouse.trackscooter.ui.theme.Surface
 import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
+import com.evrenhouse.trackscooter.ui.theme.Warning
 import com.evrenhouse.trackscooter.util.StatusLabels
 import com.evrenhouse.trackscooter.util.StatusOrder
 import com.evrenhouse.trackscooter.util.TypeLabels
