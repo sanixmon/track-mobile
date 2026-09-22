@@ -1,5 +1,5 @@
 package com.evrenhouse.trackscooter.ui.dashboard
-
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -61,8 +61,289 @@ import com.evrenhouse.trackscooter.ui.theme.Warning
 import com.evrenhouse.trackscooter.util.ActionLabels
 import com.evrenhouse.trackscooter.util.DateUtils
 import com.evrenhouse.trackscooter.util.DeviceConditionHelper
+import com.evrenhouse.trackscooter.util.Outlets
 import com.evrenhouse.trackscooter.util.TypeLabels
 
+@Composable
+fun OutletSummaryCards(
+    scooters: List<Scooter>,
+    onSelectOutlet: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Outlets.OPERATIONAL.forEach { outlet ->
+            val outletScooters = scooters.filter { (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == outlet.id }
+            val ready = outletScooters.count { it.status == ScooterStatus.AVAILABLE }
+            val maintLuar = outletScooters.count { it.status == ScooterStatus.MAINTENANCE && it.activeMaintenance?.location == "luar" }
+            val maintOutlet = outletScooters.count { (it.status == ScooterStatus.MAINTENANCE || it.status == ScooterStatus.RUSAK) && it.activeMaintenance?.location != "luar" }
+            val total = ready + maintLuar + maintOutlet
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Surface)
+                    .border(1.dp, Border, RoundedCornerShape(14.dp))
+                    .clickable { onSelectOutlet(outlet.id) }
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .background(Surface3, RoundedCornerShape(8.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = com.evrenhouse.trackscooter.ui.common.getOutletIcon(outlet.id),
+                                contentDescription = null,
+                                tint = Accent,
+                                modifier = Modifier.size(15.dp)
+                            )
+                        }
+                        Column {
+                            Text(outlet.label, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text("Berdasarkan lokasi saat ini", color = TextMuted, fontSize = 10.sp)
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .background(Accent.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text("$total Unit", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                    }
+                }
+
+                Box(Modifier.fillMaxWidth().height(1.dp).background(Border))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                        Text("$ready", color = Green, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                        Text("Ready", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                        Text("$maintLuar", color = Warning, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                        Text("Maint. Luar", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                        Text("$maintOutlet", color = Red, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                        Text("Maint. Outlet", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                        Text("$total", color = androidx.compose.ui.graphics.Color(0xFFA855F7), fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                        Text("Total", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+data class RentalSessionSimple(
+    val scooterId: String,
+    val type: String,
+    val startDt: java.time.LocalDateTime,
+    val endDt: java.time.LocalDateTime?,
+    val durationText: String,
+    val inProgress: Boolean
+)
+
+@Composable
+fun RecentLogTableCard(
+    activityLog: List<ActivityLogEntry>,
+    scooters: List<Scooter>,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var showAll by remember { mutableStateOf(false) }
+    val todayKey = remember { DateUtils.localDateKey(DateUtils.today()) }
+
+    val sessions by remember(activityLog, scooters, todayKey) {
+        derivedStateOf {
+            val perUnit = mutableMapOf<String, MutableList<ActivityLogEntry>>()
+            activityLog.forEach { e ->
+                perUnit.getOrPut(e.scooterId) { mutableListOf() }.add(e)
+            }
+
+            val sessionList = mutableListOf<RentalSessionSimple>()
+
+            perUnit.forEach { (scooterId, logs) ->
+                val bike = scooters.find { it.id == scooterId }
+                val type = bike?.type ?: "sd"
+                val sorted = logs.mapNotNull {
+                    val dt = DateUtils.parse(it.timestamp)
+                    if (dt != null) it to dt else null
+                }.sortedBy { it.second }
+
+                var openCheckout: Pair<ActivityLogEntry, java.time.LocalDateTime>? = null
+                for ((log, dt) in sorted) {
+                    if (log.action == "checkout") {
+                        openCheckout = log to dt
+                    } else if (log.action == "return" && openCheckout != null) {
+                        val (_, startDt) = openCheckout
+                        if (DateUtils.localDateKey(startDt.toLocalDate()) == todayKey) {
+                            val diffSecs = java.time.Duration.between(startDt, dt).seconds
+                            sessionList.add(
+                                RentalSessionSimple(
+                                    scooterId = scooterId,
+                                    type = type,
+                                    startDt = startDt,
+                                    endDt = dt,
+                                    durationText = DateUtils.formatDuration(diffSecs),
+                                    inProgress = false
+                                )
+                            )
+                        }
+                        openCheckout = null
+                    }
+                }
+
+                if (openCheckout != null) {
+                    val (_, startDt) = openCheckout
+                    if (DateUtils.localDateKey(startDt.toLocalDate()) == todayKey) {
+                        val nowDt = java.time.LocalDateTime.now(DateUtils.WIB)
+                        val diffSecs = java.time.Duration.between(startDt, nowDt).seconds
+                        sessionList.add(
+                            RentalSessionSimple(
+                                scooterId = scooterId,
+                                type = type,
+                                startDt = startDt,
+                                endDt = null,
+                                durationText = DateUtils.formatDuration(diffSecs),
+                                inProgress = true
+                            )
+                        )
+                    }
+                }
+            }
+
+            sessionList.sortedByDescending { it.startDt }
+        }
+    }
+
+    val displayedSessions = remember(sessions, showAll) {
+        if (showAll) sessions else sessions.take(8)
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Surface)
+            .border(1.dp, Border, RoundedCornerShape(14.dp))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("LOG RECENT", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+            Box(
+                modifier = Modifier
+                    .background(Surface3, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
+            ) {
+                Text("${sessions.size} sesi", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        if (sessions.isEmpty()) {
+            Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                Text("Belum ada sesi sewa hari ini.", color = TextMuted, fontSize = 12.sp)
+            }
+        } else {
+            displayedSessions.forEachIndexed { index, session ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(session.scooterId) }
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(session.scooterId, color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                        TypeBadge(session.type)
+                        Text(
+                            DateUtils.formatTime(session.startDt),
+                            color = TextMuted,
+                            fontSize = 11.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
+                        if (session.endDt != null) {
+                            Text("-", color = TextSubtle, fontSize = 11.sp)
+                            Text(
+                                DateUtils.formatTime(session.endDt),
+                                color = TextMuted,
+                                fontSize = 11.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(session.durationText, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, fontFamily = FontFamily.Monospace)
+                        if (session.inProgress) {
+                            Box(
+                                modifier = Modifier
+                                    .background(Warning.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text("Disewa", color = Warning, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+
+                if (index < displayedSessions.size - 1) {
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(Border))
+                }
+            }
+
+            if (sessions.size > 8) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showAll = !showAll }
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        if (showAll) "Tampilkan Lebih Sedikit" else "Lihat Semua (${sessions.size} sesi)",
+                        color = Accent,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
 // ── Scooter card (dashboard 1-column list + monitor panel) ──
 @Composable
 fun ScooterCard(scooter: Scooter, onClick: (() -> Unit)? = null, modifier: Modifier = Modifier) {

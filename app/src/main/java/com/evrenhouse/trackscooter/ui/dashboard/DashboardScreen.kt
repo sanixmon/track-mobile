@@ -81,7 +81,6 @@ fun DashboardScreen(
     val sweetAlert = LocalSweetAlert.current
 
     var activeOutlet by rememberSaveable { mutableStateOf("all") }
-    var historyFilters by remember { mutableStateOf(HistoryFilters()) }
     var completingId by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
@@ -160,7 +159,17 @@ fun DashboardScreen(
                     }
                 }
 
-                // 4 Stat Cards (1:1 with Web App)
+                // ── Ringkasan Per Outlet (Saat Semua Outlet Aktif 1:1 Web) ──
+                if (activeOutlet == "all") {
+                    item {
+                        OutletSummaryCards(
+                            scooters = state.scooters,
+                            onSelectOutlet = { activeOutlet = it }
+                        )
+                    }
+                }
+
+                // ── 4 Unified Stat Cards (1:1 dengan Web App) ──
                 item {
                     val ready = outletFilteredScooters.count { it.status == ScooterStatus.AVAILABLE }
                     val maintLuar = outletFilteredScooters.count { it.status == ScooterStatus.MAINTENANCE && it.activeMaintenance?.location == "luar" }
@@ -222,51 +231,56 @@ fun DashboardScreen(
                     }
                 }
 
-
-                // History table
+                // ── Log Recent (Tabel Sesi Sewa Hari Ini 1:1 Web) ──
                 item {
-                    HistoryTable(
-                        log = state.activityLog,
-                        filters = historyFilters,
-                        onFilters = { historyFilters = it },
+                    RecentLogTableCard(
+                        activityLog = state.activityLog,
+                        scooters = outletFilteredScooters,
+                        onSelect = onOpenDetail
                     )
                 }
 
-                // Sidebar: type summary + activity feed
+                // ── Ringkasan per Jenis (6 Tipe Armada 1:1 Web) ──
                 item {
                     TypeSummaryCard(outletFilteredScooters)
                 }
 
-                item {
-                    ActivityFeedCard(state.activityLog)
+                // ── Tabel Maintenance Aktif (1:1 Web) ──
+                val filteredRecords = state.maintenanceRecords.filter { rec ->
+                    if (activeOutlet == "all") true
+                    else {
+                        val bike = state.scooters.find { it.id == rec.scooterId }
+                        val cur = bike?.currentOutlet ?: Outlets.getHomeOutletForType(rec.scooterType)
+                        cur == activeOutlet
+                    }
                 }
-
-                // Maintenance table
-                item {
-                    MaintenanceTable(
-                        records = state.maintenanceRecords,
-                        completingId = completingId,
-                        onComplete = { rec ->
-                            sweetAlert.showConfirm(
-                                title = "Selesaikan Maintenance?",
-                                message = "Tandai perbaikan unit ${rec.scooterId} selesai? Unit akan kembali tersedia.",
-                                confirmText = "Ya, Selesai",
-                                cancelText = "Batal",
-                                onConfirm = {
-                                    scope.launch {
-                                        completingId = rec.id
-                                        runCatching { viewModel.completeMaintenance(rec.id) }
-                                            .onSuccess {
-                                                viewModel.refresh()
-                                                sweetAlert.showSuccess("Maintenance unit ${rec.scooterId} selesai")
-                                            }
-                                            .onFailure { err -> sweetAlert.showError(err.toUserMessage()) }
-                                        completingId = null
-                                    }
-                                },
-                            )
-                        },
-                    )
+                if (filteredRecords.isNotEmpty()) {
+                    item {
+                        MaintenanceTable(
+                            records = filteredRecords,
+                            completingId = completingId,
+                            onComplete = { rec ->
+                                sweetAlert.showConfirm(
+                                    title = "Selesaikan Maintenance?",
+                                    message = "Tandai perbaikan unit ${rec.scooterId} selesai? Unit akan kembali tersedia.",
+                                    confirmText = "Ya, Selesai",
+                                    cancelText = "Batal",
+                                    onConfirm = {
+                                        scope.launch {
+                                            completingId = rec.id
+                                            runCatching { viewModel.completeMaintenance(rec.id) }
+                                                .onSuccess {
+                                                    viewModel.refresh()
+                                                    sweetAlert.showSuccess("Maintenance unit ${rec.scooterId} selesai")
+                                                }
+                                                .onFailure { err -> sweetAlert.showError(err.toUserMessage()) }
+                                            completingId = null
+                                        }
+                                    },
+                                )
+                            },
+                        )
+                    }
                 }
             }
         }
