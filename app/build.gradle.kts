@@ -18,8 +18,8 @@ android {
         applicationId = "com.evrenhouse.trackscooter"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "1.6"
+        versionCode = 8
+        versionName = "1.7"
 
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
     }

@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Clear
@@ -183,185 +185,147 @@ fun ScanScreen(
             Text("Mendekode QR dari gambar...", color = TextMuted, fontSize = 12.sp)
         }
 
-        // ── Manual Input & ID Picker Scoped to Selected Outlet ──
-        if (!showManual) {
+        // ── Pilih Cepat Unit (Dipengaruhi oleh Outlet Picker Global) ──
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(Surface)
+                .border(1.dp, Border, RoundedCornerShape(14.dp))
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .clickable { showManual = true }
-                    .padding(vertical = 10.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Filled.Tag, contentDescription = null, tint = Accent, modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    "Pilih atau ketik ID manual tanpa scan QR",
-                    color = Accent,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Surface)
-                    .border(1.dp, Border, RoundedCornerShape(14.dp))
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(Icons.Filled.Tag, contentDescription = null, tint = Accent, modifier = Modifier.size(15.dp))
-                        Text("PILIH / INPUT ID MANUAL", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
-                    }
-
-                    Text(
-                        text = "Tutup",
-                        color = TextMuted,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .clickable {
-                                showManual = false
-                                manualValue = ""
-                            }
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
+                    Icon(Icons.Filled.TouchApp, contentDescription = null, tint = Accent, modifier = Modifier.size(16.dp))
+                    Text("PILIH CEPAT UNIT", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
                 }
 
-                // Outlet filter tag
-                // Outlet filter scope indicator
+                Text(
+                    text = if (globalOutlet == "all") "Semua Outlet (${outletFilteredScooters.size} unit)"
+                    else "${Outlets.labelOf(globalOutlet)} (${outletFilteredScooters.size} unit)",
+                    color = Accent,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            // Search / Filter Input
+            OutlinedTextField(
+                value = manualValue,
+                onValueChange = { manualValue = it.uppercase() },
+                placeholder = { Text("Cari atau ketik nomor ID...", color = TextSubtle, fontSize = 12.sp) },
+                trailingIcon = {
+                    if (manualValue.isNotEmpty()) {
+                        IconButton(onClick = { manualValue = "" }, modifier = Modifier.size(24.dp)) {
+                            Icon(Icons.Filled.Clear, contentDescription = "Clear", tint = TextMuted, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(10.dp),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold),
+                colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Accent,
+                    unfocusedBorderColor = Border,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                )
+            )
+
+            // Matching scooters chips
+            val matchingScooters = remember(outletFilteredScooters, manualValue) {
+                if (manualValue.isBlank()) outletFilteredScooters
+                else outletFilteredScooters.filter { it.id.contains(manualValue.trim(), ignoreCase = true) }
+            }
+
+            if (outletFilteredScooters.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Surface2, RoundedCornerShape(8.dp))
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                        .padding(vertical = 14.dp),
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (globalOutlet == "all") "Semua Outlet (${outletFilteredScooters.size} unit)"
-                        else "Filter Lokasi: ${Outlets.labelOf(globalOutlet)} (${outletFilteredScooters.size} unit)",
+                        text = if (globalOutlet == "all") "Tidak ada armada scooter."
+                        else "Tidak ada armada scooter terdaftar di ${Outlets.labelOf(globalOutlet)}.",
                         color = TextMuted,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
+                        fontSize = 12.sp
                     )
                 }
+            } else if (matchingScooters.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Ketuk unit untuk proses langsung:", color = TextSubtle, fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold)
 
-                // Input field
-                OutlinedTextField(
-                    value = manualValue,
-                    onValueChange = { manualValue = it.uppercase() },
-                    placeholder = { Text("Ketik atau pilih ID (misal SD-1, SJ-2)...", color = TextSubtle, fontSize = 12.sp) },
-                    trailingIcon = {
-                        if (manualValue.isNotEmpty()) {
-                            IconButton(onClick = { manualValue = "" }, modifier = Modifier.size(24.dp)) {
-                                Icon(Icons.Filled.Clear, contentDescription = "Clear", tint = TextMuted, modifier = Modifier.size(16.dp))
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp),
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold),
-                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Accent,
-                        unfocusedBorderColor = Border,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
-                    )
-                )
-
-                // Quick-select chips matching filtered scooters
-                val matchingScooters = remember(outletFilteredScooters, manualValue) {
-                    if (manualValue.isBlank()) outletFilteredScooters
-                    else outletFilteredScooters.filter { it.id.contains(manualValue.trim(), ignoreCase = true) }
-                }
-
-                if (outletFilteredScooters.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Tidak ada armada di outlet ini.", color = TextMuted, fontSize = 12.sp)
-                    }
-                } else if (matchingScooters.isNotEmpty()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Pilih Cepat Unit (${matchingScooters.size}):", color = TextSubtle, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        matchingScooters.forEach { s ->
+                            val isSelected = manualValue.equals(s.id, ignoreCase = true)
+                            val statusColor = when (s.status) {
+                                ScooterStatus.AVAILABLE -> Green
+                                 ScooterStatus.IN_USE -> Accent
+                                ScooterStatus.RUSAK -> Red
+                                ScooterStatus.MAINTENANCE -> Warning
+                                else -> TextMuted
+                            }
 
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            matchingScooters.take(16).forEach { s ->
-                                val isSelected = manualValue.equals(s.id, ignoreCase = true)
-                                val statusColor = when (s.status) {
-                                    ScooterStatus.AVAILABLE -> Green
-                                    ScooterStatus.IN_USE -> Accent
-                                    ScooterStatus.RUSAK -> Red
-                                    ScooterStatus.MAINTENANCE -> Warning
-                                    else -> TextMuted
-                                }
-
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) Accent.copy(alpha = 0.2f) else Surface2)
+                                    .border(1.dp, if (isSelected) Accent else Border, RoundedCornerShape(8.dp))
+                                    .clickable(enabled = state.scanning && !state.busy) {
+                                        viewModel.onScanned(s.id)
+                                    }
+                                    .padding(horizontal = 9.dp, vertical = 7.dp)
+                            ) {
+                                Text(
+                                    text = s.id,
+                                    color = if (isSelected) Accent else TextPrimary,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Box(
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(if (isSelected) Accent.copy(alpha = 0.2f) else Surface2)
-                                        .border(1.dp, if (isSelected) Accent else Border, RoundedCornerShape(8.dp))
-                                        .clickable { manualValue = s.id }
-                                        .padding(horizontal = 8.dp, vertical = 6.dp)
-                                ) {
-                                    Text(
-                                        text = s.id,
-                                        color = if (isSelected) Accent else TextPrimary,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .size(6.dp)
-                                            .background(statusColor, androidx.compose.foundation.shape.CircleShape)
-                                    )
-                                }
+                                        .size(6.dp)
+                                        .background(statusColor, CircleShape)
+                                )
                             }
                         }
                     }
                 }
+            }
 
-                // Submit button
+            // Submit button if manual input typed
+            if (manualValue.isNotBlank()) {
                 Button(
                     onClick = {
-                        if (manualValue.isNotBlank()) {
-                            viewModel.onScanned(manualValue.trim())
-                            manualValue = ""
-                        }
+                        viewModel.onScanned(manualValue.trim())
+                        manualValue = ""
                     },
-                    enabled = manualValue.isNotBlank() && state.scanning && !state.busy,
+                    enabled = state.scanning && !state.busy,
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = Accent),
                 ) {
-                    Text("Proses Unit ${manualValue.ifBlank { "" }}", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("Proses Unit $manualValue", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
-
         Spacer(Modifier.height(24.dp))
     }
 
