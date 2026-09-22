@@ -86,6 +86,7 @@ import com.evrenhouse.trackscooter.util.Exporter
 import com.evrenhouse.trackscooter.util.FieldTone
 import com.evrenhouse.trackscooter.util.StatusLabels
 import com.evrenhouse.trackscooter.util.TypeLabels
+import com.evrenhouse.trackscooter.util.Outlets
 import kotlinx.coroutines.launch
 
 @Composable
@@ -171,7 +172,13 @@ fun ScooterDetailScreen(
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali", tint = TextMuted)
                 }
                 Column {
-                    Text(state.scooter?.id ?: scooterId, color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(state.scooter?.id ?: scooterId, color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                        state.scooter?.let { s ->
+                            val currentOutletId = s.currentOutlet ?: Outlets.getHomeOutletForType(s.type)
+                            Text("· ${Outlets.labelOf(currentOutletId)}", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
                     Text(TypeLabels.of(state.scooter?.type), color = TextMuted, fontSize = 11.sp)
                 }
             }

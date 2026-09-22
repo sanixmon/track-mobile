@@ -16,6 +16,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.BasicAlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import com.evrenhouse.trackscooter.util.Outlets
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -86,6 +96,7 @@ fun ScooterList(
     onDelete: (Scooter) -> Unit,
     onDownloadQr: (Scooter) -> Unit,
     onTroubleSwap: ((Scooter) -> Unit)? = null,
+    onEditScooter: ((Scooter) -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier
@@ -160,6 +171,7 @@ fun ScooterList(
                     onDelete = { onDelete(scooter) },
                     onDownloadQr = { onDownloadQr(scooter) },
                     onTroubleSwap = onTroubleSwap,
+                    onEditScooter = { onEditScooter?.invoke(scooter) },
                 )
                 Box(
                     Modifier
@@ -181,6 +193,7 @@ fun ScooterRow(
     onDelete: () -> Unit,
     onDownloadQr: () -> Unit,
     onTroubleSwap: ((Scooter) -> Unit)? = null,
+    onEditScooter: (() -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier
@@ -194,11 +207,34 @@ fun ScooterRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Column {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 Text(scooter.id, color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                 TypeBadge(scooter.type)
+
+                // Current Outlet Badge (Interactive)
+                val currentOutletId = scooter.currentOutlet ?: Outlets.getHomeOutletForType(scooter.type)
+                val outletLabel = Outlets.labelOf(currentOutletId)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Surface2)
+                        .border(1.dp, Border, RoundedCornerShape(6.dp))
+                        .clickable { onEditScooter?.invoke() }
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Icon(Icons.Filled.LocationOn, contentDescription = null, tint = Accent, modifier = Modifier.size(11.dp))
+                    Text(outletLabel, color = TextPrimary, fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold)
+                }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                IconButton(onClick = { onEditScooter?.invoke() }, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Filled.Edit, contentDescription = "Atur Outlet & Unit", tint = TextMuted, modifier = Modifier.size(16.dp))
+                }
                 IconButton(onClick = onDownloadQr, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Filled.QrCode, contentDescription = "Unduh QR", tint = TextMuted, modifier = Modifier.size(16.dp))
                 }
@@ -353,6 +389,271 @@ fun StatusChangeDialog(
             TextButton(onClick = onDismiss) { Text("Batal", color = TextMuted, fontSize = 12.sp) }
         },
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditScooterDialog(
+    scooter: Scooter,
+    onDismiss: () -> Unit,
+    onConfirm: (currentOutlet: String, ownership: String, status: String, note: String?) -> Unit,
+    submitting: Boolean = false,
+) {
+    val initialOutlet = remember(scooter.currentOutlet, scooter.type) {
+        scooter.currentOutlet ?: Outlets.getHomeOutletForType(scooter.type)
+    }
+    var selectedOutlet by remember { mutableStateOf(initialOutlet) }
+    var selectedOwnership by remember { mutableStateOf(scooter.ownership ?: "outlet") }
+    var selectedStatus by remember { mutableStateOf(scooter.status) }
+    var note by remember { mutableStateOf(scooter.maintenanceNote ?: "") }
+
+    var outletDropdownOpen by remember { mutableStateOf(false) }
+    var statusDropdownOpen by remember { mutableStateOf(false) }
+
+    BasicAlertDialog(
+        onDismissRequest = { if (!submitting) onDismiss() }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(Surface)
+                .border(1.dp, Border, RoundedCornerShape(20.dp))
+                .padding(20.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(Accent.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Filled.Tune, null, tint = Accent, modifier = Modifier.size(18.dp))
+                    }
+                    Column {
+                        Text("Atur Armada ${scooter.id}", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text("Pindahkan pangkalan atau atur unit", color = TextMuted, fontSize = 12.sp)
+                    }
+                }
+
+                IconButton(onClick = onDismiss, enabled = !submitting, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Filled.Close, null, tint = TextMuted, modifier = Modifier.size(16.dp))
+                }
+            }
+
+            // 1. Lokasi Outlet Saat Ini (Current Outlet)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("LOKASI OUTLET PANGKALAN", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+
+                Box {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Surface2)
+                            .border(1.dp, Border, RoundedCornerShape(10.dp))
+                            .clickable { outletDropdownOpen = true }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(Icons.Filled.LocationOn, null, tint = Accent, modifier = Modifier.size(16.dp))
+                            Text(Outlets.labelOf(selectedOutlet), color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Icon(Icons.Filled.ArrowDropDown, null, tint = TextMuted)
+                    }
+
+                    DropdownMenu(
+                        expanded = outletDropdownOpen,
+                        onDismissRequest = { outletDropdownOpen = false },
+                        modifier = Modifier
+                            .background(Surface, RoundedCornerShape(10.dp))
+                            .border(1.dp, Border, RoundedCornerShape(10.dp))
+                    ) {
+                        Outlets.OPERATIONAL.forEach { o ->
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(o.label, color = if (selectedOutlet == o.id) Accent else TextPrimary, fontWeight = if (selectedOutlet == o.id) FontWeight.Bold else FontWeight.Normal)
+                                    }
+                                },
+                                 onClick = {
+                                    selectedOutlet = o.id
+                                    outletDropdownOpen = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 2. Kepemilikan (Ownership)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("KEPEMILIKAN ARMADA", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf("outlet" to "Outlet", "pusat" to "Pusat").forEach { (value, label) ->
+                        val isSelected = selectedOwnership == value
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isSelected) Accent else Surface2)
+                                .border(1.dp, if (isSelected) Accent else Border, RoundedCornerShape(8.dp))
+                                .clickable { selectedOwnership = value }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = label,
+                                color = if (isSelected) Color.White else TextMuted,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 3. Status Armada
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("STATUS OPERASIONAL", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+
+                Box {
+                    val statusColor = statusColor(selectedStatus)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Surface2)
+                            .border(1.dp, Border, RoundedCornerShape(10.dp))
+                            .clickable { statusDropdownOpen = true }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(modifier = Modifier.size(8.dp).background(statusColor.color, CircleShapeCompat))
+                            Text(StatusLabels.of(selectedStatus), color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Icon(Icons.Filled.ArrowDropDown, null, tint = TextMuted)
+                    }
+
+                    DropdownMenu(
+                        expanded = statusDropdownOpen,
+                        onDismissRequest = { statusDropdownOpen = false },
+                        modifier = Modifier
+                            .background(Surface, RoundedCornerShape(10.dp))
+                            .border(1.dp, Border, RoundedCornerShape(10.dp))
+                    ) {
+                        listOf(
+                            ScooterStatus.AVAILABLE to "Tersedia",
+                            ScooterStatus.IN_USE to "Online (Sedang Sewa)",
+                            ScooterStatus.RUSAK to "Offline / Rusak",
+                            ScooterStatus.MAINTENANCE to "Maintenance"
+                        ).forEach { (value, label) ->
+                            val c = statusColor(value)
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Box(modifier = Modifier.size(6.dp).background(c.color, CircleShapeCompat))
+                                        Text(label, color = if (selectedStatus == value) Accent else TextPrimary, fontWeight = if (selectedStatus == value) FontWeight.Bold else FontWeight.Normal)
+                                    }
+                                },
+                                onClick = {
+                                    selectedStatus = value
+                                    statusDropdownOpen = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 4. Catatan (Note)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("CATATAN UNIT / KENDALA", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    placeholder = { Text("Catatan teknis, mutasi outlet, atau perbaikan...", color = TextSubtle, fontSize = 12.sp) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    minLines = 2,
+                    maxLines = 3,
+                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Accent,
+                        unfocusedBorderColor = Border,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                    )
+                )
+            }
+
+            // Action Buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    enabled = !submitting,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Border)
+                ) {
+                    Text("Batal", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                }
+
+                Button(
+                    onClick = {
+                        onConfirm(selectedOutlet, selectedOwnership, selectedStatus, note.trim().ifBlank { null })
+                    },
+                    enabled = !submitting,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1.3f),
+                    colors = ButtonDefaults.buttonColors(containerColor = Accent)
+                ) {
+                    if (submitting) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Menyimpan...", fontSize = 12.sp)
+                    } else {
+                        Text("Simpan Perubahan", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable

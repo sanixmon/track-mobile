@@ -122,6 +122,7 @@ fun ManageScreen(
     var statusDialog by remember { mutableStateOf<StatusDialogData?>(null) }
     var troubleScooter by remember { mutableStateOf<Scooter?>(null) }
     var busyAction by remember { mutableStateOf(false) }
+    var editingScooter by remember { mutableStateOf<Scooter?>(null) }
 
     LaunchedEffect(mv.toast) {
         mv.toast?.let {
@@ -357,6 +358,7 @@ fun ManageScreen(
                         }
                     },
                     onTroubleSwap = { troubleScooter = it },
+                    onEditScooter = { editingScooter = it },
                 )
             }
         }
@@ -394,6 +396,33 @@ fun ManageScreen(
                     }
                 }
             },
+        )
+    }
+
+    // Edit Scooter & Outlet Dialog
+    editingScooter?.let { scooter ->
+        EditScooterDialog(
+            scooter = scooter,
+            onDismiss = { editingScooter = null },
+            onConfirm = { currentOutlet, ownership, status, note ->
+                scope.launch {
+                    val req = UpdateScooterRequest(
+                        status = status,
+                        currentOutlet = currentOutlet,
+                        ownership = ownership,
+                        maintenanceNote = note,
+                        issue = if (status == ScooterStatus.MAINTENANCE || status == ScooterStatus.RUSAK) note else null
+                    )
+                    val ok = manageViewModel.updateStatus(scooter.id, req)
+                    if (ok) {
+                        editingScooter = null
+                        viewModel.refresh()
+                        sweetAlert.showSuccess("Pengaturan unit ${scooter.id} berhasil disimpan")
+                    } else {
+                        sweetAlert.showError("Gagal memperbarui unit ${scooter.id}.")
+                    }
+                }
+            }
         )
     }
 

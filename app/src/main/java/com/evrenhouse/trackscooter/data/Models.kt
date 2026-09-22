@@ -103,6 +103,8 @@ data class AddScooterRequest(
 @Serializable
 data class UpdateScooterRequest(
     @SerialName("status") val status: String? = null,
+    @SerialName("ownership") val ownership: String? = null,
+    @SerialName("currentOutlet") val currentOutlet: String? = null,
     @SerialName("maintenanceNote") val maintenanceNote: String? = null,
     @SerialName("location") val location: String? = null,
     @SerialName("issue") val issue: String? = null,

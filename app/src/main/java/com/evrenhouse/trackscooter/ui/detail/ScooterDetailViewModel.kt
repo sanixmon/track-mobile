@@ -111,6 +111,27 @@ class ScooterDetailViewModel(
         }
     }
 
+    fun updateOutlet(newOutlet: String, newOwnership: String? = null) {
+        val currentId = _state.value.scooterId
+        if (currentId.isBlank()) return
+        viewModelScope.launch {
+            runCatching {
+                repository.updateScooter(
+                    currentId,
+                    UpdateScooterRequest(currentOutlet = newOutlet, ownership = newOwnership)
+                )
+            }
+                .onSuccess {
+                    _state.value = _state.value.copy(toast = "Pangkalan unit berhasil diubah")
+                    repository.notifyDataMutated()
+                    loadScooter(currentId)
+                }
+                .onFailure { err ->
+                    _state.value = _state.value.copy(toast = err.toUserMessage())
+                }
+        }
+    }
+
     fun completeMaintenance(recordId: String) {
         if (_state.value.completing) return
         _state.value = _state.value.copy(completing = true)
