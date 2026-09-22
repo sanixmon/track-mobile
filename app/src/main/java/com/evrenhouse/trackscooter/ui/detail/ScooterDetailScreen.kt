@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -367,7 +368,7 @@ fun ScooterDetailDialog(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .androidx.compose.foundation.layout.heightIn(max = 620.dp)
+                .fillMaxHeight(0.88f)
                 .clip(RoundedCornerShape(20.dp))
                 .background(Surface)
                 .border(1.dp, Border, RoundedCornerShape(20.dp))

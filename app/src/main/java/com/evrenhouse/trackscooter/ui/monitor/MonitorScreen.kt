@@ -125,14 +125,6 @@ fun MonitorScreen(
         }
     }
 
-    val filteredScooters by remember {
-        derivedStateOf {
-            state.scooters.filter { s ->
-                (statusFilter == "all" || s.status == statusFilter) &&
-                    (typeFilter == "all" || s.type == typeFilter)
-            }
-        }
-    }
 
 
     PullToRefreshBox(
@@ -237,7 +229,7 @@ fun MonitorScreen(
                             // ══════════════════════════════════════
                             // TAB 2: RECENT (Aktivitas Terkini)
                             // ══════════════════════════════════════
-                            MonitorTab.RECENT -> {
+                            MonitorTab.ACTIVITY -> {
                                 LazyColumn(
                                     modifier = Modifier.fillMaxSize(),
                                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -285,7 +277,7 @@ fun MonitorScreen(
                                             ) {
                                                 Column {
                                                     logForDate.forEachIndexed { index, entry ->
-                                                        ActivityItemRow(entry = entry, isLiveView = isLiveView)
+                                                        ActivityItemRow(entry = entry, isLiveView = true)
                                                         if (index < logForDate.size - 1) {
                                                             Box(
                                                                 Modifier
@@ -336,137 +328,3 @@ fun MonitorScreen(
     }
 }
 
-@Composable
-private fun DatePill(label: String, active: Boolean, onClick: () -> Unit, live: Boolean = false) {
-    Row(
-        modifier = Modifier
-            .background(if (active) Accent.copy(alpha = 0.15f) else Surface3, RoundedCornerShape(8.dp))
-            .border(1.dp, if (active) Accent else Border, RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        if (live) {
-            Box(
-                modifier = Modifier
-                    .size(6.dp)
-                    .background(if (active) BlueLive else TextSubtle, CircleShape),
-            )
-        }
-        Text(
-            text = label,
-            color = if (active) Accent else TextMuted,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-        )
-    }
-}
-
-@Composable
-private fun DailyKpiStrip(
-    total: Int,
-    checkoutCount: Int,
-    returnCount: Int,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(Surface, RoundedCornerShape(12.dp))
-            .border(1.dp, Border, RoundedCornerShape(12.dp))
-            .padding(vertical = 12.dp, horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // Column 1: Total
-        Column(
-            modifier = Modifier.weight(1f),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(
-                text = total.toString(),
-                color = TextPrimary,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = "Total Transaksi",
-                color = TextMuted,
-                fontSize = 10.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-
-        // Divider 1
-        Box(
-            modifier = Modifier
-                .width(1.dp)
-                .height(26.dp)
-                .background(Border),
-        )
-
-        // Column 2: Keluar (Sewa)
-        Column(
-            modifier = Modifier.weight(1f),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Icon(Icons.Filled.ArrowUpward, contentDescription = null, tint = Red, modifier = Modifier.size(13.dp))
-                Text(
-                    text = checkoutCount.toString(),
-                    color = Red,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            Text(
-                text = "Keluar (Sewa)",
-                color = TextMuted,
-                fontSize = 10.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-
-        // Divider 2
-        Box(
-            modifier = Modifier
-                .width(1.dp)
-                .height(26.dp)
-                .background(Border),
-        )
-
-        // Column 3: Masuk (Kembali)
-        Column(
-            modifier = Modifier.weight(1f),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Icon(Icons.Filled.ArrowDownward, contentDescription = null, tint = Green, modifier = Modifier.size(13.dp))
-                Text(
-                    text = returnCount.toString(),
-                    color = Green,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            Text(
-                text = "Masuk (Kembali)",
-                color = TextMuted,
-                fontSize = 10.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}

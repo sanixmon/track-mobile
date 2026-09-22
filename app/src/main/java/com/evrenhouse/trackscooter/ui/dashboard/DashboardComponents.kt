@@ -183,8 +183,8 @@ fun TypeSummaryCard(scooters: List<Scooter>, modifier: Modifier = Modifier) {
             letterSpacing = 1.2.sp,
             modifier = Modifier.padding(16.dp),
         )
-        val types = com.evrenhouse.trackscooter.data.ScooterType.ALL
-        types.forEachIndexed { index, type ->
+        val types = listOf("sd", "sj", "sb", "sjb", "sm", "sjm")
+        for ((index, type) in types.withIndex()) {
             val group = scooters.filter { it.type == type }
             val available = group.count { it.status == "available" }
             val inUse = group.count { it.status == "in-use" }
