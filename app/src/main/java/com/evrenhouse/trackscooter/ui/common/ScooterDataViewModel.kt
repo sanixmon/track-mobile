@@ -45,6 +45,13 @@ class ScooterDataViewModel(
     private val _state = MutableStateFlow(ScooterDataUiState())
     val state: StateFlow<ScooterDataUiState> = _state.asStateFlow()
 
+    private val _selectedOutlet = MutableStateFlow("all")
+    val selectedOutlet: StateFlow<String> = _selectedOutlet.asStateFlow()
+
+    fun setSelectedOutlet(outletId: String) {
+        _selectedOutlet.value = outletId
+    }
+
     private var pollingJob: Job? = null
     private var streamJob: Job? = null
     private var localUpdatesJob: Job? = null

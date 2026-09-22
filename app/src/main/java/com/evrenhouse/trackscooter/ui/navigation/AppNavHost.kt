@@ -99,7 +99,7 @@ fun AppNavHost() {
                     )
                 }
                 composable(Routes.SCAN) {
-                    ScanScreen()
+                    ScanScreen(dataViewModel = dataViewModel)
                 }
                 composable(Routes.REPORT) {
                     ReportScreen(

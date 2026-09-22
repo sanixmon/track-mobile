@@ -112,7 +112,7 @@ fun ManageScreen(
     val sweetAlert = LocalSweetAlert.current
     val scope = rememberCoroutineScope()
 
-    var activeOutlet by rememberSaveable { mutableStateOf("all") }
+    val activeOutlet by viewModel.selectedOutlet.collectAsState()
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var search by rememberSaveable { mutableStateOf("") }
     var filterStatus by rememberSaveable { mutableStateOf("all") }
@@ -292,7 +292,7 @@ fun ManageScreen(
         // Outlet Dropdown Filter
         OutletDropdown(
             selectedOutletId = activeOutlet,
-            onOutletSelected = { activeOutlet = it },
+            onOutletSelected = { viewModel.setSelectedOutlet(it) },
             getOutletCount = { outletId ->
                 if (outletId == "all") data.scooters.size
                 else data.scooters.count { (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == outletId }

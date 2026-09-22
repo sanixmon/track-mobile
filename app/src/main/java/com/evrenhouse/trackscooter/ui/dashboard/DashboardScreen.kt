@@ -24,6 +24,10 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Construction
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
+import com.evrenhouse.trackscooter.ui.theme.LocalThemeIsDark
+import com.evrenhouse.trackscooter.ui.theme.LocalThemeToggle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -80,7 +84,7 @@ fun DashboardScreen(
     val context = LocalContext.current
     val sweetAlert = LocalSweetAlert.current
 
-    var activeOutlet by rememberSaveable { mutableStateOf("all") }
+    val activeOutlet by viewModel.selectedOutlet.collectAsState()
     var completingId by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
@@ -108,16 +112,30 @@ fun DashboardScreen(
                         Text("Dashboard", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                         Text("Pantau status scooter secara real-time", color = TextMuted, fontSize = 13.sp)
                     }
-                    FilledAction(
-                        text = "Scan",
-                        onClick = onGoScan,
-                        icon = { Icon(Icons.Filled.QrCodeScanner, contentDescription = null, modifier = Modifier.size(15.dp)) },
-                    )
+                    val isDark = LocalThemeIsDark.current
+                    val toggleTheme = LocalThemeToggle.current
+
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Surface)
+                            .border(1.dp, Border, RoundedCornerShape(10.dp))
+                            .clickable { toggleTheme() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isDark) Icons.Filled.LightMode else Icons.Filled.DarkMode,
+                            contentDescription = if (isDark) "Beralih ke Mode Terang" else "Beralih ke Mode Gelap",
+                            tint = if (isDark) Warning else Accent,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
 
                 OutletDropdown(
                     selectedOutletId = activeOutlet,
-                    onOutletSelected = { activeOutlet = it },
+                    onOutletSelected = { viewModel.setSelectedOutlet(it) },
                     getOutletCount = { outletId ->
                         if (outletId == "all") state.scooters.size
                         else state.scooters.count { (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == outletId }
@@ -164,7 +182,7 @@ fun DashboardScreen(
                     item {
                         OutletSummaryCards(
                             scooters = state.scooters,
-                            onSelectOutlet = { activeOutlet = it }
+                            onSelectOutlet = { viewModel.setSelectedOutlet(it) }
                         )
                     }
                 }

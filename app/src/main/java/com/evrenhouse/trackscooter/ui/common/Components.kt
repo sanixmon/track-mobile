@@ -67,6 +67,7 @@ import kotlinx.coroutines.delay
 // ── Status colors ──────────────────────────────────────────
 data class StatusColor(val color: Color, val subtle: Color)
 
+@Composable
 fun statusColor(status: String?): StatusColor = when (status) {
     ScooterStatus.AVAILABLE -> StatusColor(Green, Green.copy(alpha = 0.12f))
     ScooterStatus.IN_USE -> StatusColor(Accent, Accent.copy(alpha = 0.12f))

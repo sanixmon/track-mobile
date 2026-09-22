@@ -118,7 +118,7 @@ fun ReportScreen(
     }
 
     var selectedDate by rememberSaveable { mutableStateOf(todayStr) }
-    var selectedOutlet by rememberSaveable { mutableStateOf("all") }
+    val selectedOutlet by viewModel.selectedOutlet.collectAsState()
     var attendanceRecords by remember { mutableStateOf<List<AttendanceRecord>>(emptyList()) }
     var loadingAttendance by remember { mutableStateOf(false) }
     var attendanceFilter by rememberSaveable { mutableStateOf("all") } // "all" | "unattended" | "attended"
@@ -358,7 +358,7 @@ fun ReportScreen(
                 // Global Outlet Dropdown Filter
                 OutletDropdown(
                     selectedOutletId = selectedOutlet,
-                    onOutletSelected = { selectedOutlet = it },
+                    onOutletSelected = { viewModel.setSelectedOutlet(it) },
                     labelPrefix = "Filter Outlet:"
                 )
             }

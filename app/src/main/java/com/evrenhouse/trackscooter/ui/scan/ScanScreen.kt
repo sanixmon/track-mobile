@@ -10,6 +10,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,17 +25,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Tag
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +46,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -48,26 +54,42 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.evrenhouse.trackscooter.data.ScooterStatus
 import com.evrenhouse.trackscooter.ui.common.AppViewModelFactory
+import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
+import com.evrenhouse.trackscooter.ui.common.OutletDropdown
 import com.evrenhouse.trackscooter.ui.common.OutlinedAction
+import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
+import com.evrenhouse.trackscooter.ui.common.TypeBadge
 import com.evrenhouse.trackscooter.ui.common.repository
 import com.evrenhouse.trackscooter.ui.theme.Accent
 import com.evrenhouse.trackscooter.ui.theme.Border
+import com.evrenhouse.trackscooter.ui.theme.Green
+import com.evrenhouse.trackscooter.ui.theme.Red
 import com.evrenhouse.trackscooter.ui.theme.Surface
+import com.evrenhouse.trackscooter.ui.theme.Surface2
 import com.evrenhouse.trackscooter.ui.theme.Surface3
 import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
-import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
 import com.evrenhouse.trackscooter.ui.theme.Warning
+import com.evrenhouse.trackscooter.util.Outlets
+import com.evrenhouse.trackscooter.util.StatusLabels
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.Executors
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ScanScreen(viewModel: ScanViewModel = viewModel(factory = AppViewModelFactory(repository()))) {
+fun ScanScreen(
+    dataViewModel: ScooterDataViewModel = viewModel(factory = AppViewModelFactory(repository())),
+    viewModel: ScanViewModel = viewModel(factory = AppViewModelFactory(repository()))
+) {
     val state by viewModel.state.collectAsState()
+    val dataState by dataViewModel.state.collectAsState()
+    val globalOutlet by dataViewModel.selectedOutlet.collectAsState()
+
     val context = LocalContext.current
     val sweetAlert = LocalSweetAlert.current
 
@@ -75,6 +97,17 @@ fun ScanScreen(viewModel: ScanViewModel = viewModel(factory = AppViewModelFactor
     var manualValue by rememberSaveable { mutableStateOf("") }
     var showManual by rememberSaveable { mutableStateOf(false) }
     var decodingImage by remember { mutableStateOf(false) }
+
+    // Filter scooters by the global unified outlet selection
+    val outletFilteredScooters by remember(dataState.scooters, globalOutlet) {
+        derivedStateOf {
+            val list = if (globalOutlet == "all") dataState.scooters
+            else dataState.scooters.filter {
+                (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == globalOutlet
+            }
+            list.sortedWith(compareBy { it.id.filter { ch -> ch.isDigit() }.toIntOrNull() ?: 9999 })
+        }
+    }
 
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
@@ -103,8 +136,6 @@ fun ScanScreen(viewModel: ScanViewModel = viewModel(factory = AppViewModelFactor
         }
     }
 
-
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -112,10 +143,27 @@ fun ScanScreen(viewModel: ScanViewModel = viewModel(factory = AppViewModelFactor
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        // Header
-        Column {
-            Text("Scan QR Scooter", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Text("Pindai QR code untuk toggle status scooter", color = TextMuted, fontSize = 13.sp)
+        // Header & Unified Global Outlet Picker
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("Scan QR Scooter", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text("Pindai QR code untuk toggle status sewa", color = TextMuted, fontSize = 12.sp)
+                }
+
+                OutletDropdown(
+                    selectedOutletId = globalOutlet,
+                    onOutletSelected = { dataViewModel.setSelectedOutlet(it) },
+                    getOutletCount = { id ->
+                        if (id == "all") dataState.scooters.size
+                        else dataState.scooters.count { (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == id }
+                    }
+                )
+            }
         }
 
         // Mode picker
@@ -152,51 +200,192 @@ fun ScanScreen(viewModel: ScanViewModel = viewModel(factory = AppViewModelFactor
             Text("Mendekode QR dari gambar...", color = TextMuted, fontSize = 12.sp)
         }
 
-        // Manual input — always visible below
+        // ── Manual Input & ID Picker Scoped to Selected Outlet ──
         if (!showManual) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
                     .clickable { showManual = true }
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = 10.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Filled.Tag, contentDescription = null, tint = TextSubtle, modifier = Modifier.size(12.dp))
-                Spacer(Modifier.width(4.dp))
+                Icon(Icons.Filled.Tag, contentDescription = null, tint = Accent, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(6.dp))
                 Text(
-                    "Masukkan ID scooter manual",
-                    color = TextSubtle,
+                    "Pilih atau ketik ID manual tanpa scan QR",
+                    color = Accent,
                     fontSize = 12.sp,
-                    textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline,
+                    fontWeight = FontWeight.SemiBold,
                 )
             }
         } else {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("ID Scooter", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = manualValue,
-                        onValueChange = { manualValue = it.uppercase() },
-                        placeholder = { Text("SD-1", color = TextSubtle, fontSize = 13.sp) },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        shape = RoundedCornerShape(10.dp),
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
-                    )
-                    androidx.compose.material3.Button(
-                        onClick = {
-                            if (manualValue.isNotBlank()) {
-                                viewModel.onScanned(manualValue.trim())
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Surface)
+                    .border(1.dp, Border, RoundedCornerShape(14.dp))
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(Icons.Filled.Tag, contentDescription = null, tint = Accent, modifier = Modifier.size(15.dp))
+                        Text("PILIH / INPUT ID MANUAL", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+                    }
+
+                    Text(
+                        text = "Tutup",
+                        color = TextMuted,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable {
+                                showManual = false
                                 manualValue = ""
                             }
-                        },
-                        enabled = manualValue.isNotBlank() && state.scanning && !state.busy,
-                        shape = RoundedCornerShape(10.dp),
-                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Accent),
-                    ) {
-                        Text("OK", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+
+                // Outlet filter tag
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Surface2, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = if (globalOutlet == "all") "Semua Outlet (${outletFilteredScooters.size} unit)"
+                        else "Lokasi: ${Outlets.labelOf(globalOutlet)} (${outletFilteredScooters.size} unit)",
+                        color = TextMuted,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    if (globalOutlet != "all") {
+                        Text(
+                            text = "Ganti Outlet",
+                            color = Accent,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable { dataViewModel.setSelectedOutlet("all") }
+                        )
                     }
+                }
+
+                // Input field
+                OutlinedTextField(
+                    value = manualValue,
+                    onValueChange = { manualValue = it.uppercase() },
+                    placeholder = { Text("Ketik atau pilih ID (misal SD-1, SJ-2)...", color = TextSubtle, fontSize = 12.sp) },
+                    trailingIcon = {
+                        if (manualValue.isNotEmpty()) {
+                            IconButton(onClick = { manualValue = "" }, modifier = Modifier.size(24.dp)) {
+                                Icon(Icons.Filled.Clear, contentDescription = "Clear", tint = TextMuted, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold),
+                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Accent,
+                        unfocusedBorderColor = Border,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                    )
+                )
+
+                // Quick-select chips matching filtered scooters
+                val matchingScooters = remember(outletFilteredScooters, manualValue) {
+                    if (manualValue.isBlank()) outletFilteredScooters
+                    else outletFilteredScooters.filter { it.id.contains(manualValue.trim(), ignoreCase = true) }
+                }
+
+                if (outletFilteredScooters.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Tidak ada armada di outlet ini.", color = TextMuted, fontSize = 12.sp)
+                    }
+                } else if (matchingScooters.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Pilih Cepat Unit (${matchingScooters.size}):", color = TextSubtle, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            matchingScooters.take(16).forEach { s ->
+                                val isSelected = manualValue.equals(s.id, ignoreCase = true)
+                                val statusColor = when (s.status) {
+                                    ScooterStatus.AVAILABLE -> Green
+                                    ScooterStatus.IN_USE -> Accent
+                                    ScooterStatus.RUSAK -> Red
+                                    ScooterStatus.MAINTENANCE -> Warning
+                                    else -> TextMuted
+                                }
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) Accent.copy(alpha = 0.2f) else Surface2)
+                                        .border(1.dp, if (isSelected) Accent else Border, RoundedCornerShape(8.dp))
+                                        .clickable { manualValue = s.id }
+                                        .padding(horizontal = 8.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        text = s.id,
+                                        color = if (isSelected) Accent else TextPrimary,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .background(statusColor, androidx.compose.foundation.shape.CircleShape)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Submit button
+                Button(
+                    onClick = {
+                        if (manualValue.isNotBlank()) {
+                            viewModel.onScanned(manualValue.trim())
+                            manualValue = ""
+                        }
+                    },
+                    enabled = manualValue.isNotBlank() && state.scanning && !state.busy,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Accent),
+                ) {
+                    Text("Proses Unit ${manualValue.ifBlank { "" }}", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -226,7 +415,8 @@ private fun ModeButton(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Surface, RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(14.dp))
+            .background(Surface)
             .border(1.dp, Border, RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
             .padding(16.dp),
