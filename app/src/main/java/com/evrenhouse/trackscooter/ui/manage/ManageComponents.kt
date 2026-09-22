@@ -69,6 +69,7 @@ import com.evrenhouse.trackscooter.ui.theme.Accent
 import com.evrenhouse.trackscooter.ui.theme.Border
 import com.evrenhouse.trackscooter.ui.theme.Red
 import com.evrenhouse.trackscooter.ui.theme.Surface
+import com.evrenhouse.trackscooter.ui.theme.Surface2
 import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle

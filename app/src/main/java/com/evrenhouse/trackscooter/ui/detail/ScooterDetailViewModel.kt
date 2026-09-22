@@ -8,6 +8,7 @@ import com.evrenhouse.trackscooter.data.MaintenanceRecord
 import com.evrenhouse.trackscooter.data.SaveDeviceConditionRequest
 import com.evrenhouse.trackscooter.data.Scooter
 import com.evrenhouse.trackscooter.data.ScooterRepository
+import com.evrenhouse.trackscooter.data.UpdateScooterRequest
 import com.evrenhouse.trackscooter.data.toUserMessage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
