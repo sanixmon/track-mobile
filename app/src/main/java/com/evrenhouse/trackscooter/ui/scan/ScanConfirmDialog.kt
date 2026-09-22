@@ -84,7 +84,8 @@ fun ScanConfirmDialog(
         if (scooter.status == ScooterStatus.IN_USE && scooter.lastUpdated != null) {
             val dt = DateUtils.parse(scooter.lastUpdated)
             if (dt != null) {
-                val diffSecs = (System.currentTimeMillis() - dt.time) / 1000
+                val millis = DateUtils.toEpochMilli(dt)
+                val diffSecs = (System.currentTimeMillis() - millis) / 1000
                 DateUtils.formatDuration(diffSecs)
             } else null
         } else null
@@ -323,7 +324,7 @@ fun ScanConfirmDialog(
                         Text("Durasi sewa:", color = TextMuted, fontSize = 12.sp)
                     }
                     Text(
-                        text = elapsedDuration,
+                        text = elapsedDuration ?: "-",
                         color = Accent,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,

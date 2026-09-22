@@ -81,6 +81,16 @@ object DateUtils {
 
     fun toLocalDate(ts: String?): java.time.LocalDate? = parse(ts)?.toLocalDate()
 
+
+    fun formatDuration(totalSecs: Long): String {
+        val safeSecs = maxOf(0L, totalSecs)
+        val hrs = safeSecs / 3600
+        val mins = (safeSecs % 3600) / 60
+        return if (hrs > 0) "${hrs}j ${mins}m" else "${mins} mnt"
+    }
+
+    fun toEpochMilli(dt: java.time.LocalDateTime): Long =
+        dt.atZone(WIB).toInstant().toEpochMilli()
     /** Relative "x menit lalu" style, Indonesian. */
     fun timeAgo(ts: String?): String {
         val dt = parse(ts) ?: return ""

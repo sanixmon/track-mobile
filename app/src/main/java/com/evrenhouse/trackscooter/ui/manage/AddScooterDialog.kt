@@ -18,7 +18,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.CheckCircle2
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ElectricScooter
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -249,7 +249,7 @@ fun AddScooterDialog(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Icon(Icons.Filled.CheckCircle2, null, tint = Green, modifier = Modifier.size(13.dp))
+                                Icon(Icons.Filled.CheckCircle, null, tint = Green, modifier = Modifier.size(13.dp))
                                 Text("Tersedia", color = Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }

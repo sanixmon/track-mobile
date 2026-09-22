@@ -25,7 +25,7 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle2
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.ElectricScooter
 import androidx.compose.material.icons.filled.RestartAlt
@@ -59,11 +59,14 @@ import androidx.compose.ui.unit.sp
 import com.evrenhouse.trackscooter.data.ActivityLogEntry
 import com.evrenhouse.trackscooter.data.AttendanceRecord
 import com.evrenhouse.trackscooter.data.Scooter
+import com.evrenhouse.trackscooter.data.ScooterRepository
 import com.evrenhouse.trackscooter.data.ScooterStatus
+import com.evrenhouse.trackscooter.data.toUserMessage
 import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
 import com.evrenhouse.trackscooter.ui.common.OutletDropdown
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
 import com.evrenhouse.trackscooter.ui.common.TypeBadge
+import com.evrenhouse.trackscooter.ui.common.repository
 import com.evrenhouse.trackscooter.ui.theme.Accent
 import com.evrenhouse.trackscooter.ui.theme.Border
 import com.evrenhouse.trackscooter.ui.theme.Green
@@ -89,8 +92,8 @@ data class RentalSessionItem(
     val no: Int,
     val scooterId: String,
     val type: String,
-    val startTs: Date,
-    val endTs: Date?,
+    val startDt: java.time.LocalDateTime,
+    val endDt: java.time.LocalDateTime?,
     val durationText: String,
     val inProgress: Boolean
 )
@@ -98,7 +101,8 @@ data class RentalSessionItem(
 @Composable
 fun ReportScreen(
     viewModel: ScooterDataViewModel,
-    onOpenDetail: ((String) -> Unit)? = null
+    onOpenDetail: ((String) -> Unit)? = null,
+    repository: ScooterRepository = repository()
 ) {
     val data by viewModel.state.collectAsState()
     val context = LocalContext.current
@@ -124,7 +128,7 @@ fun ReportScreen(
     fun loadAttendanceData() {
         scope.launch {
             loadingAttendance = true
-            runCatching { viewModel.repository.getDailyAttendance(selectedDate) }
+            runCatching { repository.getDailyAttendance(selectedDate) }
                 .onSuccess { attendanceRecords = it }
                 .onFailure { attendanceRecords = emptyList() }
             loadingAttendance = false
@@ -197,25 +201,23 @@ fun ReportScreen(
                     val dt = DateUtils.parse(it.timestamp)
                     if (dt != null) it to dt else null
                 }.sortedBy { it.second }
-
-                var openCheckout: Pair<ActivityLogEntry, Date>? = null
+                var openCheckout: Pair<ActivityLogEntry, java.time.LocalDateTime>? = null
                 for (entry in sortedLogs) {
                     val (log, dt) = entry
-                    val logDateKey = dateFormat.format(dt)
 
                     if (log.action == "checkout") {
                         openCheckout = log to dt
                     } else if (log.action == "return" && openCheckout != null) {
                         val (_, startDt) = openCheckout
-                        if (dateFormat.format(startDt) == selectedDate) {
-                            val diffSecs = (dt.time - startDt.time) / 1000
+                        if (DateUtils.localDateKey(startDt.toLocalDate()) == selectedDate) {
+                            val diffSecs = java.time.Duration.between(startDt, dt).seconds
                             result.add(
                                 RentalSessionItem(
                                     no = counter++,
                                     scooterId = scooterId,
                                     type = bike?.type ?: "sd",
-                                    startTs = startDt,
-                                    endTs = dt,
+                                    startDt = startDt,
+                                    endDt = dt,
                                     durationText = DateUtils.formatDuration(diffSecs),
                                     inProgress = false
                                 )
@@ -228,15 +230,16 @@ fun ReportScreen(
                 // Check active ongoing checkout today
                 if (openCheckout != null) {
                     val (_, startDt) = openCheckout
-                    if (dateFormat.format(startDt) == selectedDate) {
-                        val diffSecs = (System.currentTimeMillis() - startDt.time) / 1000
+                    if (DateUtils.localDateKey(startDt.toLocalDate()) == selectedDate) {
+                        val nowDt = java.time.LocalDateTime.now(DateUtils.WIB)
+                        val diffSecs = java.time.Duration.between(startDt, nowDt).seconds
                         result.add(
                             RentalSessionItem(
                                 no = counter++,
                                 scooterId = scooterId,
                                 type = bike?.type ?: "sd",
-                                startTs = startDt,
-                                endTs = null,
+                                startDt = startDt,
+                                endDt = null,
                                 durationText = DateUtils.formatDuration(diffSecs),
                                 inProgress = true
                             )
@@ -244,8 +247,7 @@ fun ReportScreen(
                     }
                 }
             }
-
-            result.sortedByDescending { it.startTs }
+            result.sortedByDescending { it.startDt }
         }
     }
 
@@ -490,11 +492,11 @@ fun ReportScreen(
                                         horizontalArrangement = Arrangement.spacedBy(2.dp)
                                     ) {
                                         Icon(Icons.Filled.ArrowUpward, null, tint = Accent, modifier = Modifier.size(11.dp))
-                                        Text(timeFormat.format(item.startTs), color = TextMuted, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
-                                        if (item.endTs != null) {
+                                        Text(DateUtils.formatTime(item.startDt), color = TextMuted, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                                        if (item.endDt != null) {
                                             Text(" - ", color = TextSubtle, fontSize = 11.sp)
                                             Icon(Icons.Filled.ArrowDownward, null, tint = Green, modifier = Modifier.size(11.dp))
-                                            Text(timeFormat.format(item.endTs), color = TextMuted, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                                            Text(DateUtils.formatTime(item.endDt), color = TextMuted, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
                                         }
                                     }
                                 }
@@ -577,7 +579,7 @@ fun ReportScreen(
                                         onConfirm = {
                                             scope.launch {
                                                 runCatching {
-                                                    viewModel.repository.markAllDailyAttendance(
+                                                    repository.markAllDailyAttendance(
                                                         date = selectedDate,
                                                         outlet = if (selectedOutlet == "all") null else selectedOutlet
                                                     )
@@ -616,7 +618,7 @@ fun ReportScreen(
                                         onConfirm = {
                                             scope.launch {
                                                 runCatching {
-                                                    viewModel.repository.resetDailyAttendance(
+                                                    repository.resetDailyAttendance(
                                                         date = selectedDate,
                                                         outlet = if (selectedOutlet == "all") null else selectedOutlet
                                                     )
@@ -716,7 +718,7 @@ fun ReportScreen(
                                     .clickable {
                                         scope.launch {
                                             runCatching {
-                                                viewModel.repository.recordDailyAttendance(
+                                                repository.recordDailyAttendance(
                                                     scooterId = scooter.id,
                                                     date = selectedDate,
                                                     outlet = if (selectedOutlet == "all") null else selectedOutlet
@@ -748,7 +750,7 @@ fun ReportScreen(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            imageVector = if (isAttended) Icons.Filled.CheckCircle2 else Icons.Filled.Store,
+                                            imageVector = if (isAttended) Icons.Filled.CheckCircle else Icons.Filled.Store,
                                             contentDescription = null,
                                             tint = if (isAttended) Green else TextMuted,
                                             modifier = Modifier.size(16.dp)
@@ -828,7 +830,7 @@ private fun ReportStatCard(
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Baseline
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(value, color = color, fontSize = 20.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace)
             Text(sub, color = TextMuted, fontSize = 11.sp)
