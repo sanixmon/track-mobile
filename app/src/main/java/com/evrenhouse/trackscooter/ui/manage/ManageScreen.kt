@@ -299,11 +299,6 @@ fun ManageScreen(
             }
         )
 
-                if (busyAction) {
-                    CircularProgressIndicator(color = Accent, modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(8.dp))
-
-
         when {
             data.error != null && data.scooters.isEmpty() -> {
                 ErrorState(message = data.error ?: "", onRetry = { viewModel.refresh() })
