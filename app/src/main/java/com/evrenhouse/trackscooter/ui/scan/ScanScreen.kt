@@ -57,7 +57,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.evrenhouse.trackscooter.data.ScooterStatus
 import com.evrenhouse.trackscooter.ui.common.AppViewModelFactory
 import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
-import com.evrenhouse.trackscooter.ui.common.OutletDropdown
 import com.evrenhouse.trackscooter.ui.common.OutlinedAction
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
 import com.evrenhouse.trackscooter.ui.common.TypeBadge
@@ -144,26 +143,10 @@ fun ScanScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         // Header & Unified Global Outlet Picker
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text("Scan QR Scooter", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Text("Pindai QR code untuk toggle status sewa", color = TextMuted, fontSize = 12.sp)
-                }
-
-                OutletDropdown(
-                    selectedOutletId = globalOutlet,
-                    onOutletSelected = { dataViewModel.setSelectedOutlet(it) },
-                    getOutletCount = { id ->
-                        if (id == "all") dataState.scooters.size
-                        else dataState.scooters.count { (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == id }
-                    }
-                )
-            }
+        // Header
+        Column {
+            Text("Scan QR Scooter", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text("Pindai QR code untuk toggle status sewa", color = TextMuted, fontSize = 12.sp)
         }
 
         // Mode picker
@@ -259,9 +242,8 @@ fun ScanScreen(
                 }
 
                 // Outlet filter tag
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                // Outlet filter scope indicator
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Surface2, RoundedCornerShape(8.dp))
@@ -269,21 +251,11 @@ fun ScanScreen(
                 ) {
                     Text(
                         text = if (globalOutlet == "all") "Semua Outlet (${outletFilteredScooters.size} unit)"
-                        else "Lokasi: ${Outlets.labelOf(globalOutlet)} (${outletFilteredScooters.size} unit)",
+                        else "Filter Lokasi: ${Outlets.labelOf(globalOutlet)} (${outletFilteredScooters.size} unit)",
                         color = TextMuted,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium
                     )
-
-                    if (globalOutlet != "all") {
-                        Text(
-                            text = "Ganti Outlet",
-                            color = Accent,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.clickable { dataViewModel.setSelectedOutlet("all") }
-                        )
-                    }
                 }
 
                 // Input field
