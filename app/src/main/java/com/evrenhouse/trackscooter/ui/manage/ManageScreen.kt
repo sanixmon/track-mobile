@@ -403,24 +403,20 @@ fun ManageScreen(
             scooter = scooter,
             availableScooters = data.scooters.filter { it.status == ScooterStatus.AVAILABLE },
             onDismiss = { troubleScooter = null },
-            onConfirm = { mode, replacementId, structuredIssue, locationNote ->
+            onConfirm = { replacementId, note, issue, markBroken ->
                 scope.launch {
-                    runCatching {
-                        viewModel.handleTroubleSwap(
-                            scooterId = scooter.id,
-                            mode = mode,
-                            replacementId = replacementId,
-                            structuredIssue = structuredIssue,
-                            locationNote = locationNote,
-                        )
-                    }.onSuccess {
+                    val ok = viewModel.swapScooter(
+                        scooterId = scooter.id,
+                        replacementId = replacementId,
+                        note = note,
+                        issue = issue,
+                        markBroken = markBroken
+                    )
+                    if (ok) {
                         troubleScooter = null
-                        sweetAlert.showSuccess(
-                            if (mode == "swap") "Unit ${scooter.id} berhasil ditukar ke $replacementId"
-                            else "Unit ${scooter.id} dihentikan & dicatat evakuasi"
-                        )
-                    }.onFailure { err ->
-                        sweetAlert.showError(err.toUserMessage())
+                        sweetAlert.showSuccess("Unit ${scooter.id} berhasil ditukar ke $replacementId")
+                    } else {
+                        sweetAlert.showError("Gagal menukar unit.")
                     }
                 }
             },

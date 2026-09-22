@@ -14,28 +14,30 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ElectricScooter
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.WarningAmber
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,7 +53,6 @@ import androidx.compose.ui.unit.sp
 import com.evrenhouse.trackscooter.data.Scooter
 import com.evrenhouse.trackscooter.ui.theme.Accent
 import com.evrenhouse.trackscooter.ui.theme.Border
-import com.evrenhouse.trackscooter.ui.theme.Green
 import com.evrenhouse.trackscooter.ui.theme.Red
 import com.evrenhouse.trackscooter.ui.theme.Surface
 import com.evrenhouse.trackscooter.ui.theme.Surface2
@@ -61,331 +62,369 @@ import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
 import com.evrenhouse.trackscooter.ui.theme.Warning
 import com.evrenhouse.trackscooter.util.DateUtils
+import com.evrenhouse.trackscooter.util.Outlets
 import com.evrenhouse.trackscooter.util.TypeLabels
 import java.time.Duration
 import java.time.LocalDateTime
 
 private val PRESET_ISSUES = listOf(
-    "Baterai Drop / Habis",
-    "Ban Bocor / Kempes",
-    "Rem Rusak",
-    "Lampu Mati",
-    "Mesin Mati",
-    "Lainnya",
+    "Baterai Kurang",
+    "Ban Kempes",
+    "Rem Kurang Pakem",
+    "Kecepatan Lemah",
+    "Lainnya"
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TroubleSwapDialog(
     scooter: Scooter,
     availableScooters: List<Scooter>,
     onDismiss: () -> Unit,
-    onConfirm: (mode: String, replacementId: String?, structuredIssue: String, locationNote: String) -> Unit,
+    onConfirm: (replacementId: String, note: String, issue: String?, markBroken: Boolean) -> Unit,
+    submitting: Boolean = false
 ) {
-    var mode by remember { mutableStateOf("swap") } // "swap" | "evacuate"
-    var selectedIssue by remember { mutableStateOf(PRESET_ISSUES[0]) }
-    var customIssue by remember { mutableStateOf("") }
-    var locationNote by remember { mutableStateOf("") }
+    val currentRegion = remember(scooter.type) { Outlets.getHomeOutletForType(scooter.type) }
 
-    // Prioritize available scooters with matching type
-    val sortedReplacements = remember(availableScooters, scooter.type) {
+    // Prioritize: 1. Same exact type, 2. Same region, 3. Numeric ID order (1:1 web logic)
+    val sortedReplacements = remember(availableScooters, scooter.type, currentRegion) {
         availableScooters.sortedWith(
-            compareByDescending<Scooter> { it.type == scooter.type }
-                .thenBy { it.id }
+            compareByDescending<Scooter> { it.type.equals(scooter.type, ignoreCase = true) }
+                .thenByDescending { Outlets.getHomeOutletForType(it.type) == currentRegion }
+                .thenBy { it.id.filter { ch -> ch.isDigit() }.toIntOrNull() ?: 9999 }
         )
     }
 
-    var selectedReplacementId by remember {
+    var selectedReplacementId by remember(sortedReplacements) {
         mutableStateOf(sortedReplacements.firstOrNull()?.id ?: "")
     }
 
-    // Elapsed duration string
+    var selectedIssue by remember { mutableStateOf<String?>(PRESET_ISSUES[0]) }
+    var customIssue by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf("") }
+    var markBroken by remember { mutableStateOf(false) }
+    var replacementDropdownOpen by remember { mutableStateOf(false) }
+
     val elapsedText = remember(scooter.lastUpdated) {
         val dt = DateUtils.parse(scooter.lastUpdated)
         if (dt != null) {
             val totalSecs = Duration.between(dt, LocalDateTime.now(DateUtils.WIB)).seconds.coerceAtLeast(0)
-            val hrs = totalSecs / 3600
-            val mins = (totalSecs % 3600) / 60
-            if (hrs > 0) "${hrs}j ${mins}m" else "${mins} mnt"
+            DateUtils.formatDuration(totalSecs)
         } else {
             "-"
         }
     }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = Surface,
-        titleContentColor = TextPrimary,
-        textContentColor = TextMuted,
-        shape = RoundedCornerShape(16.dp),
-        title = {
+    val canSubmit by remember(selectedReplacementId, note, submitting) {
+        derivedStateOf {
+            selectedReplacementId.isNotBlank() && note.isNotBlank() && !submitting
+        }
+    }
+
+    BasicAlertDialog(
+        onDismissRequest = { if (!submitting) onDismiss() }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(Surface)
+                .border(1.dp, Border, RoundedCornerShape(20.dp))
+                .padding(20.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(32.dp)
-                            .background(Warning.copy(alpha = 0.15f), RoundedCornerShape(8.dp)),
-                        contentAlignment = Alignment.Center,
+                            .size(36.dp)
+                            .background(Accent.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Filled.WarningAmber, contentDescription = null, tint = Warning, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Filled.SwapHoriz, null, tint = Accent, modifier = Modifier.size(18.dp))
                     }
                     Column {
-                        Text("Trouble & Tukar Unit", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                        Text("Penanganan kendala scooter di jalan", fontSize = 11.sp, color = TextMuted)
+                        Text("Tukar Unit Scooter", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text("Ganti unit pelanggan dengan unit ready lain", color = TextMuted, fontSize = 12.sp)
                     }
                 }
-                IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Filled.Close, contentDescription = "Tutup", tint = TextSubtle, modifier = Modifier.size(16.dp))
+
+                IconButton(
+                    onClick = onDismiss,
+                    enabled = !submitting,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(Icons.Filled.Close, null, tint = TextMuted, modifier = Modifier.size(16.dp))
                 }
             }
-        },
-        text = {
-            Column(
+
+            // Current Unit Banner (Unit Lama)
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                    .background(Surface2, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Unit info banner
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Surface2, RoundedCornerShape(10.dp))
-                        .border(1.dp, Border, RoundedCornerShape(10.dp))
-                        .padding(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Text(scooter.id, color = Accent, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                        TypeBadge(scooter.type)
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Box(modifier = Modifier.size(6.dp).background(Red, CircleShape))
-                        Text("Durasi: $elapsedText", color = Red, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                    }
+                Column {
+                    Text("UNIT LAMA", color = TextSubtle, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text(scooter.id, color = Accent, fontSize = 16.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace)
                 }
 
-                // Mode Selector Tabs
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("PILIHAN TINDAKAN", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSubtle, letterSpacing = 1.sp)
-                    Row(
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("DURASI BERJALAN", color = TextSubtle, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text(elapsedText, color = Warning, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                }
+            }
+
+            // Replacement Unit Picker
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("PILIH UNIT PENGGANTI (READY)", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+
+                if (sortedReplacements.isEmpty()) {
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Surface2, RoundedCornerShape(10.dp))
-                            .border(1.dp, Border, RoundedCornerShape(10.dp))
-                            .padding(3.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            .background(Red.copy(alpha = 0.1f), RoundedCornerShape(10.dp))
+                            .border(1.dp, Red.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                            .padding(12.dp)
                     ) {
-                        val isSwap = mode == "swap"
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (isSwap) Accent.copy(alpha = 0.15f) else Color.Transparent)
-                                .border(1.dp, if (isSwap) Accent else Color.Transparent, RoundedCornerShape(8.dp))
-                                .clickable { mode = "swap" }
-                                .padding(vertical = 8.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                Icon(Icons.Filled.SwapHoriz, contentDescription = null, tint = if (isSwap) Accent else TextMuted, modifier = Modifier.size(15.dp))
-                                Text("Tukar Unit (Swap)", color = if (isSwap) Accent else TextMuted, fontSize = 11.sp, fontWeight = if (isSwap) FontWeight.Bold else FontWeight.Medium)
-                            }
-                        }
-
-                        val isEvacuate = mode == "evacuate"
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (isEvacuate) Warning.copy(alpha = 0.15f) else Color.Transparent)
-                                .border(1.dp, if (isEvacuate) Warning else Color.Transparent, RoundedCornerShape(8.dp))
-                                .clickable { mode = "evacuate" }
-                                .padding(vertical = 8.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                Icon(Icons.Filled.WarningAmber, contentDescription = null, tint = if (isEvacuate) Warning else TextMuted, modifier = Modifier.size(14.dp))
-                                Text("Akhiri & Evakuasi", color = if (isEvacuate) Warning else TextMuted, fontSize = 11.sp, fontWeight = if (isEvacuate) FontWeight.Bold else FontWeight.Medium)
-                            }
-                        }
+                        Text("Tidak ada unit ready yang tersedia untuk ditukar.", color = Red, fontSize = 12.sp)
                     }
-                }
-
-                // Issue Selector
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("JENIS KENDALA", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSubtle, letterSpacing = 1.sp)
-                    SimpleDropdown(
-                        label = selectedIssue,
-                        options = PRESET_ISSUES.map { it to it },
-                        selected = selectedIssue,
-                        onSelect = { selectedIssue = it },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    if (selectedIssue == "Lainnya") {
-                        OutlinedTextField(
-                            value = customIssue,
-                            onValueChange = { customIssue = it },
-                            placeholder = { Text("Tuliskan kendala spesifik...", color = TextSubtle, fontSize = 12.sp) },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            shape = RoundedCornerShape(10.dp),
-                            textStyle = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                }
-
-                // Location Note
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("LOKASI PENJEMPUTAN / CATATAN", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSubtle, letterSpacing = 1.sp)
-                    OutlinedTextField(
-                        value = locationNote,
-                        onValueChange = { locationNote = it },
-                        placeholder = { Text("Contoh: Jl. Sudirman depan Cafe X", color = TextSubtle, fontSize = 12.sp) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(10.dp),
-                        textStyle = MaterialTheme.typography.bodySmall,
-                    )
-                }
-
-                // Replacement scooter selector (only if mode == "swap")
-                if (mode == "swap") {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                } else {
+                    Box {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Surface2)
+                                .border(1.dp, Border, RoundedCornerShape(10.dp))
+                                .clickable { replacementDropdownOpen = true }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("PILIH UNIT PENGGANTI", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Accent, letterSpacing = 1.sp)
-                            Text("${sortedReplacements.size} unit tersedia", fontSize = 10.sp, color = TextMuted)
+                            val selectedBike = sortedReplacements.find { it.id == selectedReplacementId }
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    selectedReplacementId.ifBlank { "Pilih unit..." },
+                                    color = TextPrimary,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                if (selectedBike != null) {
+                                    TypeBadge(selectedBike.type)
+                                }
+                            }
+                            Icon(Icons.Filled.ArrowDropDown, null, tint = TextMuted)
                         }
 
-                        if (sortedReplacements.isEmpty()) {
-                            Text(
-                                "Tidak ada unit berstatus Tersedia saat ini. Silakan pilih opsi 'Akhiri & Evakuasi'.",
-                                color = Red,
-                                fontSize = 11.sp,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(Red.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
-                                    .padding(8.dp),
-                            )
-                        } else {
-                            var dropdownExpanded by remember { mutableStateOf(false) }
-                            val currentChoice = sortedReplacements.firstOrNull { it.id == selectedReplacementId }
-                                ?: sortedReplacements.first()
-
-                            Box(modifier = Modifier.fillMaxWidth()) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(Surface3, RoundedCornerShape(10.dp))
-                                        .border(1.dp, Border, RoundedCornerShape(10.dp))
-                                        .clickable { dropdownExpanded = true }
-                                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    ) {
-                                        Text(currentChoice.id, color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                                        TypeBadge(currentChoice.type)
-                                        if (currentChoice.type == scooter.type) {
-                                            Text("(Tipe Sama)", color = Green, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                        DropdownMenu(
+                            expanded = replacementDropdownOpen,
+                            onDismissRequest = { replacementDropdownOpen = false },
+                            modifier = Modifier
+                                .background(Surface, RoundedCornerShape(10.dp))
+                                .border(1.dp, Border, RoundedCornerShape(10.dp))
+                        ) {
+                            sortedReplacements.forEach { r ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                Text(r.id, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                                                TypeBadge(r.type)
+                                            }
+                                            Text(TypeLabels.of(r.type), color = TextMuted, fontSize = 11.sp)
                                         }
+                                    },
+                                    onClick = {
+                                        selectedReplacementId = r.id
+                                        replacementDropdownOpen = false
                                     }
-                                    Icon(Icons.Filled.ArrowDropDown, contentDescription = null, tint = TextMuted)
-                                }
-
-                                DropdownMenu(
-                                    expanded = dropdownExpanded,
-                                    onDismissRequest = { dropdownExpanded = false },
-                                    modifier = Modifier
-                                        .background(Surface, RoundedCornerShape(10.dp))
-                                        .border(1.dp, Border, RoundedCornerShape(10.dp)),
-                                ) {
-                                    sortedReplacements.forEach { candidate ->
-                                        DropdownMenuItem(
-                                            text = {
-                                                Row(
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                                ) {
-                                                    Text(candidate.id, color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                                                    TypeBadge(candidate.type)
-                                                    if (candidate.type == scooter.type) {
-                                                        Text("(Tipe Sama)", color = Green, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-                                                    }
-                                                }
-                                            },
-                                            onClick = {
-                                                selectedReplacementId = candidate.id
-                                                dropdownExpanded = false
-                                            },
-                                        )
-                                    }
-                                }
+                                )
                             }
                         }
                     }
                 }
             }
-        },
-        confirmButton = {
-            val canSubmit = mode != "swap" || selectedReplacementId.isNotBlank()
-            Button(
-                onClick = {
-                    val issueTitle = if (selectedIssue == "Lainnya") {
-                        customIssue.trim().ifBlank { "Kendala lain" }
-                    } else {
-                        selectedIssue
-                    }
-                    val locText = if (locationNote.isNotBlank()) "di ${locationNote.trim()}" else "di jalan"
-                    val structuredIssue = if (mode == "swap") {
-                        "[TUKAR -> $selectedReplacementId] $issueTitle $locText (Durasi: $elapsedText)"
-                    } else {
-                        "[EVAKUASI] $issueTitle $locText (Durasi: $elapsedText)"
-                    }
-                    onConfirm(mode, if (mode == "swap") selectedReplacementId else null, structuredIssue, locationNote.trim())
-                },
-                enabled = canSubmit,
-                colors = ButtonDefaults.buttonColors(containerColor = if (mode == "swap") Accent else Warning),
-                shape = RoundedCornerShape(8.dp),
-            ) {
-                Text(
-                    if (mode == "swap") "Tukar Unit" else "Catat Evakuasi",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
+
+            // Note (Wajib diisi)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("CATATAN ALASAN TUKAR *", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+                    Text("Wajib diisi", color = Red, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
+
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    placeholder = { Text("Contoh: Baterai habis di jalan, tukar ke unit ready...", color = TextSubtle, fontSize = 12.sp) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    minLines = 2,
+                    maxLines = 3,
+                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Accent,
+                        unfocusedBorderColor = Border,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                    )
                 )
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Batal", color = TextMuted, fontSize = 12.sp)
+
+            // Issue Categories
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("KATEGORI KENDALA", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    PRESET_ISSUES.take(3).forEach { iss ->
+                        val isSelected = selectedIssue == iss
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isSelected) Accent else Surface2)
+                                .border(1.dp, if (isSelected) Accent else Border, RoundedCornerShape(8.dp))
+                                .clickable { selectedIssue = if (isSelected) null else iss }
+                                .padding(vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = iss,
+                                color = if (isSelected) Color.White else TextMuted,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    PRESET_ISSUES.drop(3).forEach { iss ->
+                        val isSelected = selectedIssue == iss
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isSelected) Accent else Surface2)
+                                .border(1.dp, if (isSelected) Accent else Border, RoundedCornerShape(8.dp))
+                                .clickable { selectedIssue = if (isSelected) null else iss }
+                                .padding(vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = iss,
+                                color = if (isSelected) Color.White else TextMuted,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                if (selectedIssue == "Lainnya") {
+                    OutlinedTextField(
+                        value = customIssue,
+                        onValueChange = { customIssue = it },
+                        placeholder = { Text("Rincian kendala lainnya...", color = TextSubtle, fontSize = 12.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        singleLine = true
+                    )
+                }
             }
-        },
-    )
+
+            // Mark broken checkbox
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { markBroken = !markBroken }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Checkbox(
+                    checked = markBroken,
+                    onCheckedChange = { markBroken = it },
+                    colors = CheckboxDefaults.colors(checkedColor = Accent)
+                )
+                Text(
+                    text = "Tandai unit lama sebagai kendala / butuh perbaikan",
+                    color = TextPrimary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            // Action buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    enabled = !submitting,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Border)
+                ) {
+                    Text("Batal", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                }
+
+                Button(
+                    onClick = {
+                        val issueText = if (selectedIssue == "Lainnya") {
+                            customIssue.ifBlank { "Lainnya" }
+                        } else selectedIssue
+
+                        onConfirm(selectedReplacementId, note.trim(), issueText, markBroken)
+                    },
+                    enabled = canSubmit,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1.4f),
+                    colors = ButtonDefaults.buttonColors(containerColor = Accent)
+                ) {
+                    if (submitting) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Memproses...", fontSize = 12.sp)
+                    } else {
+                        Text("Tukar Unit Sekarang", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                }
+            }
+        }
+    }
 }

@@ -334,22 +334,21 @@ fun ScooterDetailScreen(
             scooter = state.scooter!!,
             availableScooters = state.allScooters.filter { it.status == ScooterStatus.AVAILABLE },
             onDismiss = { showTroubleDialog = false },
-            onConfirm = { mode, replacementId, structuredIssue, locationNote ->
+            onConfirm = { replacementId, note, issue, markBroken ->
                 scope.launch {
-                    val ok = viewModel.handleTroubleSwap(
-                        mode = mode,
+                    val ok = viewModel.swapScooter(
+                        scooterId = state.scooter!!.id,
                         replacementId = replacementId,
-                        structuredIssue = structuredIssue,
-                        locationNote = locationNote,
+                        note = note,
+                        issue = issue,
+                        markBroken = markBroken
                     )
                     showTroubleDialog = false
                     if (ok) {
-                        sweetAlert.showSuccess(
-                            if (mode == "swap") "Unit ${state.scooter?.id} berhasil ditukar ke $replacementId"
-                            else "Unit ${state.scooter?.id} dihentikan & dicatat evakuasi"
-                        )
+                        sweetAlert.showSuccess("Unit ${state.scooter?.id} berhasil ditukar ke $replacementId")
+                        viewModel.refresh()
                     } else {
-                        sweetAlert.showError("Gagal memproses insiden.")
+                        sweetAlert.showError("Gagal menukar unit.")
                     }
                 }
             },

@@ -62,43 +62,21 @@ class ScooterDataViewModel(
         repository.notifyDataMutated()
     }
 
-    /** Handle trouble/battery drop on the road: return old unit, mark maintenance (luar), optional swap checkout. */
-    suspend fun handleTroubleSwap(
+    /** Execute atomic swap on backend inheriting rental start time (1:1 with web). */
+    suspend fun swapScooter(
         scooterId: String,
-        mode: String,
-        replacementId: String?,
-        structuredIssue: String,
-        locationNote: String,
-    ) {
-        // 1. Return old scooter to balance activity log
-        val returnRes = repository.toggleScooter(scooterId)
-        if (returnRes.success) {
-            repository.notifyScooterToggled(returnRes)
+        replacementId: String,
+        note: String,
+        issue: String? = null,
+        markBroken: Boolean = false
+    ): Boolean = runCatching {
+        val res = repository.swapScooter(scooterId, replacementId, note, issue, markBroken)
+        if (res.success) {
+            repository.notifyDataMutated()
+            refresh(silent = true)
         }
-
-        // 2. Mark old scooter as maintenance in field
-        repository.updateScooter(
-            scooterId,
-            UpdateScooterRequest(
-                status = ScooterStatus.MAINTENANCE,
-                location = "luar",
-                issue = structuredIssue,
-                note = locationNote.ifBlank { null },
-                maintenanceNote = structuredIssue,
-            ),
-        )
-
-        // 3. If mode == "swap", checkout replacement scooter
-        if (mode == "swap" && !replacementId.isNullOrBlank()) {
-            val checkoutRes = repository.toggleScooter(replacementId)
-            if (checkoutRes.success) {
-                repository.notifyScooterToggled(checkoutRes)
-            }
-        }
-
-        repository.notifyDataMutated()
-        refresh()
-    }
+        res.success
+    }.getOrDefault(false)
 
     fun refresh(silent: Boolean = false) {
         viewModelScope.launch {

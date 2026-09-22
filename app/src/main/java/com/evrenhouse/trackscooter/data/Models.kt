@@ -126,6 +126,22 @@ data class ToggleRequest(
 )
 
 @Serializable
+data class SwapScooterRequest(
+    @SerialName("replacementId") val replacementId: String,
+    @SerialName("note") val note: String,
+    @SerialName("issue") val issue: String? = null,
+    @SerialName("markBroken") val markBroken: Boolean = false,
+)
+
+@Serializable
+data class SwapScooterResponse(
+    @SerialName("success") val success: Boolean,
+    @SerialName("message") val message: String? = null,
+    @SerialName("oldScooter") val oldScooter: Scooter? = null,
+    @SerialName("replacementScooter") val replacementScooter: Scooter? = null,
+)
+
+@Serializable
 data class ToggleResponse(
     @SerialName("success") val success: Boolean,
     @SerialName("requiresConfirmation") val requiresConfirmation: Boolean = false,

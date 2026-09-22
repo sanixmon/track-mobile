@@ -268,7 +268,6 @@ fun ReportScreen(
         }
     }
 
-    val timeFormat = remember { SimpleDateFormat("HH:mm", Locale("id", "ID")) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -774,7 +773,7 @@ fun ReportScreen(
                                         Text(
                                             text = if (isAttended && record?.scannedAt != null) {
                                                 val scanDt = DateUtils.parse(record.scannedAt)
-                                                if (scanDt != null) "Diabsen: ${timeFormat.format(scanDt)}" else "Sudah diabsen"
+                                                if (scanDt != null) "Diabsen: ${DateUtils.formatTime(scanDt)}" else "Sudah diabsen"
                                             } else "Belum diabsen hadir",
                                             color = TextMuted,
                                             fontSize = 11.sp

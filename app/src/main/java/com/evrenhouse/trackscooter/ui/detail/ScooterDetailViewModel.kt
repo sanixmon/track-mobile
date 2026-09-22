@@ -66,38 +66,19 @@ class ScooterDetailViewModel(
         }
     }
 
-    suspend fun handleTroubleSwap(
-        mode: String,
-        replacementId: String?,
-        structuredIssue: String,
-        locationNote: String,
+    suspend fun swapScooter(
+        scooterId: String,
+        replacementId: String,
+        note: String,
+        issue: String? = null,
+        markBroken: Boolean = false
     ): Boolean = runCatching {
-        val returnRes = repository.toggleScooter(scooterId)
-        if (returnRes.success) {
-            repository.notifyScooterToggled(returnRes)
+        val res = repository.swapScooter(scooterId, replacementId, note, issue, markBroken)
+        if (res.success) {
+            repository.notifyDataMutated()
+            refresh()
         }
-
-        repository.updateScooter(
-            scooterId,
-            UpdateScooterRequest(
-                status = ScooterStatus.MAINTENANCE,
-                location = "luar",
-                issue = structuredIssue,
-                note = locationNote.ifBlank { null },
-                maintenanceNote = structuredIssue,
-            ),
-        )
-
-        if (mode == "swap" && !replacementId.isNullOrBlank()) {
-            val checkoutRes = repository.toggleScooter(replacementId)
-            if (checkoutRes.success) {
-                repository.notifyScooterToggled(checkoutRes)
-            }
-        }
-
-        repository.notifyDataMutated()
-        refresh()
-        true
+        res.success
     }.getOrDefault(false)
 
     fun saveCondition(condition: SaveDeviceConditionRequest) {

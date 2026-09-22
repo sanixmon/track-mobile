@@ -1,6 +1,5 @@
 package com.evrenhouse.trackscooter.ui.monitor
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,31 +16,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -51,42 +35,30 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.Saver
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.evrenhouse.trackscooter.data.Scooter
 import com.evrenhouse.trackscooter.data.ScooterStatus
-import com.evrenhouse.trackscooter.data.toUserMessage
 import com.evrenhouse.trackscooter.ui.common.ErrorState
 import com.evrenhouse.trackscooter.ui.common.LoadingState
+import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
 import com.evrenhouse.trackscooter.ui.common.TroubleSwapDialog
-import com.evrenhouse.trackscooter.ui.dashboard.ScooterCard
-import com.evrenhouse.trackscooter.ui.theme.Accent
-import com.evrenhouse.trackscooter.ui.theme.BlueLive
+import com.evrenhouse.trackscooter.ui.detail.ScooterDetailDialog
 import com.evrenhouse.trackscooter.ui.theme.Border
-import com.evrenhouse.trackscooter.ui.theme.Green
-import com.evrenhouse.trackscooter.ui.theme.Red
 import com.evrenhouse.trackscooter.ui.theme.Surface
-import com.evrenhouse.trackscooter.ui.theme.Surface3
+import com.evrenhouse.trackscooter.ui.theme.Surface2
 import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
-import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
-import com.evrenhouse.trackscooter.util.ActionLabels
 import com.evrenhouse.trackscooter.util.DateUtils
-import com.evrenhouse.trackscooter.util.Exporter
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,14 +67,16 @@ fun MonitorScreen(
     onOpenDetail: ((String) -> Unit)? = null,
 ) {
     val state by viewModel.state.collectAsState()
-    val context = androidx.compose.ui.platform.LocalContext.current
     val sweetAlert = LocalSweetAlert.current
     val scope = rememberCoroutineScope()
 
     val pagerState = rememberPagerState(initialPage = 0) { MonitorTab.entries.size }
     val currentTab by remember { derivedStateOf { MonitorTab.entries[pagerState.currentPage] } }
     var troubleScooter by remember { mutableStateOf<Scooter?>(null) }
-    // Ticker to live-update rental duration without seconds every 5 seconds
+    var detailScooterId by remember { mutableStateOf<String?>(null) }
+    var sortOrder by remember { mutableStateOf("newest") } // "newest" | "oldest"
+
+    // 5-second ticker keeps rental duration updated (1:1 with web)
     var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -113,19 +87,23 @@ fun MonitorScreen(
 
     val todayStr = remember { DateUtils.localDateKey(DateUtils.today()) }
 
-    val logForDate by remember(state.activityLog) {
+    val todayLogsCount by remember(state.activityLog) {
         derivedStateOf {
-            state.activityLog.filter { DateUtils.dateKey(it.timestamp) == todayStr }
-        }
-    }
-    // In-use scooters for Live Session tab
-    val inUseScooters by remember {
-        derivedStateOf {
-            state.scooters.filter { it.status == "in-use" }
+            state.activityLog.count { DateUtils.dateKey(it.timestamp) == todayStr }
         }
     }
 
-
+    // In-use scooters sorted by newest/oldest (1:1 with web)
+    val inUseScooters by remember(state.scooters, sortOrder) {
+        derivedStateOf {
+            val list = state.scooters.filter { it.status == ScooterStatus.IN_USE }
+            if (sortOrder == "newest") {
+                list.sortedByDescending { it.lastUpdated }
+            } else {
+                list.sortedBy { it.lastUpdated }
+            }
+        }
+    }
 
     PullToRefreshBox(
         isRefreshing = state.refreshing,
@@ -133,19 +111,18 @@ fun MonitorScreen(
         modifier = Modifier.fillMaxSize(),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // ── Fixed Top Header & Tab Selector ──
+            // ── Fixed Top Header & Tab Selector (1:1 web layout) ──
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 LivePulseHeader(
-                    isLiveView = true,
                     isLiveConnected = state.isLiveConnected,
                     isReconnecting = state.isReconnecting,
-                    activeDate = DateUtils.today(),
                 )
+
                 MonitorTabSelector(
                     selectedTab = currentTab,
                     onSelectTab = { tab ->
@@ -154,7 +131,7 @@ fun MonitorScreen(
                         }
                     },
                     liveCount = inUseScooters.size,
-                    recentCount = logForDate.size,
+                    recentCount = todayLogsCount,
                 )
             }
 
@@ -176,11 +153,10 @@ fun MonitorScreen(
                             .padding(16.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        LoadingState("Memuat data monitor...")
+                        LoadingState("Memuat data pemantauan...")
                     }
                 }
                 else -> {
-                    // ── Horizontal Pager for swipe / scroll between tabs ──
                     HorizontalPager(
                         state = pagerState,
                         modifier = Modifier.fillMaxSize(),
@@ -188,7 +164,7 @@ fun MonitorScreen(
                     ) { page ->
                         when (MonitorTab.entries[page]) {
                             // ══════════════════════════════════════
-                            // TAB 1: LIVE SESSION
+                            // TAB 1: SESI BERJALAN (1:1 with web)
                             // ══════════════════════════════════════
                             MonitorTab.LIVE_SESSION -> {
                                 LazyColumn(
@@ -202,15 +178,47 @@ fun MonitorScreen(
                                         }
                                     } else {
                                         item {
-                                            Text(
-                                                text = "SESI SEWA BERJALAN (${inUseScooters.size} UNIT)",
-                                                color = TextSubtle,
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                letterSpacing = 1.1.sp,
-                                                modifier = Modifier.padding(bottom = 2.dp),
-                                            )
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    text = "SESI SEWA BERJALAN (${inUseScooters.size} UNIT)",
+                                                    color = TextSubtle,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    letterSpacing = 1.sp,
+                                                )
+
+                                                if (inUseScooters.size > 1) {
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                        modifier = Modifier
+                                                            .clip(RoundedCornerShape(6.dp))
+                                                            .clickable {
+                                                                sortOrder = if (sortOrder == "newest") "oldest" else "newest"
+                                                            }
+                                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    ) {
+                                                        Icon(
+                                                            Icons.Filled.SwapVert,
+                                                            contentDescription = null,
+                                                            tint = TextMuted,
+                                                            modifier = Modifier.size(14.dp)
+                                                        )
+                                                        Text(
+                                                            text = if (sortOrder == "newest") "Terbaru" else "Terlama",
+                                                            color = TextMuted,
+                                                            fontSize = 11.sp,
+                                                            fontWeight = FontWeight.SemiBold
+                                                        )
+                                                    }
+                                                }
+                                            }
                                         }
+
                                         items(
                                             items = inUseScooters,
                                             key = { "live_${it.id}" },
@@ -218,7 +226,10 @@ fun MonitorScreen(
                                             LiveSessionCard(
                                                 scooter = scooter,
                                                 nowMillis = nowMillis,
-                                                onClick = onOpenDetail?.let { open -> { open(scooter.id) } },
+                                                onClick = {
+                                                    detailScooterId = scooter.id
+                                                    onOpenDetail?.invoke(scooter.id)
+                                                },
                                                 onTroubleSwap = { troubleScooter = it },
                                             )
                                         }
@@ -227,7 +238,7 @@ fun MonitorScreen(
                             }
 
                             // ══════════════════════════════════════
-                            // TAB 2: RECENT (Aktivitas Terkini)
+                            // TAB 2: AKTIVITAS TERBARU (1:1 with web)
                             // ══════════════════════════════════════
                             MonitorTab.ACTIVITY -> {
                                 LazyColumn(
@@ -236,60 +247,14 @@ fun MonitorScreen(
                                     verticalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
                                     item {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically,
-                                        ) {
-                                            Text(
-                                                text = "AKTIVITAS TERKINI HARI INI",
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                letterSpacing = 1.1.sp,
-                                            )
-                                            Text(
-                                                text = "${logForDate.size} transaksi",
-                                                color = TextMuted,
-                                                fontSize = 11.sp,
-                                            )
-                                        }
-                                    }
-
-                                    if (logForDate.isEmpty()) {
-                                        item {
-                                            Text(
-                                                text = "Belum ada aktivitas hari ini.",
-                                                fontSize = 12.sp,
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .background(Surface, RoundedCornerShape(14.dp))
-                                                    .border(1.dp, Border, RoundedCornerShape(14.dp))
-                                                    .padding(28.dp),
-                                            )
-                                        }
-                                    } else {
-                                        item {
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .background(Surface, RoundedCornerShape(14.dp))
-                                                    .border(1.dp, Border, RoundedCornerShape(14.dp)),
-                                            ) {
-                                                Column {
-                                                    logForDate.forEachIndexed { index, entry ->
-                                                        ActivityItemRow(entry = entry, isLiveView = true)
-                                                        if (index < logForDate.size - 1) {
-                                                            Box(
-                                                                Modifier
-                                                                    .fillMaxWidth()
-                                                                    .height(1.dp)
-                                                                    .background(Border)
-                                                            )
-                                                        }
-                                                    }
-                                                }
+                                        ActivityFeedPanel(
+                                            activityLog = state.activityLog,
+                                            scooters = state.scooters,
+                                            onOpenDetail = { id ->
+                                                detailScooterId = id
+                                                onOpenDetail?.invoke(id)
                                             }
-                                        }
+                                        )
                                     }
                                 }
                             }
@@ -298,33 +263,39 @@ fun MonitorScreen(
                 }
             }
         }
+    }
+
+    // ── Trouble Swap Dialog (1:1 web backend API call) ──
     troubleScooter?.let { scooter ->
         TroubleSwapDialog(
             scooter = scooter,
             availableScooters = state.scooters.filter { it.status == ScooterStatus.AVAILABLE },
             onDismiss = { troubleScooter = null },
-            onConfirm = { mode, replacementId, structuredIssue, locationNote ->
+            onConfirm = { replacementId, note, issue, markBroken ->
                 scope.launch {
-                    runCatching {
-                        viewModel.handleTroubleSwap(
-                            scooterId = scooter.id,
-                            mode = mode,
-                            replacementId = replacementId,
-                            structuredIssue = structuredIssue,
-                            locationNote = locationNote,
-                        )
-                    }.onSuccess {
+                    val ok = viewModel.swapScooter(
+                        scooterId = scooter.id,
+                        replacementId = replacementId,
+                        note = note,
+                        issue = issue,
+                        markBroken = markBroken
+                    )
+                    if (ok) {
                         troubleScooter = null
-                        sweetAlert.showSuccess(
-                            if (mode == "swap") "Unit ${scooter.id} berhasil ditukar ke $replacementId"
-                            else "Unit ${scooter.id} dihentikan & dicatat evakuasi"
-                        )
-                    }.onFailure { err ->
-                        sweetAlert.showError("Gagal memproses insiden: ${err.toUserMessage()}")
+                        sweetAlert.showSuccess("Unit ${scooter.id} berhasil ditukar ke $replacementId")
+                    } else {
+                        sweetAlert.showError("Gagal menukar unit. Pastikan unit pengganti ready.")
                     }
                 }
             },
         )
     }
-}
+
+    // ── Scooter Detail Dialog ──
+    detailScooterId?.let { id ->
+        ScooterDetailDialog(
+            scooterId = id,
+            onDismiss = { detailScooterId = null }
+        )
+    }
 }

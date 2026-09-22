@@ -30,6 +30,9 @@ interface ApiService {
     @POST("api/scooters/{id}/toggle")
     suspend fun toggleScooter(@Path("id") id: String, @Body body: ToggleRequest): ToggleResponse
 
+    @POST("api/scooters/{id}/swap")
+    suspend fun swapScooter(@Path("id") id: String, @Body body: SwapScooterRequest): SwapScooterResponse
+
     @GET("api/activity-log")
     suspend fun getActivityLog(): List<ActivityLogEntry>
 

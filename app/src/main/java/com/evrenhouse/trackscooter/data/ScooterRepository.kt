@@ -160,13 +160,18 @@ class ScooterRepository(private val api: ApiService = ApiClient.service) {
         api.completeMaintenance(recordId)
     }
 
-    /**
-     * Toggle a scooter between available <-> in-use.
-     * Returns the raw response — callers must handle requiresConfirmation.
-     */
     suspend fun toggleScooter(id: String, forceMaintenance: Boolean = false): ToggleResponse =
         withContext(Dispatchers.IO) { api.toggleScooter(id, ToggleRequest(forceMaintenance)) }
 
+    suspend fun swapScooter(
+        id: String,
+        replacementId: String,
+        note: String,
+        issue: String? = null,
+        markBroken: Boolean = false
+    ): SwapScooterResponse = withContext(Dispatchers.IO) {
+        api.swapScooter(id, SwapScooterRequest(replacementId, note, issue, markBroken))
+    }
     suspend fun downloadBackup(): ResponseBody = withContext(Dispatchers.IO) { api.downloadBackup() }
 }
 
