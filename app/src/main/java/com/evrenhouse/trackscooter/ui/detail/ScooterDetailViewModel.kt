@@ -8,8 +8,6 @@ import com.evrenhouse.trackscooter.data.MaintenanceRecord
 import com.evrenhouse.trackscooter.data.SaveDeviceConditionRequest
 import com.evrenhouse.trackscooter.data.Scooter
 import com.evrenhouse.trackscooter.data.ScooterRepository
-import com.evrenhouse.trackscooter.data.ScooterStatus
-import com.evrenhouse.trackscooter.data.UpdateScooterRequest
 import com.evrenhouse.trackscooter.data.toUserMessage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,19 +29,25 @@ data class DetailUiState(
 
 class ScooterDetailViewModel(
     private val repository: ScooterRepository,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle? = null,
 ) : ViewModel() {
 
-    private val scooterId: String = savedStateHandle.get<String>("scooterId") ?: ""
+    private val initialId: String = savedStateHandle?.get<String>("scooterId") ?: ""
 
-    private val _state = MutableStateFlow(DetailUiState(scooterId = scooterId))
+    private val _state = MutableStateFlow(DetailUiState(scooterId = initialId))
     val state: StateFlow<DetailUiState> = _state.asStateFlow()
 
     init {
-        refresh()
+        if (initialId.isNotBlank()) {
+            loadScooter(initialId)
+        }
     }
 
-    fun refresh() {
+    fun loadScooter(id: String) {
+        val cleanId = id.trim().uppercase()
+        if (cleanId.isBlank()) return
+
+        _state.value = _state.value.copy(scooterId = cleanId, loading = true, error = null)
         viewModelScope.launch {
             runCatching {
                 val scooters = repository.getScooters()
@@ -52,12 +56,15 @@ class ScooterDetailViewModel(
                 Triple(scooters, log, maintenance)
             }
                 .onSuccess { (scooters, log, maintenance) ->
+                    val foundScooter = scooters.firstOrNull { it.id.equals(cleanId, ignoreCase = true) }
                     _state.value = _state.value.copy(
-                        scooter = scooters.firstOrNull { it.id == scooterId },
+                        scooterId = cleanId,
+                        scooter = foundScooter,
                         allScooters = scooters,
-                        log = log.filter { it.scooterId == scooterId }.take(15),
-                        maintenance = maintenance.filter { it.scooterId == scooterId }.take(15),
+                        log = log.filter { it.scooterId.equals(cleanId, ignoreCase = true) }.take(15),
+                        maintenance = maintenance.filter { it.scooterId.equals(cleanId, ignoreCase = true) }.take(15),
                         loading = false,
+                        error = if (foundScooter == null) "Unit $cleanId tidak ditemukan." else null,
                     )
                 }
                 .onFailure { err ->
@@ -66,12 +73,19 @@ class ScooterDetailViewModel(
         }
     }
 
+    fun refresh() {
+        val currentId = _state.value.scooterId
+        if (currentId.isNotBlank()) {
+            loadScooter(currentId)
+        }
+    }
+
     suspend fun swapScooter(
         scooterId: String,
         replacementId: String,
         note: String,
         issue: String? = null,
-        markBroken: Boolean = false
+        markBroken: Boolean = false,
     ): Boolean = runCatching {
         val res = repository.swapScooter(scooterId, replacementId, note, issue, markBroken)
         if (res.success) {
@@ -82,13 +96,14 @@ class ScooterDetailViewModel(
     }.getOrDefault(false)
 
     fun saveCondition(condition: SaveDeviceConditionRequest) {
-        if (_state.value.saving) return
+        val currentId = _state.value.scooterId
+        if (currentId.isBlank() || _state.value.saving) return
         _state.value = _state.value.copy(saving = true)
         viewModelScope.launch {
-            runCatching { repository.saveDeviceCondition(scooterId, condition) }
+            runCatching { repository.saveDeviceCondition(currentId, condition) }
                 .onSuccess {
                     _state.value = _state.value.copy(saving = false, toast = "Kondisi perangkat disimpan")
-                    refresh()
+                    loadScooter(currentId)
                 }
                 .onFailure { err ->
                     _state.value = _state.value.copy(saving = false, toast = err.toUserMessage())

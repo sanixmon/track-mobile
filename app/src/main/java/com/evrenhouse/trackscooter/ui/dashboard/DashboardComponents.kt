@@ -188,8 +188,8 @@ fun RecentLogTableCard(
             val sessionList = mutableListOf<RentalSessionSimple>()
 
             perUnit.forEach { (scooterId, logs) ->
-                val bike = scooters.find { it.id == scooterId }
-                val type = bike?.type ?: "sd"
+                val bike = scooters.find { it.id.equals(scooterId, ignoreCase = true) } ?: return@forEach
+                val type = bike.type
                 val sorted = logs.mapNotNull {
                     val dt = DateUtils.parse(it.timestamp)
                     if (dt != null) it to dt else null

@@ -92,12 +92,19 @@ import kotlinx.coroutines.launch
 fun ScooterDetailScreen(
     scooterId: String,
     onBack: () -> Unit,
-    viewModel: ScooterDetailViewModel = viewModel(factory = AppViewModelFactory(repository())),
+    viewModel: ScooterDetailViewModel = viewModel(
+        key = "detail_$scooterId",
+        factory = AppViewModelFactory(repository())
+    ),
 ) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
     val sweetAlert = LocalSweetAlert.current
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(scooterId) {
+        viewModel.loadScooter(scooterId)
+    }
 
     // Local editable condition (mirrors web ScooterDetailModal)
     var condition by remember { mutableStateOf(emptyMap<String, String>()) }

@@ -77,6 +77,7 @@ enum class MonitorTab(val label: String, val icon: ImageVector) {
 fun LivePulseHeader(
     isLiveConnected: Boolean,
     isReconnecting: Boolean,
+    outletName: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
@@ -160,7 +161,11 @@ fun LivePulseHeader(
         }
 
         Text(
-            text = "Pantau armada yang sedang digunakan pelanggan secara real-time.",
+            text = if (outletName.isNullOrBlank() || outletName == "Semua Outlet") {
+                "Pantau armada yang sedang digunakan pelanggan secara real-time."
+            } else {
+                "Pantau armada $outletName secara real-time."
+            },
             color = TextMuted,
             fontSize = 12.sp,
         )
@@ -519,7 +524,9 @@ fun ActivityFeedPanel(
         val list = mutableListOf<UnifiedLogItem>()
         val todayStr = DateUtils.localDateKey(today)
 
+        val allowedScooterIds = scooters.map { it.id }.toSet()
         for ((scooterId, logs) in perUnit) {
+            if (allowedScooterIds.isNotEmpty() && !allowedScooterIds.contains(scooterId)) continue
             logs.sortBy { it.second }
             var lastReturnDt: LocalDateTime? = null
             var lastCheckoutDt: LocalDateTime? = null

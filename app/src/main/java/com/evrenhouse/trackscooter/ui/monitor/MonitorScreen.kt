@@ -56,6 +56,7 @@ import com.evrenhouse.trackscooter.ui.theme.Surface2
 import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
+import com.evrenhouse.trackscooter.util.Outlets
 import com.evrenhouse.trackscooter.util.DateUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -86,17 +87,39 @@ fun MonitorScreen(
     }
 
     val todayStr = remember { DateUtils.localDateKey(DateUtils.today()) }
+    val globalOutlet by viewModel.selectedOutlet.collectAsState()
 
-    val todayLogsCount by remember(state.activityLog) {
+    // Filter scooters by global outlet
+    val outletFilteredScooters by remember(state.scooters, globalOutlet) {
         derivedStateOf {
-            state.activityLog.count { DateUtils.dateKey(it.timestamp) == todayStr }
+            if (globalOutlet == "all") state.scooters
+            else state.scooters.filter {
+                (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == globalOutlet
+            }
         }
     }
 
-    // In-use scooters sorted by newest/oldest (1:1 with web)
-    val inUseScooters by remember(state.scooters, sortOrder) {
+    // Filter activity log by global outlet
+    val outletFilteredActivityLog by remember(state.activityLog, outletFilteredScooters, globalOutlet) {
         derivedStateOf {
-            val list = state.scooters.filter { it.status == ScooterStatus.IN_USE }
+            if (globalOutlet == "all") state.activityLog
+            else {
+                val validIds = outletFilteredScooters.map { it.id }.toSet()
+                state.activityLog.filter { validIds.contains(it.scooterId) }
+            }
+        }
+    }
+
+    val todayLogsCount by remember(outletFilteredActivityLog, todayStr) {
+        derivedStateOf {
+            outletFilteredActivityLog.count { DateUtils.dateKey(it.timestamp) == todayStr }
+        }
+    }
+
+    // In-use scooters scoped to outlet
+    val inUseScooters by remember(outletFilteredScooters, sortOrder) {
+        derivedStateOf {
+            val list = outletFilteredScooters.filter { it.status == ScooterStatus.IN_USE }
             if (sortOrder == "newest") {
                 list.sortedByDescending { it.lastUpdated }
             } else {
@@ -121,6 +144,7 @@ fun MonitorScreen(
                 LivePulseHeader(
                     isLiveConnected = state.isLiveConnected,
                     isReconnecting = state.isReconnecting,
+                    outletName = if (globalOutlet == "all") null else Outlets.labelOf(globalOutlet),
                 )
 
                 MonitorTabSelector(
@@ -248,8 +272,8 @@ fun MonitorScreen(
                                 ) {
                                     item {
                                         ActivityFeedPanel(
-                                            activityLog = state.activityLog,
-                                            scooters = state.scooters,
+                                            activityLog = outletFilteredActivityLog,
+                                            scooters = outletFilteredScooters,
                                             onOpenDetail = { id ->
                                                 detailScooterId = id
                                                 onOpenDetail?.invoke(id)
@@ -269,7 +293,7 @@ fun MonitorScreen(
     troubleScooter?.let { scooter ->
         TroubleSwapDialog(
             scooter = scooter,
-            availableScooters = state.scooters.filter { it.status == ScooterStatus.AVAILABLE },
+            availableScooters = outletFilteredScooters.filter { it.status == ScooterStatus.AVAILABLE },
             onDismiss = { troubleScooter = null },
             onConfirm = { replacementId, note, issue, markBroken ->
                 scope.launch {

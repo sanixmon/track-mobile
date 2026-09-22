@@ -97,6 +97,16 @@ fun DashboardScreen(
         }
     }
 
+    val outletFilteredActivityLog by remember(state.activityLog, outletFilteredScooters, activeOutlet) {
+        derivedStateOf {
+            if (activeOutlet == "all") state.activityLog
+            else {
+                val outletScooterIds = outletFilteredScooters.map { it.id }.toSet()
+                state.activityLog.filter { outletScooterIds.contains(it.scooterId) }
+            }
+        }
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -254,7 +264,7 @@ fun DashboardScreen(
                 // ── Log Recent (Tabel Sesi Sewa Hari Ini 1:1 Web) ──
                 item {
                     RecentLogTableCard(
-                        activityLog = state.activityLog,
+                        activityLog = outletFilteredActivityLog,
                         scooters = outletFilteredScooters,
                         onSelect = onOpenDetail
                     )
