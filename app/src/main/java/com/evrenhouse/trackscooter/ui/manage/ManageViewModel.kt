@@ -23,9 +23,13 @@ class ManageViewModel(
     private val _state = MutableStateFlow(ManageUiState())
     val state: StateFlow<ManageUiState> = _state.asStateFlow()
 
-    suspend fun addScooter(id: String?, type: String): Boolean =
-        runCatching { repository.addScooter(id, type) }.isSuccess
-
+    suspend fun addScooter(
+        id: String?,
+        type: String,
+        currentOutlet: String? = null,
+        ownership: String? = "outlet"
+    ): Boolean =
+        runCatching { repository.addScooter(id, type, currentOutlet, ownership) }.isSuccess
     suspend fun deleteScooter(id: String): Boolean =
         runCatching { repository.deleteScooter(id) }.isSuccess
 

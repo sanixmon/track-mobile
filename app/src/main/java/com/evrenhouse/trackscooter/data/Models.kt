@@ -14,6 +14,10 @@ object ScooterStatus {
 object ScooterType {
     const val SD = "sd"
     const val SJ = "sj"
+    const val SB = "sb"
+    const val SJB = "sjb"
+    const val SM = "sm"
+    const val SJM = "sjm"
 }
 
 object DeviceFields {
@@ -54,6 +58,8 @@ data class Scooter(
     @SerialName("id") val id: String,
     @SerialName("type") val type: String,
     @SerialName("status") val status: String,
+    @SerialName("ownership") val ownership: String? = "outlet",
+    @SerialName("current_outlet") val currentOutlet: String? = null,
     @SerialName("maintenance_note") val maintenanceNote: String? = null,
     @SerialName("last_updated") val lastUpdated: String? = null,
     @SerialName("device_condition") val deviceCondition: DeviceCondition? = null,
@@ -90,6 +96,8 @@ data class MaintenanceRecord(
 data class AddScooterRequest(
     @SerialName("id") val id: String? = null,
     @SerialName("type") val type: String,
+    @SerialName("ownership") val ownership: String? = "outlet",
+    @SerialName("currentOutlet") val currentOutlet: String? = null,
 )
 
 @Serializable
@@ -148,5 +156,54 @@ data class DashboardData(
     val scooters: List<Scooter>,
     val activityLog: List<ActivityLogEntry>,
     val maintenanceRecords: List<MaintenanceRecord>,
+)
+
+@Serializable
+data class AttendanceRecord(
+    @SerialName("id") val id: String,
+    @SerialName("date") val date: String,
+    @SerialName("scooter_id") val scooterId: String,
+    @SerialName("scooter_type") val scooterType: String? = null,
+    @SerialName("scanned_at") val scannedAt: String? = null,
+    @SerialName("note") val note: String? = null,
+    @SerialName("outlet") val outlet: String? = null,
+    @SerialName("scooter_status") val scooterStatus: String? = null,
+)
+
+@Serializable
+data class AttendanceRequest(
+    @SerialName("scooterId") val scooterId: String,
+    @SerialName("date") val date: String? = null,
+    @SerialName("note") val note: String? = null,
+    @SerialName("outlet") val outlet: String? = null,
+)
+
+@Serializable
+data class AttendanceResponse(
+    @SerialName("success") val success: Boolean,
+    @SerialName("alreadyRecorded") val alreadyRecorded: Boolean = false,
+    @SerialName("record") val record: AttendanceRecord? = null,
+    @SerialName("scooter") val scooter: Scooter? = null,
+    @SerialName("message") val message: String? = null,
+)
+
+@Serializable
+data class MarkAllAttendanceRequest(
+    @SerialName("date") val date: String? = null,
+    @SerialName("types") val types: List<String>? = null,
+    @SerialName("outlet") val outlet: String? = null,
+)
+
+@Serializable
+data class ResetAttendanceRequest(
+    @SerialName("date") val date: String? = null,
+    @SerialName("types") val types: List<String>? = null,
+    @SerialName("outlet") val outlet: String? = null,
+)
+
+@Serializable
+data class SimpleSuccessResponse(
+    @SerialName("success") val success: Boolean = true,
+    @SerialName("message") val message: String? = null,
 )
 

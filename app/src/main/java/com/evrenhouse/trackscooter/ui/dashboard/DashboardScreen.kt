@@ -47,6 +47,8 @@ import com.evrenhouse.trackscooter.data.ScooterStatus
 import com.evrenhouse.trackscooter.ui.common.CompactDropdown
 import com.evrenhouse.trackscooter.ui.common.ErrorState
 import com.evrenhouse.trackscooter.ui.common.FilledAction
+import com.evrenhouse.trackscooter.ui.common.OutletDropdown
+import com.evrenhouse.trackscooter.util.Outlets
 import com.evrenhouse.trackscooter.ui.common.LoadingState
 import com.evrenhouse.trackscooter.ui.common.OutlinedAction
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
@@ -78,6 +80,7 @@ fun DashboardScreen(
     val context = LocalContext.current
     val sweetAlert = LocalSweetAlert.current
 
+    var activeOutlet by rememberSaveable { mutableStateOf("all") }
     var gridStatus by rememberSaveable { mutableStateOf("all") }
     var gridType by rememberSaveable { mutableStateOf("all") }
     var isScootersExpanded by rememberSaveable { mutableStateOf(false) }
@@ -85,9 +88,15 @@ fun DashboardScreen(
     var completingId by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    val filteredScooters by remember(state.scooters, gridStatus, gridType) {
+    val outletFilteredScooters by remember(state.scooters, activeOutlet) {
         derivedStateOf {
-            state.scooters.filter { s ->
+            if (activeOutlet == "all") state.scooters
+            else state.scooters.filter { (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == activeOutlet }
+        }
+    }
+    val filteredScooters by remember(outletFilteredScooters, gridStatus, gridType) {
+        derivedStateOf {
+            outletFilteredScooters.filter { s ->
                 (gridStatus == "all" || s.status == gridStatus) &&
                     (gridType == "all" || s.type == gridType)
             }
@@ -107,19 +116,30 @@ fun DashboardScreen(
     ) {
         // Header
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column {
-                    Text("Dashboard", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Text("Pantau status scooter secara real-time", color = TextMuted, fontSize = 13.sp)
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text("Dashboard", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Text("Pantau status scooter secara real-time", color = TextMuted, fontSize = 13.sp)
+                    }
+                    FilledAction(
+                        text = "Scan",
+                        onClick = onGoScan,
+                        icon = { Icon(Icons.Filled.QrCodeScanner, contentDescription = null, modifier = Modifier.size(15.dp)) },
+                    )
                 }
-                FilledAction(
-                    text = "Scan",
-                    onClick = onGoScan,
-                    icon = { Icon(Icons.Filled.QrCodeScanner, contentDescription = null, modifier = Modifier.size(15.dp)) },
+
+                OutletDropdown(
+                    selectedOutletId = activeOutlet,
+                    onOutletSelected = { activeOutlet = it },
+                    getOutletCount = { outletId ->
+                        if (outletId == "all") state.scooters.size
+                        else state.scooters.count { (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == outletId }
+                    }
                 )
             }
         }
@@ -166,7 +186,7 @@ fun DashboardScreen(
                         StatCard(
                             label = "Online",
                             sub = "Sedang digunakan",
-                            value = state.scooters.count { it.status == ScooterStatus.IN_USE },
+                            value = outletFilteredScooters.count { it.status == ScooterStatus.IN_USE },
                             icon = { tint -> Icon(Icons.Filled.Wifi, null, Modifier.size(17.dp), tint = tint) },
                             valueColor = Accent,
                             iconBg = Accent.copy(alpha = 0.12f),
@@ -176,7 +196,7 @@ fun DashboardScreen(
                         StatCard(
                             label = "Offline",
                             sub = "Rusak di outlet",
-                            value = state.scooters.count { it.status == ScooterStatus.RUSAK },
+                            value = outletFilteredScooters.count { it.status == ScooterStatus.RUSAK },
                             icon = { tint -> Icon(Icons.Filled.WifiOff, null, Modifier.size(17.dp), tint = tint) },
                             valueColor = Red,
                             iconBg = Red.copy(alpha = 0.12f),
@@ -195,7 +215,7 @@ fun DashboardScreen(
                         StatCard(
                             label = "Maintenance",
                             sub = "Dalam perbaikan",
-                            value = state.scooters.count { it.status == ScooterStatus.MAINTENANCE },
+                            value = outletFilteredScooters.count { it.status == ScooterStatus.MAINTENANCE },
                             icon = { tint -> Icon(Icons.Filled.Construction, null, Modifier.size(17.dp), tint = tint) },
                             valueColor = Warning,
                             iconBg = Warning.copy(alpha = 0.12f),
@@ -205,7 +225,7 @@ fun DashboardScreen(
                         StatCard(
                             label = "Total Unit",
                             sub = "Seluruh armada",
-                            value = state.scooters.size,
+                            value = outletFilteredScooters.size,
                             icon = { tint -> Icon(Icons.Filled.Layers, null, Modifier.size(17.dp), tint = tint) },
                             valueColor = TextPrimary,
                             iconBg = Surface3,

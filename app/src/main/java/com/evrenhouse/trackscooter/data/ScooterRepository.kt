@@ -98,8 +98,49 @@ class ScooterRepository(private val api: ApiService = ApiClient.service) {
         api.getMaintenanceRecords()
     }
 
-    suspend fun addScooter(id: String?, type: String): Scooter = withContext(Dispatchers.IO) {
-        api.addScooter(AddScooterRequest(id = id?.takeIf { it.isNotBlank() }, type = type))
+    suspend fun addScooter(
+        id: String?,
+        type: String,
+        currentOutlet: String? = null,
+        ownership: String? = "outlet"
+    ): Scooter = withContext(Dispatchers.IO) {
+        api.addScooter(
+            AddScooterRequest(
+                id = id?.takeIf { it.isNotBlank() },
+                type = type,
+                currentOutlet = currentOutlet,
+                ownership = ownership
+            )
+        )
+    }
+
+    suspend fun getDailyAttendance(date: String? = null): List<AttendanceRecord> = withContext(Dispatchers.IO) {
+        api.getDailyAttendance(date)
+    }
+
+    suspend fun recordDailyAttendance(
+        scooterId: String,
+        date: String? = null,
+        note: String? = null,
+        outlet: String? = null
+    ): AttendanceResponse = withContext(Dispatchers.IO) {
+        api.recordDailyAttendance(AttendanceRequest(scooterId, date, note, outlet))
+    }
+
+    suspend fun markAllDailyAttendance(
+        date: String? = null,
+        types: List<String>? = null,
+        outlet: String? = null
+    ): SimpleSuccessResponse = withContext(Dispatchers.IO) {
+        api.markAllDailyAttendance(MarkAllAttendanceRequest(date, types, outlet))
+    }
+
+    suspend fun resetDailyAttendance(
+        date: String? = null,
+        types: List<String>? = null,
+        outlet: String? = null
+    ): SimpleSuccessResponse = withContext(Dispatchers.IO) {
+        api.resetDailyAttendance(ResetAttendanceRequest(date, types, outlet))
     }
 
     suspend fun deleteScooter(id: String): Unit = withContext(Dispatchers.IO) {

@@ -103,13 +103,7 @@ fun ScanScreen(viewModel: ScanViewModel = viewModel(factory = AppViewModelFactor
         }
     }
 
-    // Re-enable scanning shortly after a result
-    LaunchedEffect(state.scanning, state.busy) {
-        if (!state.scanning && state.confirmation == null && !state.busy) {
-            kotlinx.coroutines.delay(800)
-            viewModel.consumeConfirmation()
-        }
-    }
+
 
     Column(
         modifier = Modifier
@@ -210,24 +204,15 @@ fun ScanScreen(viewModel: ScanViewModel = viewModel(factory = AppViewModelFactor
         Spacer(Modifier.height(24.dp))
     }
 
-    // Confirmation for maintenance/rusak units
-    LaunchedEffect(state.confirmation) {
-        state.confirmation?.let { res ->
-            sweetAlert.showConfirm(
-                title = "Unit Tidak Tersedia",
-                message = res.message ?: "Unit sedang tidak tersedia. Tetap ingin menyewa unit ini?",
-                confirmText = "Sewa Unit Ini",
-                cancelText = "Batal",
-                isDanger = false,
-                onConfirm = {
-                    res.scooter?.id?.let { viewModel.forceToggle(it) }
-                    viewModel.consumeConfirmation()
-                },
-                onCancel = {
-                    viewModel.consumeConfirmation()
-                },
-            )
-        }
+    // Universal Scan Confirmation Modal
+    state.pendingScooter?.let { scooter ->
+        ScanConfirmDialog(
+            scooter = scooter,
+            breakText = state.pendingBreakText,
+            submitting = state.busy,
+            onConfirm = { viewModel.confirmScan() },
+            onDismiss = { viewModel.dismissConfirmation() }
+        )
     }
 }
 

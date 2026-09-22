@@ -4,11 +4,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Monitor
 import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -27,12 +27,14 @@ import com.evrenhouse.trackscooter.ui.dashboard.DashboardScreen
 import com.evrenhouse.trackscooter.ui.detail.ScooterDetailScreen
 import com.evrenhouse.trackscooter.ui.manage.ManageScreen
 import com.evrenhouse.trackscooter.ui.monitor.MonitorScreen
+import com.evrenhouse.trackscooter.ui.report.ReportScreen
 import com.evrenhouse.trackscooter.ui.scan.ScanScreen
 
 private val bottomItems = listOf(
     BottomNavItem(Routes.DASHBOARD, "Dashboard", Icons.Filled.Dashboard),
     BottomNavItem(Routes.MONITOR, "Monitor", Icons.Filled.Monitor),
     BottomNavItem(Routes.SCAN, "Scan", Icons.Filled.QrCodeScanner),
+    BottomNavItem(Routes.REPORT, "Laporan", Icons.Filled.Assignment),
     BottomNavItem(Routes.MANAGE, "Kelola", Icons.Filled.Inventory2),
 )
 
@@ -94,6 +96,12 @@ fun AppNavHost() {
                 }
                 composable(Routes.SCAN) {
                     ScanScreen()
+                }
+                composable(Routes.REPORT) {
+                    ReportScreen(
+                        viewModel = dataViewModel,
+                        onOpenDetail = { id -> navController.navigate(Routes.detail(id)) },
+                    )
                 }
                 composable(Routes.MANAGE) {
                     ManageScreen(

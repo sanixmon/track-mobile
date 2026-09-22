@@ -45,4 +45,16 @@ interface ApiService {
 
     @GET("api/export")
     suspend fun exportData(): Map<String, Any?>
+
+    @GET("api/attendance")
+    suspend fun getDailyAttendance(@retrofit2.http.Query("date") date: String? = null): List<AttendanceRecord>
+
+    @POST("api/attendance")
+    suspend fun recordDailyAttendance(@Body body: AttendanceRequest): AttendanceResponse
+
+    @POST("api/attendance/mark-all")
+    suspend fun markAllDailyAttendance(@Body body: MarkAllAttendanceRequest): SimpleSuccessResponse
+
+    @POST("api/attendance/reset")
+    suspend fun resetDailyAttendance(@Body body: ResetAttendanceRequest): SimpleSuccessResponse
 }

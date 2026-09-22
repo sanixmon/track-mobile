@@ -5,10 +5,10 @@ import com.evrenhouse.trackscooter.data.ScooterType
 
 object StatusLabels {
     val ALL = mapOf(
-        ScooterStatus.AVAILABLE to "Tersedia",
-        ScooterStatus.IN_USE to "Online",
-        ScooterStatus.RUSAK to "Offline / Rusak",
-        ScooterStatus.MAINTENANCE to "Maintenance",
+        ScooterStatus.AVAILABLE to "Unit Ready",
+        ScooterStatus.IN_USE to "Unit Diluar",
+        ScooterStatus.RUSAK to "Unit Kendala",
+        ScooterStatus.MAINTENANCE to "Unit Kendala",
     )
     fun of(status: String?): String = ALL[status] ?: status ?: "-"
 }
@@ -17,17 +17,53 @@ object StatusOrder {
     val ALL = mapOf(
         ScooterStatus.AVAILABLE to 1,
         ScooterStatus.IN_USE to 2,
-        ScooterStatus.RUSAK to 3,
-        ScooterStatus.MAINTENANCE to 4,
+        ScooterStatus.MAINTENANCE to 3,
+        ScooterStatus.RUSAK to 4,
     )
 }
 
 object TypeLabels {
     val ALL = mapOf(
-        ScooterType.SD to "Standar (SD)",
-        ScooterType.SJ to "Jumbo (SJ)",
+        ScooterType.SD to "SD (Utara)",
+        ScooterType.SJ to "SJ (Jumbo Utara)",
+        ScooterType.SB to "SB (Barat)",
+        ScooterType.SJB to "SJB (Jumbo Barat)",
+        ScooterType.SM to "SM (Utara Motor)",
+        ScooterType.SJM to "SJM (Jumbo Utara Motor)",
     )
-    fun of(type: String?): String = ALL[type] ?: type ?: "-"
+    fun of(type: String?): String = ALL[type] ?: type?.uppercase() ?: "-"
+}
+
+data class Outlet(
+    val id: String,
+    val label: String,
+    val shortLabel: String,
+    val types: List<String>
+)
+
+object Outlets {
+    val ALL_OUTLETS = listOf(
+        Outlet("all", "Semua Outlet", "Semua", listOf("sd", "sj", "sb", "sjb", "sm", "sjm")),
+        Outlet("utara", "Outlet Utara", "Utara", listOf("sd", "sj")),
+        Outlet("barat", "Outlet Barat", "Barat", listOf("sb", "sjb")),
+        Outlet("utara-motor", "Utara Motor", "Motor", listOf("sm", "sjm")),
+    )
+    val OPERATIONAL = ALL_OUTLETS.filter { it.id != "all" }
+
+    val LABELS = mapOf(
+        "utara" to "Outlet Utara",
+        "barat" to "Outlet Barat",
+        "utara-motor" to "Utara Motor",
+    )
+
+    fun labelOf(id: String?): String = LABELS[id] ?: id ?: "Outlet"
+
+    fun getHomeOutletForType(type: String): String = when (type.lowercase()) {
+        "sd", "sj" -> "utara"
+        "sb", "sjb" -> "barat"
+        "sm", "sjm" -> "utara-motor"
+        else -> "utara"
+    }
 }
 
 /** Device condition field definitions — order = display order. */
