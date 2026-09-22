@@ -73,7 +73,7 @@ fun ScanConfirmDialog(
 ) {
     val isAvailable = scooter.status == ScooterStatus.AVAILABLE
     val isInUse = scooter.status == ScooterStatus.IN_USE
-    val isMaintenance = scooter.status == ScooterStatus.MAINTENANCE || scooter.status == ScooterStatus.RUSAK
+    val isMaintenance = scooter.status == ScooterStatus.MAINTENANCE
 
     val outletLabel = remember(scooter.currentOutlet, scooter.type) {
         val outletId = scooter.currentOutlet ?: Outlets.getHomeOutletForType(scooter.type)

@@ -79,7 +79,7 @@ class ScanViewModel(
     /** Execute the toggle action confirmed by the user in the dialog. */
     fun confirmScan() {
         val scooter = _state.value.pendingScooter ?: return
-        val isMaintenance = scooter.status == ScooterStatus.MAINTENANCE || scooter.status == ScooterStatus.RUSAK
+        val isMaintenance = scooter.status == ScooterStatus.MAINTENANCE
 
         _state.value = _state.value.copy(busy = true)
         viewModelScope.launch {

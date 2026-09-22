@@ -7,7 +7,6 @@ object StatusLabels {
     val ALL = mapOf(
         ScooterStatus.AVAILABLE to "Unit Ready",
         ScooterStatus.IN_USE to "Unit Diluar",
-        ScooterStatus.RUSAK to "Unit Kendala",
         ScooterStatus.MAINTENANCE to "Unit Kendala",
     )
     fun of(status: String?): String = ALL[status] ?: status ?: "-"
@@ -18,7 +17,6 @@ object StatusOrder {
         ScooterStatus.AVAILABLE to 1,
         ScooterStatus.IN_USE to 2,
         ScooterStatus.MAINTENANCE to 3,
-        ScooterStatus.RUSAK to 4,
     )
 }
 

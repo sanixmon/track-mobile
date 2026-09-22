@@ -392,7 +392,7 @@ fun ReportScreen(
                 ) {
                     ReportStatCard(
                         title = "Unit Kendala",
-                        value = "${outletScooters.count { it.status == ScooterStatus.MAINTENANCE || it.status == ScooterStatus.RUSAK }}",
+                        value = "${outletScooters.count { it.status == ScooterStatus.MAINTENANCE }}",
                         sub = "Perbaikan",
                         color = Warning,
                         modifier = Modifier.weight(1f)

@@ -81,7 +81,7 @@ fun OutletSummaryCards(
             val outletScooters = scooters.filter { (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == outlet.id }
             val ready = outletScooters.count { it.status == ScooterStatus.AVAILABLE }
             val maintLuar = outletScooters.count { it.status == ScooterStatus.MAINTENANCE && it.activeMaintenance?.location == "luar" }
-            val maintOutlet = outletScooters.count { (it.status == ScooterStatus.MAINTENANCE || it.status == ScooterStatus.RUSAK) && it.activeMaintenance?.location != "luar" }
+            val maintOutlet = outletScooters.count { it.status == ScooterStatus.MAINTENANCE && it.activeMaintenance?.location != "luar" }
             val total = ready + maintLuar + maintOutlet
 
             Column(
@@ -424,7 +424,7 @@ fun ScooterCard(scooter: Scooter, onClick: (() -> Unit)? = null, modifier: Modif
             }
         }
 
-        if ((scooter.status == "maintenance" || scooter.status == "rusak") && !scooter.maintenanceNote.isNullOrBlank()) {
+        if (scooter.status == "maintenance" && !scooter.maintenanceNote.isNullOrBlank()) {
             Text(
                 text = "Catatan: ${scooter.maintenanceNote}",
                 color = TextMuted,
@@ -472,7 +472,7 @@ fun TypeSummaryCard(scooters: List<Scooter>, modifier: Modifier = Modifier) {
             val group = scooters.filter { it.type == type }
             val available = group.count { it.status == "available" }
             val inUse = group.count { it.status == "in-use" }
-            val kendala = group.count { it.status == "maintenance" || it.status == "rusak" }
+            val kendala = group.count { it.status == "maintenance" }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

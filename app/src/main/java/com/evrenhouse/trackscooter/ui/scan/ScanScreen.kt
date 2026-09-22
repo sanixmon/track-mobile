@@ -274,8 +274,7 @@ fun ScanScreen(
                             val isSelected = manualValue.equals(s.id, ignoreCase = true)
                             val statusColor = when (s.status) {
                                 ScooterStatus.AVAILABLE -> Green
-                                 ScooterStatus.IN_USE -> Accent
-                                ScooterStatus.RUSAK -> Red
+                                ScooterStatus.IN_USE -> Accent
                                 ScooterStatus.MAINTENANCE -> Warning
                                 else -> TextMuted
                             }

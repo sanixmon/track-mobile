@@ -128,10 +128,9 @@ fun ScooterList(
                     label = if (filterStatus == "all") "Semua Status" else StatusLabels.of(filterStatus),
                     options = listOf(
                         "all" to "Semua Status",
-                        "available" to "Tersedia",
-                        "in-use" to "Online",
-                        "rusak" to "Offline / Rusak",
-                        "maintenance" to "Maintenance",
+                        "available" to "Unit Ready",
+                        "in-use" to "Unit Diluar",
+                        "maintenance" to "Unit Kendala",
                     ),
                     selected = filterStatus,
                     onSelect = onFilterStatus,
@@ -300,7 +299,7 @@ fun ScooterRow(
             )
         }
 
-        if ((scooter.status == ScooterStatus.MAINTENANCE || scooter.status == ScooterStatus.RUSAK) && !scooter.maintenanceNote.isNullOrBlank()) {
+        if (scooter.status == ScooterStatus.MAINTENANCE && !scooter.maintenanceNote.isNullOrBlank()) {
             Text(
                 "Catatan: ${scooter.maintenanceNote}",
                 color = TextMuted,
@@ -326,7 +325,6 @@ fun StatusChangeDialog(
 
     val title = when (newStatus) {
         ScooterStatus.MAINTENANCE -> "Mulai Maintenance"
-        ScooterStatus.RUSAK -> "Catatan Kerusakan"
         else -> "Ubah Status"
     }
 
@@ -365,17 +363,6 @@ fun StatusChangeDialog(
                         shape = RoundedCornerShape(10.dp),
                         textStyle = MaterialTheme.typography.bodySmall,
                     )
-                } else if (newStatus == ScooterStatus.RUSAK) {
-                    Text("Masukkan catatan kerusakan untuk unit ${scooter.id} (opsional):", fontSize = 13.sp)
-                    OutlinedTextField(
-                        value = note,
-                        onValueChange = { note = it },
-                        placeholder = { Text("Contoh: Tidak menyala, baterai drop", color = TextSubtle, fontSize = 12.sp) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(10.dp),
-                        textStyle = MaterialTheme.typography.bodySmall,
-                    )
                 } else {
                     Text("Ubah status unit ${scooter.id} menjadi ${StatusLabels.of(newStatus)}?", fontSize = 13.sp)
                 }
@@ -397,14 +384,13 @@ fun StatusChangeDialog(
 fun EditScooterDialog(
     scooter: Scooter,
     onDismiss: () -> Unit,
-    onConfirm: (currentOutlet: String, ownership: String, status: String, note: String?) -> Unit,
+    onConfirm: (currentOutlet: String, status: String, note: String?) -> Unit,
     submitting: Boolean = false,
 ) {
     val initialOutlet = remember(scooter.currentOutlet, scooter.type) {
         scooter.currentOutlet ?: Outlets.getHomeOutletForType(scooter.type)
     }
     var selectedOutlet by remember { mutableStateOf(initialOutlet) }
-    var selectedOwnership by remember { mutableStateOf(scooter.ownership ?: "outlet") }
     var selectedStatus by remember { mutableStateOf(scooter.status) }
     var note by remember { mutableStateOf(scooter.maintenanceNote ?: "") }
 
@@ -506,36 +492,6 @@ fun EditScooterDialog(
                 }
             }
 
-            // 2. Kepemilikan (Ownership)
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("KEPEMILIKAN ARMADA", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    listOf("outlet" to "Outlet", "pusat" to "Pusat").forEach { (value, label) ->
-                        val isSelected = selectedOwnership == value
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (isSelected) Accent else Surface2)
-                                .border(1.dp, if (isSelected) Accent else Border, RoundedCornerShape(8.dp))
-                                .clickable { selectedOwnership = value }
-                                .padding(vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = label,
-                                color = if (isSelected) Color.White else TextMuted,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-            }
 
             // 3. Status Armada
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -572,10 +528,9 @@ fun EditScooterDialog(
                             .border(1.dp, Border, RoundedCornerShape(10.dp))
                     ) {
                         listOf(
-                            ScooterStatus.AVAILABLE to "Tersedia",
-                            ScooterStatus.IN_USE to "Online (Sedang Sewa)",
-                            ScooterStatus.RUSAK to "Offline / Rusak",
-                            ScooterStatus.MAINTENANCE to "Maintenance"
+                            ScooterStatus.AVAILABLE to "Unit Ready",
+                            ScooterStatus.IN_USE to "Unit Diluar",
+                            ScooterStatus.MAINTENANCE to "Unit Kendala",
                         ).forEach { (value, label) ->
                             val c = statusColor(value)
                             DropdownMenuItem(
@@ -637,7 +592,7 @@ fun EditScooterDialog(
 
                 Button(
                     onClick = {
-                        onConfirm(selectedOutlet, selectedOwnership, selectedStatus, note.trim().ifBlank { null })
+                        onConfirm(selectedOutlet, selectedStatus, note.trim().ifBlank { null })
                     },
                     enabled = !submitting,
                     shape = RoundedCornerShape(10.dp),
@@ -740,9 +695,8 @@ fun StatusPillButton(
                 .border(1.dp, Border, RoundedCornerShape(10.dp)),
         ) {
             listOf(
-                "available" to "Tersedia",
-                "rusak" to "Offline / Rusak",
-                "maintenance" to "Maintenance",
+                "available" to "Unit Ready",
+                "maintenance" to "Unit Kendala",
             ).forEach { (value, label) ->
                 val optColor = statusColor(value)
                 DropdownMenuItem(

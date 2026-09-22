@@ -102,14 +102,12 @@ class ScooterRepository(private val api: ApiService = ApiClient.service) {
         id: String?,
         type: String,
         currentOutlet: String? = null,
-        ownership: String? = "outlet"
     ): Scooter = withContext(Dispatchers.IO) {
         api.addScooter(
             AddScooterRequest(
                 id = id?.takeIf { it.isNotBlank() },
                 type = type,
                 currentOutlet = currentOutlet,
-                ownership = ownership
             )
         )
     }

@@ -7,7 +7,6 @@ import kotlinx.serialization.Serializable
 object ScooterStatus {
     const val AVAILABLE = "available"
     const val IN_USE = "in-use"
-    const val RUSAK = "rusak"
     const val MAINTENANCE = "maintenance"
 }
 
@@ -58,7 +57,7 @@ data class Scooter(
     @SerialName("id") val id: String,
     @SerialName("type") val type: String,
     @SerialName("status") val status: String,
-    @SerialName("ownership") val ownership: String? = "outlet",
+    @SerialName("ownership") val ownership: String? = null,
     @SerialName("current_outlet") val currentOutlet: String? = null,
     @SerialName("maintenance_note") val maintenanceNote: String? = null,
     @SerialName("last_updated") val lastUpdated: String? = null,
@@ -96,14 +95,12 @@ data class MaintenanceRecord(
 data class AddScooterRequest(
     @SerialName("id") val id: String? = null,
     @SerialName("type") val type: String,
-    @SerialName("ownership") val ownership: String? = "outlet",
     @SerialName("currentOutlet") val currentOutlet: String? = null,
 )
 
 @Serializable
 data class UpdateScooterRequest(
     @SerialName("status") val status: String? = null,
-    @SerialName("ownership") val ownership: String? = null,
     @SerialName("currentOutlet") val currentOutlet: String? = null,
     @SerialName("maintenanceNote") val maintenanceNote: String? = null,
     @SerialName("location") val location: String? = null,

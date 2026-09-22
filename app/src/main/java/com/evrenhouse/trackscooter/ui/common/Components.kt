@@ -71,7 +71,6 @@ data class StatusColor(val color: Color, val subtle: Color)
 fun statusColor(status: String?): StatusColor = when (status) {
     ScooterStatus.AVAILABLE -> StatusColor(Green, Green.copy(alpha = 0.12f))
     ScooterStatus.IN_USE -> StatusColor(Accent, Accent.copy(alpha = 0.12f))
-    ScooterStatus.RUSAK -> StatusColor(Red, Red.copy(alpha = 0.12f))
     ScooterStatus.MAINTENANCE -> StatusColor(Warning, Warning.copy(alpha = 0.12f))
     else -> StatusColor(TextMuted, Surface3)
 }

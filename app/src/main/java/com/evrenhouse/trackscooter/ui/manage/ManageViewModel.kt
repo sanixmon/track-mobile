@@ -27,9 +27,8 @@ class ManageViewModel(
         id: String?,
         type: String,
         currentOutlet: String? = null,
-        ownership: String? = "outlet"
     ): Boolean =
-        runCatching { repository.addScooter(id, type, currentOutlet, ownership) }.isSuccess
+        runCatching { repository.addScooter(id, type, currentOutlet) }.isSuccess
     suspend fun deleteScooter(id: String): Boolean =
         runCatching { repository.deleteScooter(id) }.isSuccess
 

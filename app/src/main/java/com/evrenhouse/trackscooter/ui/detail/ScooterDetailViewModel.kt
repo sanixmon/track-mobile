@@ -112,14 +112,14 @@ class ScooterDetailViewModel(
         }
     }
 
-    fun updateOutlet(newOutlet: String, newOwnership: String? = null) {
+    fun updateOutlet(newOutlet: String) {
         val currentId = _state.value.scooterId
         if (currentId.isBlank()) return
         viewModelScope.launch {
             runCatching {
                 repository.updateScooter(
                     currentId,
-                    UpdateScooterRequest(currentOutlet = newOutlet, ownership = newOwnership)
+                    UpdateScooterRequest(currentOutlet = newOutlet)
                 )
             }
                 .onSuccess {

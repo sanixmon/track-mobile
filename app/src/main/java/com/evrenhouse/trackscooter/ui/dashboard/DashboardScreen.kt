@@ -203,7 +203,7 @@ fun DashboardScreen(
                 item {
                     val ready = outletFilteredScooters.count { it.status == ScooterStatus.AVAILABLE }
                     val maintLuar = outletFilteredScooters.count { it.status == ScooterStatus.MAINTENANCE && it.activeMaintenance?.location == "luar" }
-                    val maintOutlet = outletFilteredScooters.count { (it.status == ScooterStatus.MAINTENANCE || it.status == ScooterStatus.RUSAK) && it.activeMaintenance?.location != "luar" }
+                    val maintOutlet = outletFilteredScooters.count { it.status == ScooterStatus.MAINTENANCE && it.activeMaintenance?.location != "luar" }
                     val total = ready + maintLuar + maintOutlet
 
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
