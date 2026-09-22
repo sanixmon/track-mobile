@@ -355,4 +355,29 @@ fun ScooterDetailScreen(
     }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+fun ScooterDetailDialog(
+    scooterId: String,
+    onDismiss: () -> Unit,
+) {
+    androidx.compose.material3.BasicAlertDialog(
+        onDismissRequest = onDismiss
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .androidx.compose.foundation.layout.heightIn(max = 620.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(Surface)
+                .border(1.dp, Border, RoundedCornerShape(20.dp))
+        ) {
+            ScooterDetailScreen(
+                scooterId = scooterId,
+                onBack = onDismiss
+            )
+        }
+    }
+}
+
 

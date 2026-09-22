@@ -19,11 +19,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Construction
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material.icons.filled.WifiOff
-import androidx.compose.material.icons.filled.Construction
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -81,9 +81,6 @@ fun DashboardScreen(
     val sweetAlert = LocalSweetAlert.current
 
     var activeOutlet by rememberSaveable { mutableStateOf("all") }
-    var gridStatus by rememberSaveable { mutableStateOf("all") }
-    var gridType by rememberSaveable { mutableStateOf("all") }
-    var isScootersExpanded by rememberSaveable { mutableStateOf(false) }
     var historyFilters by remember { mutableStateOf(HistoryFilters()) }
     var completingId by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -92,20 +89,6 @@ fun DashboardScreen(
         derivedStateOf {
             if (activeOutlet == "all") state.scooters
             else state.scooters.filter { (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == activeOutlet }
-        }
-    }
-    val filteredScooters by remember(outletFilteredScooters, gridStatus, gridType) {
-        derivedStateOf {
-            outletFilteredScooters.filter { s ->
-                (gridStatus == "all" || s.status == gridStatus) &&
-                    (gridType == "all" || s.type == gridType)
-            }
-        }
-    }
-
-    val displayScooters by remember(filteredScooters, isScootersExpanded) {
-        derivedStateOf {
-            if (isScootersExpanded) filteredScooters else filteredScooters.take(5)
         }
     }
 
@@ -177,136 +160,68 @@ fun DashboardScreen(
                     }
                 }
 
-                // Stats Row 1
+                // 4 Stat Cards (1:1 with Web App)
                 item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        StatCard(
-                            label = "Online",
-                            sub = "Sedang digunakan",
-                            value = outletFilteredScooters.count { it.status == ScooterStatus.IN_USE },
-                            icon = { tint -> Icon(Icons.Filled.Wifi, null, Modifier.size(17.dp), tint = tint) },
-                            valueColor = Accent,
-                            iconBg = Accent.copy(alpha = 0.12f),
-                            iconColor = Accent,
-                            modifier = Modifier.weight(1f),
-                        )
-                        StatCard(
-                            label = "Offline",
-                            sub = "Rusak di outlet",
-                            value = outletFilteredScooters.count { it.status == ScooterStatus.RUSAK },
-                            icon = { tint -> Icon(Icons.Filled.WifiOff, null, Modifier.size(17.dp), tint = tint) },
-                            valueColor = Red,
-                            iconBg = Red.copy(alpha = 0.12f),
-                            iconColor = Red,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
+                    val ready = outletFilteredScooters.count { it.status == ScooterStatus.AVAILABLE }
+                    val maintLuar = outletFilteredScooters.count { it.status == ScooterStatus.MAINTENANCE && it.activeMaintenance?.location == "luar" }
+                    val maintOutlet = outletFilteredScooters.count { (it.status == ScooterStatus.MAINTENANCE || it.status == ScooterStatus.RUSAK) && it.activeMaintenance?.location != "luar" }
+                    val total = ready + maintLuar + maintOutlet
 
-                // Stats Row 2
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        StatCard(
-                            label = "Maintenance",
-                            sub = "Dalam perbaikan",
-                            value = outletFilteredScooters.count { it.status == ScooterStatus.MAINTENANCE },
-                            icon = { tint -> Icon(Icons.Filled.Construction, null, Modifier.size(17.dp), tint = tint) },
-                            valueColor = Warning,
-                            iconBg = Warning.copy(alpha = 0.12f),
-                            iconColor = Warning,
-                            modifier = Modifier.weight(1f),
-                        )
-                        StatCard(
-                            label = "Total Unit",
-                            sub = "Seluruh armada",
-                            value = outletFilteredScooters.size,
-                            icon = { tint -> Icon(Icons.Filled.Layers, null, Modifier.size(17.dp), tint = tint) },
-                            valueColor = TextPrimary,
-                            iconBg = Surface3,
-                            iconColor = TextMuted,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-
-                // Scooter section header with filters
-                item(key = "scooters_filter_header") {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = "STATUS SCOOTER (${filteredScooters.size})",
-                            color = TextSubtle,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.2.sp,
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            CompactDropdown(
-                                label = if (gridStatus == "all") "Status" else StatusLabels.of(gridStatus),
-                                options = listOf(
-                                    "all" to "Semua Status",
-                                    "available" to "Tersedia",
-                                    "in-use" to "Online",
-                                    "rusak" to "Offline / Rusak",
-                                    "maintenance" to "Maintenance",
-                                ),
-                                selected = gridStatus,
-                                onSelect = { gridStatus = it },
-                            )
-                            CompactDropdown(
-                                label = if (gridType == "all") "Jenis" else gridType.uppercase(),
-                                options = listOf("all" to "Semua Jenis", "sd" to "Standar (SD)", "sj" to "Jumbo (SJ)"),
-                                selected = gridType,
-                                onSelect = { gridType = it },
-                            )
-                        }
-                    }
-                }
-
-                if (filteredScooters.isEmpty()) {
-                    item(key = "scooters_empty") {
-                        Text(
-                            "Tidak ada scooter yang cocok dengan filter status/jenis.",
-                            color = TextMuted,
-                            fontSize = 12.sp,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Surface, RoundedCornerShape(14.dp))
-                                .border(1.dp, Border, RoundedCornerShape(14.dp))
-                                .padding(28.dp),
-                        )
-                    }
-                } else {
-                    items(
-                        items = displayScooters,
-                        key = { it.id },
-                    ) { scooter ->
-                        ScooterCard(
-                            scooter = scooter,
-                            onClick = { onOpenDetail(scooter.id) },
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            StatCard(
+                                label = "Unit Ready",
+                                sub = "Siap disewakan",
+                                value = ready,
+                                icon = { tint -> Icon(Icons.Filled.CheckCircle, null, Modifier.size(17.dp), tint = tint) },
+                                valueColor = Green,
+                                iconBg = Green.copy(alpha = 0.12f),
+                                iconColor = Green,
+                                modifier = Modifier.weight(1f),
+                            )
+                            StatCard(
+                                label = "Maint. Luar Outlet",
+                                sub = "Perbaikan luar",
+                                value = maintLuar,
+                                icon = { tint -> Icon(Icons.Filled.Construction, null, Modifier.size(17.dp), tint = tint) },
+                                valueColor = Warning,
+                                iconBg = Warning.copy(alpha = 0.12f),
+                                iconColor = Warning,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
 
-                    if (filteredScooters.size > 5) {
-                        item(key = "scooters_toggle") {
-                            OutlinedAction(
-                                text = if (isScootersExpanded) "Tampilkan Lebih Sedikit" else "Lihat Selengkapnya (${filteredScooters.size - 5} unit lainnya)",
-                                onClick = { isScootersExpanded = !isScootersExpanded },
-                                color = Accent,
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            StatCard(
+                                label = "Maint. di Outlet",
+                                sub = "Perbaikan outlet",
+                                value = maintOutlet,
+                                icon = { tint -> Icon(Icons.Filled.Build, null, Modifier.size(17.dp), tint = tint) },
+                                valueColor = Red,
+                                iconBg = Red.copy(alpha = 0.12f),
+                                iconColor = Red,
+                                modifier = Modifier.weight(1f),
+                            )
+                            StatCard(
+                                label = "Unit Total",
+                                sub = "Total armada outlet",
+                                value = total,
+                                icon = { tint -> Icon(Icons.Filled.Layers, null, Modifier.size(17.dp), tint = tint) },
+                                valueColor = androidx.compose.ui.graphics.Color(0xFFA855F7),
+                                iconBg = androidx.compose.ui.graphics.Color(0xFFA855F7).copy(alpha = 0.12f),
+                                iconColor = androidx.compose.ui.graphics.Color(0xFFA855F7),
+                                modifier = Modifier.weight(1f),
                             )
                         }
                     }
                 }
+
 
                 // History table
                 item {
@@ -319,7 +234,7 @@ fun DashboardScreen(
 
                 // Sidebar: type summary + activity feed
                 item {
-                    TypeSummaryCard(state.scooters)
+                    TypeSummaryCard(outletFilteredScooters)
                 }
 
                 item {

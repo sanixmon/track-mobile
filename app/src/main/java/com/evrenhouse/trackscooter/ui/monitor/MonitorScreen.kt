@@ -87,10 +87,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
-private val NullableLocalDateSaver = Saver<LocalDate?, String>(
-    save = { it?.toString() ?: "" },
-    restore = { if (it.isEmpty()) null else LocalDate.parse(it) },
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,14 +101,7 @@ fun MonitorScreen(
 
     val pagerState = rememberPagerState(initialPage = 0) { MonitorTab.entries.size }
     val currentTab by remember { derivedStateOf { MonitorTab.entries[pagerState.currentPage] } }
-
-    var selectedDate by rememberSaveable(stateSaver = NullableLocalDateSaver) { mutableStateOf<LocalDate?>(null) } // null = live today
-    var statusFilter by rememberSaveable { mutableStateOf("all") }
-    var typeFilter by rememberSaveable { mutableStateOf("all") }
-    var showDatePicker by remember { mutableStateOf(false) }
-    var exporting by remember { mutableStateOf(false) }
     var troubleScooter by remember { mutableStateOf<Scooter?>(null) }
-
     // Ticker to live-update rental duration without seconds every 5 seconds
     var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
@@ -122,34 +111,13 @@ fun MonitorScreen(
         }
     }
 
-    val today = remember { DateUtils.today() }
+    val todayStr = remember { DateUtils.localDateKey(DateUtils.today()) }
 
-    // Unique dates from the log, newest first
-    val availableDates by remember {
+    val logForDate by remember(state.activityLog) {
         derivedStateOf {
-            state.activityLog.mapNotNull { DateUtils.toLocalDate(it.timestamp) }.distinct().sortedDescending()
+            state.activityLog.filter { DateUtils.dateKey(it.timestamp) == todayStr }
         }
     }
-
-    val activeDate = selectedDate ?: today
-    val isLiveView = selectedDate == null || activeDate == today
-
-    val logForDate by remember {
-        derivedStateOf {
-            state.activityLog.filter { DateUtils.toLocalDate(it.timestamp) == activeDate }
-        }
-    }
-    val checkoutCount by remember {
-        derivedStateOf {
-            logForDate.count { it.action == ActionLabels.CHECKOUT }
-        }
-    }
-    val returnCount by remember {
-        derivedStateOf {
-            logForDate.count { it.action == ActionLabels.RETURN }
-        }
-    }
-
     // In-use scooters for Live Session tab
     val inUseScooters by remember {
         derivedStateOf {
@@ -166,18 +134,6 @@ fun MonitorScreen(
         }
     }
 
-    val currentIdx by remember {
-        derivedStateOf { availableDates.indexOfFirst { it == activeDate } }
-    }
-    val canGoPrev by remember {
-        derivedStateOf { currentIdx in 0 until availableDates.size - 1 }
-    }
-
-    val displayDates by remember {
-        derivedStateOf {
-            availableDates.filter { it != today }.take(7)
-        }
-    }
 
     PullToRefreshBox(
         isRefreshing = state.refreshing,
@@ -193,12 +149,11 @@ fun MonitorScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 LivePulseHeader(
-                    isLiveView = isLiveView,
+                    isLiveView = true,
                     isLiveConnected = state.isLiveConnected,
                     isReconnecting = state.isReconnecting,
-                    activeDate = activeDate,
+                    activeDate = DateUtils.today(),
                 )
-
                 MonitorTabSelector(
                     selectedTab = currentTab,
                     onSelectTab = { tab ->
@@ -295,8 +250,7 @@ fun MonitorScreen(
                                             verticalAlignment = Alignment.CenterVertically,
                                         ) {
                                             Text(
-                                                text = if (isLiveView) "AKTIVITAS TERKINI HARI INI" else "RIWAYAT AKTIVITAS",
-                                                color = TextSubtle,
+                                                text = "AKTIVITAS TERKINI HARI INI",
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 letterSpacing = 1.1.sp,
@@ -312,8 +266,7 @@ fun MonitorScreen(
                                     if (logForDate.isEmpty()) {
                                         item {
                                             Text(
-                                                text = if (isLiveView) "Belum ada aktivitas hari ini." else "Tidak ada aktivitas pada tanggal ini.",
-                                                color = TextMuted,
+                                                text = "Belum ada aktivitas hari ini.",
                                                 fontSize = 12.sp,
                                                 modifier = Modifier
                                                     .fillMaxWidth()
@@ -348,229 +301,11 @@ fun MonitorScreen(
                                     }
                                 }
                             }
-
-                            // ══════════════════════════════════════
-                            // TAB 3: SUMMARY (Responsive Layout)
-                            // ══════════════════════════════════════
-                            MonitorTab.SUMMARY -> {
-                                LazyColumn(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                                ) {
-                                    // 1. Date Navigator Card (Clean 3-row layout)
-                                    item {
-                                        Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .background(Surface, RoundedCornerShape(14.dp))
-                                                .border(1.dp, Border, RoundedCornerShape(14.dp))
-                                                .padding(14.dp),
-                                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                                        ) {
-                                            // Row 1: Active Date Label + Export Button
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically,
-                                            ) {
-                                                Column(modifier = Modifier.weight(1f)) {
-                                                    Text(
-                                                        text = if (isLiveView) "HARI INI (LIVE)" else DateUtils.formatWeekdayFull(activeDate).uppercase(),
-                                                        color = Accent,
-                                                        fontSize = 11.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        letterSpacing = 0.8.sp,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis,
-                                                    )
-                                                    Text(
-                                                        text = if (isLiveView) "Data operasional hari ini" else DateUtils.formatDateFull(activeDate.atStartOfDay().toString()),
-                                                        color = TextMuted,
-                                                        fontSize = 12.sp,
-                                                    )
-                                                }
-
-                                                Button(
-                                                    onClick = {
-                                                        scope.launch {
-                                                            exporting = true
-                                                            runCatching {
-                                                                val filename = "Laporan-Harian-${DateUtils.localDateKey(activeDate)}.csv"
-                                                                Exporter.saveToDownloads(context, filename, Exporter.buildDailyReportCsv(activeDate, state.activityLog, state.scooters))
-                                                            }
-                                                                .onSuccess { sweetAlert.showSuccess("Laporan Excel diunduh ($it)") }
-                                                                .onFailure { sweetAlert.showError(it.toUserMessage()) }
-                                                            exporting = false
-                                                        }
-                                                    },
-                                                    enabled = !exporting,
-                                                    shape = RoundedCornerShape(8.dp),
-                                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                                ) {
-                                                    if (exporting) {
-                                                        CircularProgressIndicator(modifier = Modifier.size(12.dp), color = Color.White, strokeWidth = 2.dp)
-                                                    } else {
-                                                        Icon(Icons.Filled.FileDownload, contentDescription = null, modifier = Modifier.size(13.dp))
-                                                    }
-                                                    Spacer(Modifier.width(4.dp))
-                                                    Text(if (exporting) "Membuat..." else "Export", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                                }
-                                            }
-
-                                            Box(Modifier.fillMaxWidth().height(1.dp).background(Border))
-
-                                            // Row 2: Horizontal scrollable date pills
-                                            LazyRow(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                            ) {
-                                                item(key = "date_live") {
-                                                    DatePill(
-                                                        label = "Hari Ini (Live)",
-                                                        active = isLiveView,
-                                                        live = true,
-                                                        onClick = { selectedDate = null },
-                                                    )
-                                                }
-                                                items(
-                                                    items = displayDates,
-                                                    key = { it.toString() },
-                                                ) { d ->
-                                                    DatePill(
-                                                        label = DateUtils.formatPill(d),
-                                                        active = selectedDate == d,
-                                                        onClick = { selectedDate = d },
-                                                    )
-                                                }
-                                            }
-
-                                            // Row 3: Day Steppers & Date Picker Button
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically,
-                                            ) {
-                                                Row(
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                                ) {
-                                                    IconButton(onClick = {
-                                                        when {
-                                                            currentIdx == -1 && availableDates.isNotEmpty() -> selectedDate = availableDates.first()
-                                                            canGoPrev -> selectedDate = availableDates[currentIdx + 1]
-                                                        }
-                                                    }, enabled = currentIdx == -1 || canGoPrev) {
-                                                        Icon(Icons.Filled.ChevronLeft, contentDescription = "Sebelumnya", tint = TextMuted, modifier = Modifier.size(18.dp))
-                                                    }
-
-                                                    Text("Ganti Hari", color = TextMuted, fontSize = 11.sp)
-
-                                                    IconButton(onClick = {
-                                                        if (currentIdx > 0) selectedDate = availableDates[currentIdx - 1] else selectedDate = null
-                                                    }, enabled = !isLiveView) {
-                                                        Icon(Icons.Filled.ChevronRight, contentDescription = "Berikutnya", tint = TextMuted, modifier = Modifier.size(18.dp))
-                                                    }
-                                                }
-
-                                                OutlinedButton(
-                                                    onClick = { showDatePicker = true },
-                                                    shape = RoundedCornerShape(8.dp),
-                                                    border = BorderStroke(1.dp, Border),
-                                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                                                ) {
-                                                    Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = Accent, modifier = Modifier.size(14.dp))
-                                                    Spacer(Modifier.width(4.dp))
-                                                    Text("Pilih Tanggal", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    // 2. Daily Stats KPI Strip
-                                    item {
-                                        DailyKpiStrip(
-                                            total = logForDate.size,
-                                            checkoutCount = checkoutCount,
-                                            returnCount = returnCount,
-                                        )
-                                    }
-
-                                    // 3. Status Unit Section
-                                    if (isLiveView) {
-                                        item {
-                                            MonitorFilterPanel(
-                                                scooters = state.scooters,
-                                                statusFilter = statusFilter,
-                                                onStatusFilter = { statusFilter = it },
-                                                typeFilter = typeFilter,
-                                                onTypeFilter = { typeFilter = it },
-                                            )
-                                        }
-
-                                        if (filteredScooters.isEmpty()) {
-                                            item {
-                                                Text(
-                                                    text = "Tidak ada unit scooter yang cocok dengan filter aktif.",
-                                                    color = TextMuted,
-                                                    fontSize = 12.sp,
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .background(Surface, RoundedCornerShape(14.dp))
-                                                        .border(1.dp, Border, RoundedCornerShape(14.dp))
-                                                        .padding(28.dp),
-                                                )
-                                            }
-                                        } else {
-                                            // 1-column full width cards for superior readability and responsiveness
-                                            items(
-                                                items = filteredScooters,
-                                                key = { "summary_${it.id}" },
-                                            ) { scooter ->
-                                                ScooterCard(
-                                                    scooter = scooter,
-                                                    onClick = null,
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                )
-                                            }
-                                        }
-                                    } else {
-                                        // Historical summary table for past date
-                                        item {
-                                            HistoricalSummary(logForDate)
-                                        }
-                                    }
-                                }
-                            }
                         }
                     }
                 }
             }
         }
-    }
-
-    // Native date picker dialog
-    if (showDatePicker) {
-        val pickerState = rememberDatePickerState(initialSelectedDateMillis = activeDate.atStartOfDay(DateUtils.WIB).toInstant().toEpochMilli())
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    pickerState.selectedDateMillis?.let { millis ->
-                        val d = java.time.Instant.ofEpochMilli(millis).atZone(DateUtils.WIB).toLocalDate()
-                        selectedDate = if (d == today) null else d
-                    }
-                    showDatePicker = false
-                }) { Text("Pilih", color = Accent) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Batal", color = TextMuted) }
-            },
-        ) {
-            DatePicker(state = pickerState, showModeToggle = false)
-        }
-    }
-
     troubleScooter?.let { scooter ->
         TroubleSwapDialog(
             scooter = scooter,

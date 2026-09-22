@@ -17,6 +17,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -199,7 +200,7 @@ fun LiveTimer(status: String?, lastUpdated: String?) {
         }
     } else {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(text = "🕓", fontSize = 11.sp)
+            Icon(Icons.Filled.AccessTime, contentDescription = null, tint = TextSubtle, modifier = Modifier.size(12.dp))
             Text(
                 text = "Update: ${DateUtils.timeAgo(lastUpdated)}",
                 color = TextSubtle,

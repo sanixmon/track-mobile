@@ -75,8 +75,7 @@ import java.time.LocalDate
 
 enum class MonitorTab(val label: String, val icon: ImageVector) {
     LIVE_SESSION("Live Session", Icons.Filled.Sensors),
-    RECENT("Recent", Icons.Filled.History),
-    SUMMARY("Summary", Icons.Filled.Analytics),
+    ACTIVITY("Activity", Icons.Filled.History),
 }
 
 /** ── Tab Selector ── */
@@ -100,8 +99,7 @@ fun MonitorTabSelector(
             val isSelected = selectedTab == tab
             val count = when (tab) {
                 MonitorTab.LIVE_SESSION -> liveCount
-                MonitorTab.RECENT -> recentCount
-                MonitorTab.SUMMARY -> null
+                MonitorTab.ACTIVITY -> recentCount
             }
 
             Row(
@@ -376,7 +374,7 @@ fun LiveSessionCard(
                     fontSize = 11.sp,
                 )
                 Text(
-                    text = if (totalMins >= 60) "⚠️ Melebihi 60 mnt" else "$totalMins mnt berjalan",
+                    text = if (totalMins >= 60) "Melebihi 60 mnt" else "$totalMins mnt berjalan",
                     color = if (totalMins >= 60) Red else TextSubtle,
                     fontSize = 11.sp,
                     fontWeight = if (totalMins >= 60) FontWeight.Bold else FontWeight.Normal,

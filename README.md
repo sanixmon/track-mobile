@@ -1,27 +1,28 @@
-# TrackScooter Mobile 🛴
+# TrackScooter Mobile
 
-Client Android native (Kotlin) untuk **TrackScooter** — sistem manajemen inventaris, penyewaan, dan pelacakan unit scooter secara real-time. App ini memakai **backend & database yang sama** dengan web admin ([qr-track-scooter](https://github.com/sanixmon/qr-track-scooter)) lewat REST API.
+Client Android native (Kotlin) untuk **TrackScooter** — sistem manajemen inventaris, penyewaan, dan pelacakan unit scooter secara real-time. App ini memakai **backend & database yang sama** dengan web admin lewat REST API.
 
-## ✨ Fitur (full parity dengan web admin)
+## Fitur (full parity dengan web admin)
 
-- **📊 Dashboard** — statistik real-time (Online, Offline/Rusak, Maintenance, Total), grid unit dengan filter status/jenis, riwayat aktivitas lengkap (cari + filter + paginasi), ringkasan per jenis, feed aktivitas, dan tabel status maintenance dengan tombol **Selesai**.
-- **📸 Scan QR** — pindai lewat kamera (CameraX + ML Kit), upload gambar dari galeri, atau input ID manual. Unit berstatus *maintenance/rusak* wajib konfirmasi sebelum disewakan.
-- **🛠️ Kelola Unit** — tambah unit (ID kustom/auto), ubah status (dengan dialog lokasi + kendala untuk maintenance), hapus unit, unduh QR per unit / semua unit (ZIP), export kondisi unit, backup database.
-- **📊 Monitor** — live view hari ini atau riwayat per tanggal (navigator tanggal + date picker), statistik harian (total/keluar/masuk), panel status unit dengan filter, feed aktivitas per tanggal, export laporan harian.
-- **🔍 Detail Unit** — kondisi perangkat (Spakbor, Lampu, Baterai, Jenis Error, Rem, Ban) dengan tone warna, tombol "Semua Normal" + Simpan, panel maintenance berjalan, dan riwayat unit + maintenance (export CSV).
+- **Dashboard** — statistik real-time (Unit Ready, Maint. Luar Outlet, Maint. di Outlet, Unit Total), Log Recent sesi sewa harian, ringkasan per jenis armada, dan tabel status maintenance dengan tombol Selesai.
+- **Scan QR** — pindai lewat kamera (CameraX + ML Kit), upload gambar dari galeri, atau input ID manual. Dilengkapi modal konfirmasi untuk setiap aksi sewa dan pengembalian unit.
+- **Laporan** — rekapitulasi sesi sewa harian (jam keluar, jam kembali, durasi operasional) dan checklist kehadiran fisik unit outlet dengan filter status kehadiran.
+- **Kelola Unit** — tambah unit via modal dialog (ID auto/manual dengan dynamic prefix, deteksi duplikasi instan, penugasan outlet otomatis), ubah status unit, unduh QR code, export data kondisi unit, dan backup database.
+- **Live Monitor** — pemantauan real-time unit yang sedang berjalan di luar (timer live, indikator jeda istirahat, tombol tukar unit) dan feed log aktivitas hari ini.
+- **Detail Unit** — kondisi fisik perangkat (Spakbor, Lampu, Baterai, Jenis Error, Rem, Ban), panel maintenance aktif, dan riwayat perbaikan serta aktivitas unit.
 
-> **Catatan export:** file Excel (.xlsx) di web digantikan format **CSV** di Android (tetap bisa dibuka di Excel). File tersimpan di folder **Downloads** perangkat.
+> **Catatan export:** file Excel (.xlsx) di web digantikan format **CSV** di Android (dapat dibuka di Excel). File tersimpan di folder Downloads perangkat.
 
-## 🛠️ Teknologi
+## Teknologi
 
-- **Kotlin** + **Jetpack Compose** (Material 3), Navigation Compose, ViewModel + StateFlow
-- **Retrofit** + kotlinx.serialization (API), polling real-time 30 detik
-- **CameraX** + **ML Kit** barcode scanning, **ZXing** untuk generate QR
-- **minSdk 26** (Android 8.0) · **targetSdk/compileSdk 35**
+- Kotlin + Jetpack Compose (Material 3), Navigation Compose, ViewModel + StateFlow
+- Retrofit + kotlinx.serialization (API), polling real-time 30 detik
+- CameraX + ML Kit barcode scanning, ZXing untuk generate QR
+- minSdk 26 (Android 8.0) · targetSdk/compileSdk 35
 
-## 🚀 Build & Rilis Otomatis
+## Build & Rilis Otomatis
 
-- **Auto Releases** (`.github/workflows/release.yml`): Setiap push tag (contoh: `git tag v1.0.0 && git push origin v1.0.0`) atau trigger manual di GitHub Actions akan otomatis mengompilasi APK (signed release & debug) dan mempublikasikannya ke tab **[Releases](https://github.com/sanixmon/track-mobile/releases)** lengkap dengan catatan rilis otomatis dan checksum SHA-256.
+- **Auto Releases** (`.github/workflows/release.yml`): Setiap push tag atau trigger manual di GitHub Actions akan otomatis mengompilasi APK (signed release & debug) dan mempublikasikannya ke tab Releases lengkap dengan catatan rilis otomatis dan checksum SHA-256.
 - **Continuous Integration** (`.github/workflows/android.yml`): Setiap push/PR ke `main` otomatis memvalidasi build dan mengunggah artifact APK.
 
 Build lokal:
@@ -33,9 +34,9 @@ Build lokal:
 
 Hasil di `app/build/outputs/apk/`.
 
-## 🔌 Konfigurasi API
+## Konfigurasi API
 
-Base URL API default: **`https://qr.evrenhouse.online`** (nginx → Express API di `127.0.0.1:3005`).
+Base URL API default: `https://qr.evrenhouse.online` (nginx -> Express API di loopback).
 
 Override per build tanpa mengubah kode:
 
@@ -43,27 +44,26 @@ Override per build tanpa mengubah kode:
 ./gradlew assembleDebug -PAPI_BASE_URL=http://192.168.1.10:3005
 ```
 
-## 📁 Struktur
+## Struktur
 
 ```text
-├── app/src/main/java/com/evrenhouse/trackscooter/
-│   ├── data/          # DTO, Retrofit ApiService, ScooterRepository
-│   ├── ui/
-│   │   ├── navigation/  # NavHost + bottom bar
-│   │   ├── dashboard/   # Dashboard
-│   │   ├── monitor/     # Monitor harian
-│   │   ├── scan/        # Scan QR (camera/gallery/manual)
-│   │   ├── manage/      # Kelola unit
-│   │   ├── detail/      # Detail unit + kondisi perangkat
-│   │   ├── common/      # Komponen bersama + shared ViewModel
-│   │   └── theme/       # Dark theme (senada web)
-│   └── util/          # DateUtils (WIB), QR, exporter CSV/ZIP
-├── .github/workflows/android.yml
-└── gradle/libs.versions.toml
+app/src/main/java/com/evrenhouse/trackscooter/
+├── data/          # DTO, Retrofit ApiService, ScooterRepository
+├── ui/
+│   ├── navigation/  # NavHost + bottom bar
+│   ├── dashboard/   # Dashboard (stat cards, recent logs, type summary, maintenance)
+│   ├── monitor/     # Live monitor (live sessions + activity feed)
+│   ├── scan/        # Scan QR + ScanConfirmDialog
+│   ├── report/      # Laporan (rekap sesi + checklist kehadiran outlet)
+│   ├── manage/      # Kelola unit + AddScooterDialog
+│   ├── detail/      # Detail unit + kondisi perangkat
+│   ├── common/      # Komponen bersama + shared ViewModel + OutletDropdown
+│   └── theme/       # Dark theme (senada web)
+└── util/          # DateUtils (WIB), QR, exporter CSV/ZIP, Outlets
 ```
 
-## 📝 Catatan
+## Catatan
 
 - Semua teks UI berbahasa Indonesia, konsisten dengan web admin.
-- Status unit: `available` (Tersedia) · `in-use` (Online) · `rusak` (Offline/Rusak) · `maintenance`.
+- Status unit: `available` (Unit Ready) · `in-use` (Unit Diluar) · `maintenance` (Unit Kendala).
 - API tidak memakai autentikasi (sama seperti web) — jangan expose base URL non-produksi ke publik.

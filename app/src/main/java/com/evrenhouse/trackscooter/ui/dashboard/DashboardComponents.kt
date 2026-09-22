@@ -183,37 +183,40 @@ fun TypeSummaryCard(scooters: List<Scooter>, modifier: Modifier = Modifier) {
             letterSpacing = 1.2.sp,
             modifier = Modifier.padding(16.dp),
         )
-        listOf("sd", "sj").forEach { type ->
+        val types = com.evrenhouse.trackscooter.data.ScooterType.ALL
+        types.forEachIndexed { index, type ->
             val group = scooters.filter { it.type == type }
             val available = group.count { it.status == "available" }
             val inUse = group.count { it.status == "in-use" }
-            val rusak = group.count { it.status == "rusak" }
-            val maint = group.count { it.status == "maintenance" }
+            val kendala = group.count { it.status == "maintenance" || it.status == "rusak" }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 10.dp),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TypeBadge(type)
-                    Text(type, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TypeBadge(type)
+                        Text(TypeLabels.of(type), color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Text("${group.size} unit", color = TextSubtle, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
                 }
                 Spacer(Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("$available tersedia", color = Green, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                    Text("·", color = Border)
-                    Text("$inUse online", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                    if (rusak > 0) {
-                        Text("·", color = Border)
-                        Text("$rusak rusak", color = Red, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                    }
-                    if (maint > 0) {
-                        Text("·", color = Border)
-                        Text("$maint dirawat", color = Warning, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("$available ready", color = Green, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                    Text("-", color = TextSubtle)
+                    Text("$inUse diluar", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                    if (kendala > 0) {
+                        Text("-", color = TextSubtle)
+                        Text("$kendala kendala", color = Warning, fontSize = 11.sp, fontWeight = FontWeight.Medium)
                     }
                 }
             }
-            if (type != "sj") {
+            if (index < types.size - 1) {
                 Box(
                     Modifier
                         .fillMaxWidth()
