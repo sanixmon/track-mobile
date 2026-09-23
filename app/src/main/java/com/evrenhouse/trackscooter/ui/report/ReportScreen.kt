@@ -78,6 +78,8 @@ import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
 import com.evrenhouse.trackscooter.ui.theme.Warning
+import com.evrenhouse.trackscooter.ui.theme.LocalThemeIsDark
+import com.evrenhouse.trackscooter.util.ScooterColors
 import com.evrenhouse.trackscooter.util.DateUtils
 import com.evrenhouse.trackscooter.util.Outlets
 import com.evrenhouse.trackscooter.util.StatusLabels
@@ -478,14 +480,16 @@ fun ReportScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
+                                    val isDark = LocalThemeIsDark.current
+                                    val nameColor = ScooterColors.getScooterNameColor(item.type, item.scooterId, isDark = isDark)
                                     Text(
                                         text = item.scooterId,
-                                        color = TextPrimary,
+                                        color = nameColor,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
                                         fontFamily = FontFamily.Monospace
                                     )
-                                    TypeBadge(type = item.type)
+                                    TypeBadge(type = item.type, id = item.scooterId)
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(2.dp)
@@ -761,14 +765,16 @@ fun ReportScreen(
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                                         ) {
+                                            val isDark = LocalThemeIsDark.current
+                                            val nameColor = ScooterColors.getScooterNameColor(scooter.type, scooter.id, scooter.currentOutlet, isDark)
                                             Text(
                                                 text = scooter.id,
-                                                color = TextPrimary,
+                                                color = nameColor,
                                                 fontSize = 14.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 fontFamily = FontFamily.Monospace
                                             )
-                                            TypeBadge(type = scooter.type)
+                                            TypeBadge(type = scooter.type, id = scooter.id, outlet = scooter.currentOutlet)
                                         }
                                         Text(
                                             text = if (isAttended && record?.scannedAt != null) {

@@ -370,12 +370,13 @@ fun ManageScreen(
             scooter = d.scooter,
             newStatus = d.newStatus,
             onDismiss = { statusDialog = null },
-            onConfirm = { location, issue, note ->
+            onConfirm = { location, locationDetail, issue, note ->
                 scope.launch {
                     val request = when (d.newStatus) {
                         ScooterStatus.MAINTENANCE -> UpdateScooterRequest(
                             status = ScooterStatus.MAINTENANCE,
                             location = location,
+                            locationDetail = locationDetail,
                             issue = issue,
                             note = note,
                             maintenanceNote = issue,
@@ -400,13 +401,16 @@ fun ManageScreen(
         EditScooterDialog(
             scooter = scooter,
             onDismiss = { editingScooter = null },
-            onConfirm = { currentOutlet, status, note ->
+            onConfirm = { currentOutlet, status, location, locationDetail, issue, note ->
                 scope.launch {
                     val req = UpdateScooterRequest(
                         status = status,
                         currentOutlet = currentOutlet,
-                        maintenanceNote = note,
-                        issue = if (status == ScooterStatus.MAINTENANCE) note else null
+                        maintenanceNote = if (status == ScooterStatus.MAINTENANCE) (issue ?: note) else null,
+                        location = if (status == ScooterStatus.MAINTENANCE) location else null,
+                        locationDetail = if (status == ScooterStatus.MAINTENANCE && location == "luar") locationDetail else null,
+                        issue = if (status == ScooterStatus.MAINTENANCE) issue else null,
+                        note = note,
                     )
                     val ok = manageViewModel.updateStatus(scooter.id, req)
                     if (ok) {

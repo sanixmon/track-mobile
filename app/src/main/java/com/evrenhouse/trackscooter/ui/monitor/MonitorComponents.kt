@@ -62,6 +62,8 @@ import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
 import com.evrenhouse.trackscooter.ui.theme.Warning
+import com.evrenhouse.trackscooter.ui.theme.LocalThemeIsDark
+import com.evrenhouse.trackscooter.util.ScooterColors
 import com.evrenhouse.trackscooter.util.DateUtils
 import com.evrenhouse.trackscooter.util.TypeLabels
 import java.time.Duration
@@ -293,14 +295,16 @@ fun LiveSessionCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                val isDark = LocalThemeIsDark.current
+                val nameColor = ScooterColors.getScooterNameColor(scooter.type, scooter.id, scooter.currentOutlet, isDark)
                 Text(
                     text = scooter.id,
-                    color = Accent,
+                    color = nameColor,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
                 )
-                TypeBadge(scooter.type)
+                TypeBadge(scooter.type, id = scooter.id, outlet = scooter.currentOutlet)
             }
 
             // Badge Disewa (Amber with glowing dot)
@@ -633,7 +637,9 @@ fun ActivityFeedPanel(
                                 .let { if (onOpenDetail != null) it.clickable { onOpenDetail(u.id) } else it }
                                 .padding(horizontal = 10.dp, vertical = 6.dp)
                         ) {
-                            Text(u.id, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                            val isDark = LocalThemeIsDark.current
+                            val nameColor = ScooterColors.getScooterNameColor(null, u.id, isDark = isDark)
+                            Text(u.id, color = nameColor, fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                             Text(
                                 text = if (u.isReady) "Jeda ${u.breakText}" else "Jeda ${u.breakText} (sisa ${u.remainingText})",
                                 color = if (u.isReady) Green else Warning,
@@ -716,8 +722,10 @@ fun ActivityFeedPanel(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
-                                        Text(item.scooterId, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                                        TypeBadge(item.scooterType)
+                                        val isDark = LocalThemeIsDark.current
+                                        val nameColor = ScooterColors.getScooterNameColor(item.scooterType, item.scooterId, isDark = isDark)
+                                        Text(item.scooterId, color = nameColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                                        TypeBadge(item.scooterType, id = item.scooterId)
                                     }
                                     Text(
                                         text = if (isCheckout) "Keluar sewa" else "Selesai / Kembali",

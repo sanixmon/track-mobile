@@ -60,6 +60,8 @@ import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
 import com.evrenhouse.trackscooter.ui.theme.Warning
+import com.evrenhouse.trackscooter.ui.theme.LocalThemeIsDark
+import com.evrenhouse.trackscooter.util.ScooterColors
 import com.evrenhouse.trackscooter.util.DateUtils
 import com.evrenhouse.trackscooter.util.StatusLabels
 import kotlinx.coroutines.delay
@@ -101,17 +103,30 @@ fun StatusChip(status: String?, modifier: Modifier = Modifier, pulse: Boolean = 
 }
 
 @Composable
-fun TypeBadge(type: String?, modifier: Modifier = Modifier) {
-    val isSd = type == "sd"
+fun TypeBadge(
+    type: String?,
+    modifier: Modifier = Modifier,
+    id: String? = null,
+    outlet: String? = null,
+) {
+    val isDark = LocalThemeIsDark.current
+    val style = remember(type, id, outlet) {
+        ScooterColors.getStyle(type, id, outlet)
+    }
+    val label = remember(type, id) {
+        type?.uppercase() ?: ScooterColors.inferTypeFromId(id)?.uppercase() ?: "-"
+    }
+
     Row(
         modifier = modifier
-            .background(if (isSd) Accent.copy(alpha = 0.15f) else Surface3, RoundedCornerShape(6.dp))
-            .padding(horizontal = 8.dp, vertical = 3.dp),
+            .background(style.bg(isDark), RoundedCornerShape(6.dp))
+            .border(1.dp, style.border(isDark), RoundedCornerShape(6.dp))
+            .padding(horizontal = 7.dp, vertical = 2.5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = type?.uppercase() ?: "-",
-            color = if (isSd) Accent else TextMuted,
+            text = label,
+            color = style.textColor(isDark),
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.5.sp,

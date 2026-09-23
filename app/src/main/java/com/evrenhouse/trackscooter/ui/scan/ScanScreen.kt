@@ -74,6 +74,8 @@ import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
 import com.evrenhouse.trackscooter.ui.theme.Warning
+import com.evrenhouse.trackscooter.ui.theme.LocalThemeIsDark
+import com.evrenhouse.trackscooter.util.ScooterColors
 import com.evrenhouse.trackscooter.util.Outlets
 import com.evrenhouse.trackscooter.util.StatusLabels
 import com.google.android.gms.tasks.Tasks
@@ -291,9 +293,11 @@ fun ScanScreen(
                                     }
                                     .padding(horizontal = 9.dp, vertical = 7.dp)
                             ) {
+                                val isDark = LocalThemeIsDark.current
+                                val nameColor = if (isSelected) Accent else ScooterColors.getScooterNameColor(s.type, s.id, s.currentOutlet, isDark)
                                 Text(
                                     text = s.id,
-                                    color = if (isSelected) Accent else TextPrimary,
+                                    color = nameColor,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = FontFamily.Monospace

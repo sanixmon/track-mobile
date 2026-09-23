@@ -54,6 +54,8 @@ import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
 import com.evrenhouse.trackscooter.ui.theme.Warning
+import com.evrenhouse.trackscooter.ui.theme.LocalThemeIsDark
+import com.evrenhouse.trackscooter.util.ScooterColors
 import com.evrenhouse.trackscooter.util.DateUtils
 import com.evrenhouse.trackscooter.util.Outlets
 import com.evrenhouse.trackscooter.util.StatusLabels
@@ -75,9 +77,14 @@ fun ScanConfirmDialog(
     val isInUse = scooter.status == ScooterStatus.IN_USE
     val isMaintenance = scooter.status == ScooterStatus.MAINTENANCE
 
-    val outletLabel = remember(scooter.currentOutlet, scooter.type) {
-        val outletId = scooter.currentOutlet ?: Outlets.getHomeOutletForType(scooter.type)
+    val outletId = remember(scooter.currentOutlet, scooter.type) {
+        scooter.currentOutlet ?: Outlets.getHomeOutletForType(scooter.type)
+    }
+    val outletLabel = remember(outletId) {
         Outlets.labelOf(outletId)
+    }
+    val outletColor = remember(outletId) {
+        ScooterColors.getOutletColor(outletId)
     }
 
     val elapsedDuration = remember(scooter.lastUpdated, scooter.status) {
@@ -197,18 +204,20 @@ fun ScanConfirmDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val isDark = LocalThemeIsDark.current
+                    val nameColor = ScooterColors.getScooterNameColor(scooter.type, scooter.id, scooter.currentOutlet, isDark)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
                             text = scooter.id,
-                            color = TextPrimary,
+                            color = nameColor,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Black,
                             fontFamily = FontFamily.Monospace
                         )
-                        TypeBadge(type = scooter.type)
+                        TypeBadge(type = scooter.type, id = scooter.id, outlet = scooter.currentOutlet)
                     }
 
                     Box(
@@ -248,7 +257,7 @@ fun ScanConfirmDialog(
                         Icon(
                             imageVector = Icons.Filled.Store,
                             contentDescription = null,
-                            tint = Accent,
+                            tint = outletColor,
                             modifier = Modifier.size(13.dp)
                         )
                         Text(

@@ -74,6 +74,8 @@ import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
 import com.evrenhouse.trackscooter.ui.theme.Warning
+import com.evrenhouse.trackscooter.ui.theme.LocalThemeIsDark
+import com.evrenhouse.trackscooter.util.ScooterColors
 import com.evrenhouse.trackscooter.util.StatusLabels
 import com.evrenhouse.trackscooter.util.StatusOrder
 import com.evrenhouse.trackscooter.util.TypeLabels
@@ -211,8 +213,10 @@ fun ScooterRow(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Text(scooter.id, color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                TypeBadge(scooter.type)
+                val isDark = LocalThemeIsDark.current
+                val nameColor = ScooterColors.getScooterNameColor(scooter.type, scooter.id, scooter.currentOutlet, isDark)
+                Text(scooter.id, color = nameColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                TypeBadge(scooter.type, id = scooter.id, outlet = scooter.currentOutlet)
 
                 // Current Outlet Badge (Interactive)
                 val currentOutletId = scooter.currentOutlet ?: Outlets.getHomeOutletForType(scooter.type)
@@ -227,7 +231,8 @@ fun ScooterRow(
                         .clickable { onEditScooter?.invoke() }
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
-                    Icon(Icons.Filled.LocationOn, contentDescription = null, tint = Accent, modifier = Modifier.size(11.dp))
+                    val outletColor = ScooterColors.getOutletColor(currentOutletId)
+                    Icon(Icons.Filled.LocationOn, contentDescription = null, tint = outletColor, modifier = Modifier.size(11.dp))
                     Text(outletLabel, color = TextPrimary, fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
@@ -249,47 +254,28 @@ fun ScooterRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            if (scooter.status == ScooterStatus.IN_USE) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier
-                            .background(Accent.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
-                            .border(1.dp, Accent.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                    ) {
-                        Box(
-                            Modifier
-                                .size(6.dp)
-                                .background(Accent, CircleShapeCompat),
-                        )
-                        Text("Online", color = Accent, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                    }
-
-                    if (onTroubleSwap != null) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier
-                                .background(Warning.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
-                                .border(1.dp, Warning.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                                .clickable { onTroubleSwap(scooter) }
-                                .padding(horizontal = 8.dp, vertical = 6.dp),
-                        ) {
-                            Icon(Icons.Filled.WarningAmber, contentDescription = null, tint = Warning, modifier = Modifier.size(13.dp))
-                            Text("Tukar", color = Warning, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
                 StatusPillButton(
                     status = scooter.status,
                     onStatusChange = onStatusChange,
                 )
+                if (scooter.status == ScooterStatus.IN_USE && onTroubleSwap != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier
+                            .background(Warning.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+                            .border(1.dp, Warning.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                            .clickable { onTroubleSwap(scooter) }
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                    ) {
+                        Icon(Icons.Filled.WarningAmber, contentDescription = null, tint = Warning, modifier = Modifier.size(13.dp))
+                        Text("Tukar", color = Warning, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
             }
             Text(
                 "${todayCount}x keluar",
@@ -317,11 +303,13 @@ fun StatusChangeDialog(
     scooter: Scooter,
     newStatus: String,
     onDismiss: () -> Unit,
-    onConfirm: (location: String, issue: String, note: String) -> Unit,
+    onConfirm: (location: String, locationDetail: String?, issue: String, note: String?) -> Unit,
 ) {
     var location by remember { mutableStateOf("outlet") }
-    var issue by remember { mutableStateOf("") }
+    var locationDetail by remember { mutableStateOf("") }
+    var issue by remember { mutableStateOf(scooter.maintenanceNote ?: "") }
     var note by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     val title = when (newStatus) {
         ScooterStatus.MAINTENANCE -> "Mulai Maintenance"
@@ -342,13 +330,34 @@ fun StatusChangeDialog(
                         label = if (location == "outlet") "Di Outlet" else "Keluar / Luar",
                         options = listOf("outlet" to "Di Outlet", "luar" to "Keluar / Luar"),
                         selected = location,
-                        onSelect = { location = it },
+                        onSelect = {
+                            location = it
+                            errorMessage = null
+                        },
                     )
+                    if (location == "luar") {
+                        OutlinedTextField(
+                            value = locationDetail,
+                            onValueChange = {
+                                locationDetail = it
+                                errorMessage = null
+                            },
+                            label = { Text("Nama Tempat Maintenance *", fontSize = 12.sp) },
+                            placeholder = { Text("Contoh: Bengkel Pak Budi, Toko ABC", color = TextSubtle, fontSize = 12.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(10.dp),
+                            textStyle = MaterialTheme.typography.bodySmall,
+                        )
+                    }
                     OutlinedTextField(
                         value = issue,
-                        onValueChange = { issue = it },
-                        label = { Text("Kendala", fontSize = 12.sp) },
-                        placeholder = { Text("Contoh: Tidak menyala", color = TextSubtle, fontSize = 12.sp) },
+                        onValueChange = {
+                            issue = it
+                            errorMessage = null
+                        },
+                        label = { Text("Kendala / Kerusakan *", fontSize = 12.sp) },
+                        placeholder = { Text("Contoh: Baterai drop, rem blong", color = TextSubtle, fontSize = 12.sp) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         shape = RoundedCornerShape(10.dp),
@@ -357,7 +366,8 @@ fun StatusChangeDialog(
                     OutlinedTextField(
                         value = note,
                         onValueChange = { note = it },
-                        label = { Text("Catatan (opsional)", fontSize = 12.sp) },
+                        label = { Text("Catatan Tambahan (opsional)", fontSize = 12.sp) },
+                        placeholder = { Text("Detail kondisi, suku cadang, dll.", color = TextSubtle, fontSize = 12.sp) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         shape = RoundedCornerShape(10.dp),
@@ -366,10 +376,26 @@ fun StatusChangeDialog(
                 } else {
                     Text("Ubah status unit ${scooter.id} menjadi ${StatusLabels.of(newStatus)}?", fontSize = 13.sp)
                 }
+
+                if (errorMessage != null) {
+                    Text(errorMessage!!, color = Red, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(location, issue.trim(), note.trim()) }) {
+            TextButton(onClick = {
+                if (newStatus == ScooterStatus.MAINTENANCE) {
+                    if (issue.trim().isBlank()) {
+                        errorMessage = "Kendala / kerusakan wajib diisi"
+                        return@TextButton
+                    }
+                    if (location == "luar" && locationDetail.trim().isBlank()) {
+                        errorMessage = "Nama tempat maintenance wajib diisi jika di luar outlet"
+                        return@TextButton
+                    }
+                }
+                onConfirm(location, locationDetail.trim().ifBlank { null }, issue.trim(), note.trim().ifBlank { null })
+            }) {
                 Text("Simpan", color = Accent, fontWeight = FontWeight.Bold, fontSize = 12.sp)
             }
         },
@@ -384,7 +410,7 @@ fun StatusChangeDialog(
 fun EditScooterDialog(
     scooter: Scooter,
     onDismiss: () -> Unit,
-    onConfirm: (currentOutlet: String, status: String, note: String?) -> Unit,
+    onConfirm: (currentOutlet: String, status: String, location: String?, locationDetail: String?, issue: String?, note: String?) -> Unit,
     submitting: Boolean = false,
 ) {
     val initialOutlet = remember(scooter.currentOutlet, scooter.type) {
@@ -392,11 +418,14 @@ fun EditScooterDialog(
     }
     var selectedOutlet by remember { mutableStateOf(initialOutlet) }
     var selectedStatus by remember { mutableStateOf(scooter.status) }
-    var note by remember { mutableStateOf(scooter.maintenanceNote ?: "") }
+    var location by remember { mutableStateOf("outlet") }
+    var locationDetail by remember { mutableStateOf("") }
+    var issue by remember { mutableStateOf(scooter.maintenanceNote ?: "") }
+    var note by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     var outletDropdownOpen by remember { mutableStateOf(false) }
     var statusDropdownOpen by remember { mutableStateOf(false) }
-
     BasicAlertDialog(
         onDismissRequest = { if (!submitting) onDismiss() }
     ) {
@@ -428,8 +457,13 @@ fun EditScooterDialog(
                     ) {
                         Icon(Icons.Filled.Tune, null, tint = Accent, modifier = Modifier.size(18.dp))
                     }
+                    val isDark = LocalThemeIsDark.current
+                    val nameColor = ScooterColors.getScooterNameColor(scooter.type, scooter.id, scooter.currentOutlet, isDark)
                     Column {
-                        Text("Atur Armada ${scooter.id}", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("Atur Armada", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text(scooter.id, color = nameColor, fontSize = 16.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                        }
                         Text("Pindahkan pangkalan atau atur unit", color = TextMuted, fontSize = 12.sp)
                     }
                 }
@@ -552,6 +586,55 @@ fun EditScooterDialog(
                     }
                 }
             }
+            if (selectedStatus == ScooterStatus.MAINTENANCE) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("LOKASI PERBAIKAN", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+                    SimpleDropdown(
+                        label = if (location == "outlet") "Di Outlet" else "Keluar / Luar",
+                        options = listOf("outlet" to "Di Outlet", "luar" to "Keluar / Luar"),
+                        selected = location,
+                        onSelect = {
+                            location = it
+                            errorMessage = null
+                        },
+                    )
+                }
+
+                if (location == "luar") {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("NAMA TEMPAT MAINTENANCE *", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+                        OutlinedTextField(
+                            value = locationDetail,
+                            onValueChange = {
+                                locationDetail = it
+                                errorMessage = null
+                            },
+                            placeholder = { Text("Contoh: Bengkel Pak Budi, Toko ABC", color = TextSubtle, fontSize = 12.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(10.dp),
+                            textStyle = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("KENDALA / KERUSAKAN *", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+                    OutlinedTextField(
+                        value = issue,
+                        onValueChange = {
+                            issue = it
+                            errorMessage = null
+                        },
+                        placeholder = { Text("Contoh: Baterai drop, rem blong", color = TextSubtle, fontSize = 12.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        textStyle = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+
 
             // 4. Catatan (Note)
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -592,7 +675,19 @@ fun EditScooterDialog(
 
                 Button(
                     onClick = {
-                        onConfirm(selectedOutlet, selectedStatus, note.trim().ifBlank { null })
+                        if (selectedStatus == ScooterStatus.MAINTENANCE) {
+                            if (issue.trim().isBlank()) {
+                                errorMessage = "Kendala / kerusakan wajib diisi"
+                                return@Button
+                            }
+                            if (location == "luar" && locationDetail.trim().isBlank()) {
+                                errorMessage = "Nama tempat maintenance wajib diisi jika di luar outlet"
+                                return@Button
+                            }
+                            onConfirm(selectedOutlet, selectedStatus, location, locationDetail.trim().ifBlank { null }, issue.trim(), note.trim().ifBlank { null })
+                        } else {
+                            onConfirm(selectedOutlet, selectedStatus, null, null, null, note.trim().ifBlank { null })
+                        }
                     },
                     enabled = !submitting,
                     shape = RoundedCornerShape(10.dp),
@@ -695,8 +790,9 @@ fun StatusPillButton(
                 .border(1.dp, Border, RoundedCornerShape(10.dp)),
         ) {
             listOf(
-                "available" to "Unit Ready",
-                "maintenance" to "Unit Kendala",
+                ScooterStatus.AVAILABLE to "Unit Ready",
+                ScooterStatus.IN_USE to "Unit Diluar",
+                ScooterStatus.MAINTENANCE to "Unit Kendala",
             ).forEach { (value, label) ->
                 val optColor = statusColor(value)
                 DropdownMenuItem(

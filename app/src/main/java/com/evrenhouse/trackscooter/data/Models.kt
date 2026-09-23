@@ -104,6 +104,7 @@ data class UpdateScooterRequest(
     @SerialName("currentOutlet") val currentOutlet: String? = null,
     @SerialName("maintenanceNote") val maintenanceNote: String? = null,
     @SerialName("location") val location: String? = null,
+    @SerialName("locationDetail") val locationDetail: String? = null,
     @SerialName("issue") val issue: String? = null,
     @SerialName("note") val note: String? = null,
 )

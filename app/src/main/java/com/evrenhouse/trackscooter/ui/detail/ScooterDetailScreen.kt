@@ -26,6 +26,11 @@ import androidx.compose.material.icons.filled.Construction
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.foundation.clickable
+import com.evrenhouse.trackscooter.ui.manage.StatusChangeDialog
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -77,6 +82,9 @@ import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
 import com.evrenhouse.trackscooter.ui.theme.Warning
+import com.evrenhouse.trackscooter.ui.theme.LocalThemeIsDark
+import com.evrenhouse.trackscooter.util.ScooterColors
+import com.evrenhouse.trackscooter.util.Outlets
 import com.evrenhouse.trackscooter.util.ActionLabels
 import com.evrenhouse.trackscooter.util.DateUtils
 import com.evrenhouse.trackscooter.util.DeviceConditionHelper
@@ -113,6 +121,9 @@ fun ScooterDetailScreen(
     var edited by remember { mutableStateOf(false) }
     var savedSnapshot by remember { mutableStateOf<String?>(null) }
     var showTroubleDialog by remember { mutableStateOf(false) }
+    var showOutletDialog by remember { mutableStateOf(false) }
+    var statusMenuOpen by remember { mutableStateOf(false) }
+    var statusChangeTarget by remember { mutableStateOf<String?>(null) }
 
     fun currentSnapshot(): String = (condition + ("monitorDetail" to monitorDetail)).toString()
 
@@ -171,18 +182,70 @@ fun ScooterDetailScreen(
                 IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali", tint = TextMuted)
                 }
+                val isDark = LocalThemeIsDark.current
+                val scooter = state.scooter
+                val idText = scooter?.id ?: scooterId
+                val nameColor = ScooterColors.getScooterNameColor(scooter?.type, idText, scooter?.currentOutlet, isDark)
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(state.scooter?.id ?: scooterId, color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                        state.scooter?.let { s ->
-                            val currentOutletId = s.currentOutlet ?: Outlets.getHomeOutletForType(s.type)
-                            Text("· ${Outlets.labelOf(currentOutletId)}", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text(idText, color = nameColor, fontSize = 16.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                        if (scooter != null) {
+                            TypeBadge(scooter.type, id = scooter.id, outlet = scooter.currentOutlet)
+                            val currentOutletId = scooter.currentOutlet ?: Outlets.getHomeOutletForType(scooter.type)
+                            val outletColor = ScooterColors.getOutletColor(currentOutletId)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable { showOutletDialog = true }
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                            ) {
+                                Text("· ${Outlets.labelOf(currentOutletId)}", color = outletColor, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                Icon(Icons.Filled.ArrowDropDown, contentDescription = "Ubah Pangkalan", tint = outletColor, modifier = Modifier.size(13.dp))
+                            }
                         }
                     }
-                    Text(TypeLabels.of(state.scooter?.type), color = TextMuted, fontSize = 11.sp)
+                    Text(TypeLabels.of(scooter?.type), color = TextMuted, fontSize = 11.sp)
                 }
             }
-            state.scooter?.let { StatusChip(it.status) }
+            state.scooter?.let { s ->
+                Box {
+                    StatusChip(
+                        status = s.status,
+                        modifier = Modifier.clickable { statusMenuOpen = true }
+                    )
+                    DropdownMenu(
+                        expanded = statusMenuOpen,
+                        onDismissRequest = { statusMenuOpen = false },
+                        modifier = Modifier
+                            .background(Surface, RoundedCornerShape(10.dp))
+                            .border(1.dp, Border, RoundedCornerShape(10.dp))
+                    ) {
+                        listOf(
+                            ScooterStatus.AVAILABLE to "Unit Ready",
+                            ScooterStatus.IN_USE to "Unit Diluar",
+                            ScooterStatus.MAINTENANCE to "Unit Kendala",
+                        ).forEach { (value, label) ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        label,
+                                        color = if (s.status == value) Accent else TextPrimary,
+                                        fontWeight = if (s.status == value) FontWeight.Bold else FontWeight.Normal,
+                                        fontSize = 12.sp
+                                    )
+                                },
+                                onClick = {
+                                    statusMenuOpen = false
+                                    if (value != s.status) {
+                                        statusChangeTarget = value
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         when {
@@ -367,6 +430,65 @@ fun ScooterDetailScreen(
                 }
             },
         )
+    }
+
+    if (showOutletDialog && state.scooter != null) {
+        val s = state.scooter!!
+        val currentOutletId = s.currentOutlet ?: Outlets.getHomeOutletForType(s.type)
+        AlertDialog(
+            onDismissRequest = { showOutletDialog = false },
+            containerColor = Surface,
+            titleContentColor = TextPrimary,
+            title = { Text("Pindahkan Pangkalan", fontSize = 15.sp, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Pilih lokasi pangkalan untuk unit ${s.id}:", color = TextMuted, fontSize = 12.sp)
+                    Outlets.OPERATIONAL.forEach { o ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (o.id == currentOutletId) Accent.copy(alpha = 0.12f) else Surface2)
+                                .clickable {
+                                    viewModel.updateOutlet(o.id)
+                                    showOutletDialog = false
+                                }
+                                .padding(horizontal = 12.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                o.label,
+                                color = if (o.id == currentOutletId) Accent else TextPrimary,
+                                fontWeight = if (o.id == currentOutletId) FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 13.sp
+                            )
+                            if (o.id == currentOutletId) {
+                                Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = Accent, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showOutletDialog = false }) { Text("Batal", color = TextMuted) }
+            }
+        )
+    }
+
+    statusChangeTarget?.let { targetStatus ->
+        state.scooter?.let { s ->
+            StatusChangeDialog(
+                scooter = s,
+                newStatus = targetStatus,
+                onDismiss = { statusChangeTarget = null },
+                onConfirm = { location, locationDetail, issue, note ->
+                    viewModel.updateStatus(targetStatus, location, locationDetail, issue, note)
+                    statusChangeTarget = null
+                }
+            )
+        }
     }
 }
 

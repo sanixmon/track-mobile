@@ -61,6 +61,8 @@ import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
 import com.evrenhouse.trackscooter.ui.theme.Warning
+import com.evrenhouse.trackscooter.ui.theme.LocalThemeIsDark
+import com.evrenhouse.trackscooter.util.ScooterColors
 import com.evrenhouse.trackscooter.util.DateUtils
 import com.evrenhouse.trackscooter.util.Outlets
 import com.evrenhouse.trackscooter.util.TypeLabels
@@ -176,9 +178,11 @@ fun TroubleSwapDialog(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val isDark = LocalThemeIsDark.current
+                val oldUnitColor = ScooterColors.getScooterNameColor(scooter.type, scooter.id, scooter.currentOutlet, isDark)
                 Column {
                     Text("UNIT LAMA", color = TextSubtle, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                    Text(scooter.id, color = Accent, fontSize = 16.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace)
+                    Text(scooter.id, color = oldUnitColor, fontSize = 16.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace)
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
@@ -219,15 +223,16 @@ fun TroubleSwapDialog(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
+                                val selColor = if (selectedBike != null) ScooterColors.getScooterNameColor(selectedBike.type, selectedBike.id, selectedBike.currentOutlet, isDark) else TextPrimary
                                 Text(
                                     selectedReplacementId.ifBlank { "Pilih unit..." },
-                                    color = TextPrimary,
+                                    color = selColor,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = FontFamily.Monospace
                                 )
                                 if (selectedBike != null) {
-                                    TypeBadge(selectedBike.type)
+                                    TypeBadge(selectedBike.type, id = selectedBike.id, outlet = selectedBike.currentOutlet)
                                 }
                             }
                             Icon(Icons.Filled.ArrowDropDown, null, tint = TextMuted)
@@ -252,8 +257,9 @@ fun TroubleSwapDialog(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                                             ) {
-                                                Text(r.id, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                                                TypeBadge(r.type)
+                                                val rColor = ScooterColors.getScooterNameColor(r.type, r.id, r.currentOutlet, isDark)
+                                                Text(r.id, color = rColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                                                TypeBadge(r.type, id = r.id, outlet = r.currentOutlet)
                                             }
                                             Text(TypeLabels.of(r.type), color = TextMuted, fontSize = 11.sp)
                                         }

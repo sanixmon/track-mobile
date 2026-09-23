@@ -61,6 +61,8 @@ import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
 import com.evrenhouse.trackscooter.ui.theme.Warning
+import com.evrenhouse.trackscooter.ui.theme.LocalThemeIsDark
+import com.evrenhouse.trackscooter.util.ScooterColors
 import com.evrenhouse.trackscooter.util.ActionLabels
 import com.evrenhouse.trackscooter.util.DateUtils
 import com.evrenhouse.trackscooter.util.DeviceConditionHelper
@@ -83,7 +85,7 @@ fun OutletSummaryCards(
             val maintLuar = outletScooters.count { it.status == ScooterStatus.MAINTENANCE && it.activeMaintenance?.location == "luar" }
             val maintOutlet = outletScooters.count { it.status == ScooterStatus.MAINTENANCE && it.activeMaintenance?.location != "luar" }
             val total = ready + maintLuar + maintOutlet
-
+            val outletColor = ScooterColors.getOutletColor(outlet.id)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -112,7 +114,7 @@ fun OutletSummaryCards(
                             Icon(
                                 imageVector = com.evrenhouse.trackscooter.ui.common.getOutletIcon(outlet.id),
                                 contentDescription = null,
-                                tint = Accent,
+                                tint = outletColor,
                                 modifier = Modifier.size(15.dp)
                             )
                         }
@@ -124,10 +126,10 @@ fun OutletSummaryCards(
 
                     Box(
                         modifier = Modifier
-                            .background(Accent.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+                            .background(outletColor.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
-                        Text("$total Unit", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                        Text("$total Unit", color = outletColor, fontSize = 11.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                     }
                 }
 
@@ -287,7 +289,9 @@ fun RecentLogTableCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(session.scooterId, color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                        val isDark = LocalThemeIsDark.current
+                        val nameColor = ScooterColors.getScooterNameColor(session.type, session.scooterId, isDark = isDark)
+                        Text(session.scooterId, color = nameColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                         TypeBadge(session.type)
                         Text(
                             DateUtils.formatTime(session.startDt),
@@ -369,14 +373,16 @@ fun ScooterCard(scooter: Scooter, onClick: (() -> Unit)? = null, modifier: Modif
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                val isDark = LocalThemeIsDark.current
+                val nameColor = ScooterColors.getScooterNameColor(scooter.type, scooter.id, scooter.currentOutlet, isDark)
                 Text(
                     text = scooter.id,
-                    color = Accent,
+                    color = nameColor,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
                 )
-                TypeBadge(scooter.type)
+                TypeBadge(scooter.type, id = scooter.id, outlet = scooter.currentOutlet)
             }
             Row(
                 verticalAlignment = Alignment.CenterVertically,

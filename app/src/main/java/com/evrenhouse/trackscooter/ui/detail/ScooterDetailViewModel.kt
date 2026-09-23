@@ -10,6 +10,7 @@ import com.evrenhouse.trackscooter.data.Scooter
 import com.evrenhouse.trackscooter.data.ScooterRepository
 import com.evrenhouse.trackscooter.data.UpdateScooterRequest
 import com.evrenhouse.trackscooter.data.toUserMessage
+import com.evrenhouse.trackscooter.data.ScooterStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -124,6 +125,36 @@ class ScooterDetailViewModel(
             }
                 .onSuccess {
                     _state.value = _state.value.copy(toast = "Pangkalan unit berhasil diubah")
+                    repository.notifyDataMutated()
+                    loadScooter(currentId)
+                }
+                .onFailure { err ->
+                    _state.value = _state.value.copy(toast = err.toUserMessage())
+                }
+        }
+    }
+
+    fun updateStatus(
+        newStatus: String,
+        location: String? = null,
+        locationDetail: String? = null,
+        issue: String? = null,
+        note: String? = null,
+    ) {
+        val currentId = _state.value.scooterId
+        if (currentId.isBlank()) return
+        viewModelScope.launch {
+            val req = UpdateScooterRequest(
+                status = newStatus,
+                location = location,
+                locationDetail = locationDetail,
+                issue = issue,
+                note = note,
+                maintenanceNote = if (newStatus == ScooterStatus.MAINTENANCE) (issue ?: note) else null,
+            )
+            runCatching { repository.updateScooter(currentId, req) }
+                .onSuccess {
+                    _state.value = _state.value.copy(toast = "Status unit berhasil diperbarui")
                     repository.notifyDataMutated()
                     loadScooter(currentId)
                 }
