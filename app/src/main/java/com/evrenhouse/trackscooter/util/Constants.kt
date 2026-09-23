@@ -56,7 +56,7 @@ object Outlets {
     )
 
     fun labelOf(id: String?): String = LABELS[id] ?: id ?: "Outlet"
-
+    fun shortLabelOf(id: String?): String = OPERATIONAL.find { it.id == id }?.shortLabel ?: id ?: "Outlet"
     fun getHomeOutletForType(type: String): String = when (type.lowercase()) {
         "sd", "sj" -> "utara"
         "sb", "sjb" -> "barat"

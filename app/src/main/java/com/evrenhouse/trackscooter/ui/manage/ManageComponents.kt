@@ -210,17 +210,25 @@ fun ScooterRow(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Row(
+                modifier = Modifier.weight(1f, fill = false),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 val isDark = LocalThemeIsDark.current
                 val nameColor = ScooterColors.getScooterNameColor(scooter.type, scooter.id, scooter.currentOutlet, isDark)
-                Text(scooter.id, color = nameColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                Text(
+                    text = scooter.id,
+                    color = nameColor,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1,
+                )
                 TypeBadge(scooter.type, id = scooter.id, outlet = scooter.currentOutlet)
 
                 // Current Outlet Badge (Interactive)
                 val currentOutletId = scooter.currentOutlet ?: Outlets.getHomeOutletForType(scooter.type)
-                val outletLabel = Outlets.labelOf(currentOutletId)
+                val outletLabel = Outlets.shortLabelOf(currentOutletId)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(3.dp),
@@ -233,7 +241,14 @@ fun ScooterRow(
                 ) {
                     val outletColor = ScooterColors.getOutletColor(currentOutletId)
                     Icon(Icons.Filled.LocationOn, contentDescription = null, tint = outletColor, modifier = Modifier.size(11.dp))
-                    Text(outletLabel, color = TextPrimary, fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        text = outletLabel,
+                        color = TextPrimary,
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {

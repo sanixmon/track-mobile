@@ -292,6 +292,7 @@ fun LiveSessionCard(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Row(
+                modifier = Modifier.weight(1f, fill = false),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -303,6 +304,7 @@ fun LiveSessionCard(
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
+                    maxLines = 1,
                 )
                 TypeBadge(scooter.type, id = scooter.id, outlet = scooter.currentOutlet)
             }

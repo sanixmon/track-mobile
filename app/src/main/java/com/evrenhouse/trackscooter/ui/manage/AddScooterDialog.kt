@@ -405,7 +405,7 @@ fun AddScooterDialog(
 
                     OutlinedButton(
                         onClick = {
-                            val finalId = if (numberInput.isNotBlank()) "$prefix${numberInput.trim()}" else null
+                            val finalId = if (numberInput.isNotBlank()) "$prefix${numberInput.trim()}" else "$prefix$nextNumber"
                             onSubmit(finalId, type, outlet, true)
                             numberInput = ""
                         },
@@ -421,7 +421,7 @@ fun AddScooterDialog(
 
                 Button(
                     onClick = {
-                        val finalId = if (numberInput.isNotBlank()) "$prefix${numberInput.trim()}" else null
+                        val finalId = if (numberInput.isNotBlank()) "$prefix${numberInput.trim()}" else "$prefix$nextNumber"
                         onSubmit(finalId, type, outlet, false)
                     },
                     enabled = !submitting && !isDuplicate,

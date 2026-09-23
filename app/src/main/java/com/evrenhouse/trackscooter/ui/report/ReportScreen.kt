@@ -477,8 +477,9 @@ fun ReportScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Row(
+                                    modifier = Modifier.weight(1f, fill = false),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     val isDark = LocalThemeIsDark.current
                                     val nameColor = ScooterColors.getScooterNameColor(item.type, item.scooterId, isDark = isDark)
@@ -487,33 +488,36 @@ fun ReportScreen(
                                         color = nameColor,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
-                                        fontFamily = FontFamily.Monospace
+                                        fontFamily = FontFamily.Monospace,
+                                        maxLines = 1,
                                     )
                                     TypeBadge(type = item.type, id = item.scooterId)
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(2.dp)
-                                    ) {
-                                        Icon(Icons.Filled.ArrowUpward, null, tint = Accent, modifier = Modifier.size(11.dp))
-                                        Text(DateUtils.formatTime(item.startDt), color = TextMuted, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
-                                        if (item.endDt != null) {
-                                            Text(" - ", color = TextSubtle, fontSize = 11.sp)
-                                            Icon(Icons.Filled.ArrowDownward, null, tint = Green, modifier = Modifier.size(11.dp))
-                                            Text(DateUtils.formatTime(item.endDt), color = TextMuted, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
-                                        }
+                                    val timeStr = if (item.endDt != null) {
+                                        "${DateUtils.formatTime(item.startDt)} - ${DateUtils.formatTime(item.endDt)}"
+                                    } else {
+                                        DateUtils.formatTime(item.startDt)
                                     }
+                                    Text(
+                                        text = timeStr,
+                                        color = TextMuted,
+                                        fontSize = 10.5.sp,
+                                        fontFamily = FontFamily.Monospace,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
 
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     Text(
                                         text = item.durationText,
                                         color = TextPrimary,
-                                        fontSize = 12.sp,
+                                        fontSize = 11.5.sp,
                                         fontWeight = FontWeight.Bold,
-                                        fontFamily = FontFamily.Monospace
+                                        fontFamily = FontFamily.Monospace,
+                                        maxLines = 1,
                                     )
                                     Box(
                                         modifier = Modifier
@@ -526,8 +530,9 @@ fun ReportScreen(
                                         Text(
                                             text = if (item.inProgress) "Berjalan" else "Selesai",
                                             color = if (item.inProgress) Warning else Green,
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold
+                                            fontSize = 9.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
                                         )
                                     }
                                 }

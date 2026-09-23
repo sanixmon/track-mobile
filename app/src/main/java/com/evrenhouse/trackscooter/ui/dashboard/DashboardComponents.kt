@@ -145,11 +145,11 @@ fun OutletSummaryCards(
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                         Text("$maintLuar", color = Warning, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                        Text("Maint. Luar", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text("Luar", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                         Text("$maintOutlet", color = Red, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                        Text("Maint. Outlet", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text("Outlet", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                         Text("$total", color = androidx.compose.ui.graphics.Color(0xFFA855F7), fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
@@ -286,35 +286,33 @@ fun RecentLogTableCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
+                        modifier = Modifier.weight(1f, fill = false),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         val isDark = LocalThemeIsDark.current
                         val nameColor = ScooterColors.getScooterNameColor(session.type, session.scooterId, isDark = isDark)
-                        Text(session.scooterId, color = nameColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                        Text(session.scooterId, color = nameColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, maxLines = 1)
                         TypeBadge(session.type)
+                        val timeRange = if (session.endDt != null) {
+                            "${DateUtils.formatTime(session.startDt)} - ${DateUtils.formatTime(session.endDt)}"
+                        } else {
+                            DateUtils.formatTime(session.startDt)
+                        }
                         Text(
-                            DateUtils.formatTime(session.startDt),
+                            text = timeRange,
                             color = TextMuted,
                             fontSize = 11.sp,
-                            fontFamily = FontFamily.Monospace
+                            fontFamily = FontFamily.Monospace,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
-                        if (session.endDt != null) {
-                            Text("-", color = TextSubtle, fontSize = 11.sp)
-                            Text(
-                                DateUtils.formatTime(session.endDt),
-                                color = TextMuted,
-                                fontSize = 11.sp,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
                     }
-
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text(session.durationText, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, fontFamily = FontFamily.Monospace)
+                        Text(session.durationText, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, fontFamily = FontFamily.Monospace, maxLines = 1)
                         if (session.inProgress) {
                             Box(
                                 modifier = Modifier
@@ -489,9 +487,20 @@ fun TypeSummaryCard(scooters: List<Scooter>, modifier: Modifier = Modifier) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.weight(1f, fill = false),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         TypeBadge(type)
-                        Text(TypeLabels.of(type), color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = TypeLabels.of(type),
+                            color = TextPrimary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                     Text("${group.size} unit", color = TextSubtle, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
                 }
