@@ -94,7 +94,6 @@ import com.evrenhouse.trackscooter.util.Exporter
 import com.evrenhouse.trackscooter.util.FieldTone
 import com.evrenhouse.trackscooter.util.StatusLabels
 import com.evrenhouse.trackscooter.util.TypeLabels
-import com.evrenhouse.trackscooter.util.Outlets
 import kotlinx.coroutines.launch
 
 @Composable

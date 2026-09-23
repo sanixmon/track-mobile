@@ -86,6 +86,7 @@ fun TroubleSwapDialog(
     onConfirm: (replacementId: String, note: String, issue: String?, markBroken: Boolean) -> Unit,
     submitting: Boolean = false
 ) {
+    val isDark = LocalThemeIsDark.current
     val currentRegion = remember(scooter.type) { Outlets.getHomeOutletForType(scooter.type) }
 
     // Prioritize: 1. Same exact type, 2. Same region, 3. Numeric ID order (1:1 web logic)
@@ -178,7 +179,6 @@ fun TroubleSwapDialog(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val isDark = LocalThemeIsDark.current
                 val oldUnitColor = ScooterColors.getScooterNameColor(scooter.type, scooter.id, scooter.currentOutlet, isDark)
                 Column {
                     Text("UNIT LAMA", color = TextSubtle, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
