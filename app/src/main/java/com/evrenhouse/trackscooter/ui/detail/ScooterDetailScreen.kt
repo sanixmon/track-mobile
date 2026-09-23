@@ -548,10 +548,10 @@ fun ScooterDetailDialog(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.88f)
-                .clip(RoundedCornerShape(20.dp))
+                .fillMaxHeight(0.82f)
+                .clip(RoundedCornerShape(16.dp))
                 .background(Surface)
-                .border(1.dp, Border, RoundedCornerShape(20.dp))
+                .border(1.dp, Border, RoundedCornerShape(16.dp))
         ) {
             ScooterDetailScreen(
                 scooterId = scooterId,
