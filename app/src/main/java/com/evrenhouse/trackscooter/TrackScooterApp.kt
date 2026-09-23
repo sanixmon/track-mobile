@@ -9,5 +9,15 @@ import com.evrenhouse.trackscooter.data.ScooterRepository
  */
 class TrackScooterApp : Application() {
 
+    companion object {
+        lateinit var instance: TrackScooterApp
+            private set
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        instance = this
+    }
+
     val repository: ScooterRepository by lazy { ScooterRepository() }
 }

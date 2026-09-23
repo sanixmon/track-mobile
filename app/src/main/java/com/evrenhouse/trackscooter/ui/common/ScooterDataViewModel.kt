@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.launch
+import com.evrenhouse.trackscooter.TrackScooterApp
+import com.evrenhouse.trackscooter.util.OutletPrefs
 import java.time.Instant
 
 data class ScooterDataUiState(
@@ -45,11 +47,14 @@ class ScooterDataViewModel(
     private val _state = MutableStateFlow(ScooterDataUiState())
     val state: StateFlow<ScooterDataUiState> = _state.asStateFlow()
 
-    private val _selectedOutlet = MutableStateFlow("all")
+    private val _selectedOutlet = MutableStateFlow(
+        runCatching { OutletPrefs.getSelectedOutlet(TrackScooterApp.instance) }.getOrDefault("all")
+    )
     val selectedOutlet: StateFlow<String> = _selectedOutlet.asStateFlow()
 
     fun setSelectedOutlet(outletId: String) {
         _selectedOutlet.value = outletId
+        runCatching { OutletPrefs.setSelectedOutlet(TrackScooterApp.instance, outletId) }
     }
 
     private var pollingJob: Job? = null

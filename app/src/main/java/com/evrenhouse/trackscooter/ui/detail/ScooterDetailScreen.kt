@@ -223,14 +223,14 @@ fun ScooterDetailScreen(
                         ) {
                             Icon(Icons.Filled.LocationOn, contentDescription = null, tint = outletColor, modifier = Modifier.size(11.dp))
                             Text(
-                                text = "Pangkalan: ${Outlets.labelOf(currentOutletId)}",
+                                text = "Outlet: ${Outlets.labelOf(currentOutletId)}",
                                 color = TextPrimary,
                                 fontSize = 10.5.sp,
                                 fontWeight = FontWeight.Medium,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-                            Icon(Icons.Filled.ArrowDropDown, contentDescription = "Ubah Pangkalan", tint = TextMuted, modifier = Modifier.size(13.dp))
+                            Icon(Icons.Filled.ArrowDropDown, contentDescription = "Ubah Outlet", tint = TextMuted, modifier = Modifier.size(13.dp))
                         }
                     }
                 }
@@ -470,10 +470,10 @@ fun ScooterDetailScreen(
             onDismissRequest = { showOutletDialog = false },
             containerColor = Surface,
             titleContentColor = TextPrimary,
-            title = { Text("Pindahkan Pangkalan", fontSize = 15.sp, fontWeight = FontWeight.Bold) },
+            title = { Text("Pindahkan Outlet", fontSize = 15.sp, fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Pilih lokasi pangkalan untuk unit ${s.id}:", color = TextMuted, fontSize = 12.sp)
+                    Text("Pilih lokasi outlet untuk unit ${s.id}:", color = TextMuted, fontSize = 12.sp)
                     Outlets.OPERATIONAL.forEach { o ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,

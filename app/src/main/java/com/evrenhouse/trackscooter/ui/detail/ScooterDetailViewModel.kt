@@ -134,7 +134,7 @@ class ScooterDetailViewModel(
                 )
             }
                 .onSuccess {
-                    _state.value = _state.value.copy(toast = "Pangkalan unit berhasil diubah")
+                    _state.value = _state.value.copy(toast = "Outlet unit berhasil diubah")
                     repository.notifyDataMutated()
                     loadScooter(currentId)
                 }

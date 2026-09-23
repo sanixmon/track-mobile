@@ -214,7 +214,7 @@ $sheetEntries
         val headers = listOf(
             "ID Unit",
             "Jenis",
-            "Lokasi Pangkalan",
+            "Lokasi Outlet",
             "Status",
             "Kondisi Unit",
             "Spakbor",

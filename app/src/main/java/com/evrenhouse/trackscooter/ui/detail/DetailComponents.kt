@@ -97,18 +97,6 @@ fun ConditionEditor(
                     Icon(Icons.Filled.Tune, contentDescription = null, tint = Accent, modifier = Modifier.size(13.dp))
                 }
                 Text("KONDISI PERANGKAT", color = TextPrimary, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                if (isDirty && !saving) {
-                    Text(
-                        "Belum disimpan",
-                        color = Warning,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .background(Warning.copy(alpha = 0.15f), RoundedCornerShape(50))
-                            .border(1.dp, Warning.copy(alpha = 0.3f), RoundedCornerShape(50))
-                            .padding(horizontal = 7.dp, vertical = 2.dp),
-                    )
-                }
             }
             Button(
                 onClick = onSave,
@@ -215,19 +203,15 @@ fun HistorySection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("RIWAYAT UNIT (${log.size})", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                TextButton(onClick = onOpenFullHistory, contentPadding = PaddingValues(0.dp)) {
-                    Icon(Icons.Filled.Schedule, contentDescription = null, tint = Accent, modifier = Modifier.size(12.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Laporan Riwayat", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                }
-                Text("·", color = Border, fontSize = 11.sp)
-                TextButton(onClick = onExport, contentPadding = PaddingValues(0.dp)) {
-                    Icon(Icons.Filled.FileDownload, contentDescription = null, tint = Green, modifier = Modifier.size(12.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Export", color = Green, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                }
+            TextButton(onClick = onOpenFullHistory, contentPadding = PaddingValues(0.dp)) {
+                Icon(Icons.Filled.Schedule, contentDescription = null, tint = Accent, modifier = Modifier.size(13.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("Laporan Riwayat", color = Accent, fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+            }
+            TextButton(onClick = onExport, contentPadding = PaddingValues(0.dp)) {
+                Icon(Icons.Filled.FileDownload, contentDescription = null, tint = Green, modifier = Modifier.size(13.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("Export", color = Green, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
             }
         }
 

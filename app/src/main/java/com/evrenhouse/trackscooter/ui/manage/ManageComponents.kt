@@ -479,7 +479,7 @@ fun EditScooterDialog(
                             Text("Atur Armada", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                             Text(scooter.id, color = nameColor, fontSize = 16.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                         }
-                        Text("Pindahkan pangkalan atau atur unit", color = TextMuted, fontSize = 12.sp)
+                        Text("Pindahkan outlet atau atur unit", color = TextMuted, fontSize = 12.sp)
                     }
                 }
 
@@ -490,7 +490,7 @@ fun EditScooterDialog(
 
             // 1. Lokasi Outlet Saat Ini (Current Outlet)
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("LOKASI OUTLET PANGKALAN", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+                Text("LOKASI OUTLET", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
 
                 Box {
                     Row(
