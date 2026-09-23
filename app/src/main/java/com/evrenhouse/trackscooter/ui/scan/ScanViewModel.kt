@@ -90,23 +90,23 @@ class ScanViewModel(
                     repository.checkoutScooter(scooter.id)
                 }
             }.onSuccess { res ->
-                        repository.notifyScooterToggled(res)
-                    }
-                    _state.value = _state.value.copy(
-                        busy = false,
-                        pendingScooter = null,
-                        scanning = true,
-                        toast = resultMessage(res)
-                    )
+                if (res.success) {
+                    repository.notifyScooterToggled(res)
                 }
-                .onFailure { err ->
-                    _state.value = _state.value.copy(
-                        busy = false,
-                        pendingScooter = null,
-                        scanning = true,
-                        toast = err.toUserMessage()
-                    )
-                }
+                _state.value = _state.value.copy(
+                    busy = false,
+                    pendingScooter = null,
+                    scanning = true,
+                    toast = resultMessage(res)
+                )
+            }.onFailure { err ->
+                _state.value = _state.value.copy(
+                    busy = false,
+                    pendingScooter = null,
+                    scanning = true,
+                    toast = err.toUserMessage()
+                )
+            }
         }
     }
 

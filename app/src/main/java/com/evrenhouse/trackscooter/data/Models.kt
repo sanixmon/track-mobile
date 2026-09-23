@@ -83,6 +83,7 @@ data class MaintenanceRecord(
     @SerialName("scooter_id") val scooterId: String,
     @SerialName("scooter_type") val scooterType: String,
     @SerialName("location") val location: String,
+    @SerialName("location_detail") val locationDetail: String? = null,
     @SerialName("issue") val issue: String? = null,
     @SerialName("note") val note: String? = null,
     @SerialName("status") val status: String, // "repair" | "done"
