@@ -253,7 +253,10 @@ fun ManageScreen(
                             scope.launch {
                                 busyAction = true
                                 runCatching {
-                                    QrZip.zipAllQrs(context, data.scooters.map { it.id to it.type })
+                                    val items = data.scooters.map {
+                                        Triple(it.id, it.type, it.currentOutlet ?: Outlets.getHomeOutletForType(it.type))
+                                    }
+                                    QrZip.zipAllQrs(context, items)
                                 }
                                     .onSuccess { sweetAlert.showSuccess("Semua QR Code diunduh ($it)") }
                                     .onFailure { sweetAlert.showError(it.toUserMessage()) }
@@ -350,7 +353,8 @@ fun ManageScreen(
                     onDownloadQr = { scooter ->
                         scope.launch {
                             runCatching {
-                                val bmp = QrUtils.generate(scooter.id, 400)
+                                val outlet = scooter.currentOutlet ?: Outlets.getHomeOutletForType(scooter.type)
+                                val bmp = QrUtils.generate(scooter.id, outlet, 400)
                                 val png = bmp.toPngBytes()
                                 val filename = "QR-${scooter.id}-${scooter.type.uppercase()}.png"
                                 Exporter.saveBytesToDownloads(context, filename, png, "image/png")

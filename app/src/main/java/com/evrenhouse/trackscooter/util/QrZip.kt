@@ -16,14 +16,14 @@ import java.util.zip.ZipOutputStream
 object QrZip {
 
     /** Generate a PNG for each scooter, zip them, and write to Downloads. */
-    suspend fun zipAllQrs(context: Context, items: List<Pair<String, String>>): String =
+    suspend fun zipAllQrs(context: Context, items: List<Triple<String, String, String?>>): String =
         withContext(Dispatchers.IO) {
             val filename = "QR-SEMUA-SCOOTER-${DateUtils.localDateKey(DateUtils.today())}.zip"
 
             val bytes = ByteArrayOutputStream().use { bos ->
                 ZipOutputStream(bos).use { zos ->
-                    items.forEach { (id, type) ->
-                        val bmp = QrUtils.generate(id, 400)
+                    items.forEach { (id, type, outlet) ->
+                        val bmp = QrUtils.generate(id, outlet, 400)
                         val png = bmp.toPng()
                         zos.putNextEntry(ZipEntry("QR-$id-${type.uppercase()}.png"))
                         zos.write(png)
@@ -36,6 +36,9 @@ object QrZip {
             writeToDownloads(context, filename, bytes, "application/zip")
             filename
         }
+
+    suspend fun zipAllQrs(context: Context, items: List<Pair<String, String>>, dummy: Unit = Unit): String =
+        zipAllQrs(context, items.map { (id, type) -> Triple(id, type, null) })
 
     private fun Bitmap.toPng(): ByteArray {
         val baos = ByteArrayOutputStream()

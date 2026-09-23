@@ -81,7 +81,7 @@ data class ActivityLogEntry(
 data class MaintenanceRecord(
     @SerialName("id") val id: String,
     @SerialName("scooter_id") val scooterId: String,
-    @SerialName("scooter_type") val scooterType: String,
+    @SerialName("scooter_type") val scooterType: String? = null,
     @SerialName("location") val location: String,
     @SerialName("location_detail") val locationDetail: String? = null,
     @SerialName("issue") val issue: String? = null,

@@ -280,7 +280,7 @@ fun DashboardScreen(
                     if (activeOutlet == "all") true
                     else {
                         val bike = state.scooters.find { it.id == rec.scooterId }
-                        val cur = bike?.currentOutlet ?: Outlets.getHomeOutletForType(rec.scooterType)
+                        val cur = bike?.currentOutlet ?: Outlets.getHomeOutletForType(rec.scooterType ?: bike?.type ?: "sd")
                         cur == activeOutlet
                     }
                 }
