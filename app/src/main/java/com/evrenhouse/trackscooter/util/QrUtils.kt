@@ -43,7 +43,7 @@ object QrUtils {
         val matrix = QRCodeWriter().encode(scooterId, BarcodeFormat.QR_CODE, sizePx, sizePx, hints)
 
         val numberOnly = scooterId.substringAfter("-").ifBlank { scooterId.filter { it.isDigit() } }
-        val extraHeight = (sizePx * 0.12f).toInt()
+        val extraHeight = (sizePx * 0.42f).toInt()
         val totalHeight = sizePx + extraHeight
 
         val bmp = Bitmap.createBitmap(sizePx, totalHeight, Bitmap.Config.ARGB_8888)
@@ -61,14 +61,14 @@ object QrUtils {
         if (numberOnly.isNotBlank()) {
             val paint = Paint().apply {
                 color = darkColor
-                textSize = sizePx * 0.08f
+                textSize = sizePx * 0.38f
                 isFakeBoldText = true
                 isAntiAlias = true
                 textAlign = Paint.Align.CENTER
                 typeface = Typeface.MONOSPACE
             }
             val xPos = sizePx / 2f
-            val yPos = sizePx + (extraHeight * 0.65f)
+            val yPos = sizePx + (extraHeight * 0.75f)
             canvas.drawText(numberOnly, xPos, yPos, paint)
         }
 
