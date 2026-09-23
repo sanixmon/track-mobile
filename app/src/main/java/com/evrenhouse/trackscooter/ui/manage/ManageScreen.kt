@@ -89,6 +89,7 @@ import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
 import com.evrenhouse.trackscooter.ui.theme.Warning
 import com.evrenhouse.trackscooter.util.DateUtils
+import com.evrenhouse.trackscooter.util.MIME_XLSX
 import com.evrenhouse.trackscooter.util.Exporter
 import com.evrenhouse.trackscooter.util.DeviceConditionHelper
 import com.evrenhouse.trackscooter.util.QrZip
@@ -218,7 +219,7 @@ fun ManageScreen(
                         text = {
                             Column {
                                 Text("Export Kondisi Unit", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                                Text("Unduh laporan kondisi (.csv)", fontSize = 10.sp, color = TextMuted)
+                                Text("Unduh laporan kondisi (.xlsx)", fontSize = 10.sp, color = TextMuted)
                             }
                         },
                         leadingIcon = { Icon(Icons.Filled.GridView, null, tint = Accent, modifier = Modifier.size(16.dp)) },
@@ -227,10 +228,11 @@ fun ManageScreen(
                             scope.launch {
                                 busyAction = true
                                 runCatching {
-                                    val csv = Exporter.buildConditionsCsv(data.scooters)
-                                    Exporter.saveToDownloads(context, "Kondisi-Scooter-${todayKey}.csv", csv)
+                                    val bytes = Exporter.buildConditionsXlsx(data.scooters)
+                                    val filename = "Kondisi-Scooter-${todayKey}.xlsx"
+                                    Exporter.saveBytesToDownloads(context, filename, bytes, MIME_XLSX)
                                 }
-                                    .onSuccess { sweetAlert.showSuccess("File CSV berhasil diunduh") }
+                                    .onSuccess { sweetAlert.showSuccess("File XLSX berhasil diunduh ($it)") }
                                     .onFailure { sweetAlert.showError(it.toUserMessage()) }
                                 busyAction = false
                             }

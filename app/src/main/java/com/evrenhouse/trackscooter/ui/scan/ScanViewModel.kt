@@ -79,13 +79,17 @@ class ScanViewModel(
     /** Execute the toggle action confirmed by the user in the dialog. */
     fun confirmScan() {
         val scooter = _state.value.pendingScooter ?: return
-        val isMaintenance = scooter.status == ScooterStatus.MAINTENANCE
+        val isReturn = scooter.status == ScooterStatus.IN_USE
 
         _state.value = _state.value.copy(busy = true)
         viewModelScope.launch {
-            runCatching { repository.toggleScooter(scooter.id, forceMaintenance = isMaintenance) }
-                .onSuccess { res ->
-                    if (res.success) {
+            runCatching {
+                if (isReturn) {
+                    repository.returnScooter(scooter.id)
+                } else {
+                    repository.checkoutScooter(scooter.id)
+                }
+            }.onSuccess { res ->
                         repository.notifyScooterToggled(res)
                     }
                     _state.value = _state.value.copy(

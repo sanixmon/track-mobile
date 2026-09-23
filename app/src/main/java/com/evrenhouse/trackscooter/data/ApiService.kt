@@ -33,6 +33,19 @@ interface ApiService {
     @POST("api/scooters/{id}/swap")
     suspend fun swapScooter(@Path("id") id: String, @Body body: SwapScooterRequest): SwapScooterResponse
 
+
+    @POST("api/scooters/{id}/checkout")
+    suspend fun checkoutScooter(@Path("id") id: String): ToggleResponse
+
+    @POST("api/scooters/{id}/return")
+    suspend fun returnScooter(@Path("id") id: String): ToggleResponse
+
+    @GET("api/scooters/{id}/history")
+    suspend fun getScooterTechnicalHistory(
+        @Path("id") id: String,
+        @retrofit2.http.Query("startDate") startDate: String? = null,
+        @retrofit2.http.Query("endDate") endDate: String? = null
+    ): ScooterTechnicalHistoryResponse
     @GET("api/activity-log")
     suspend fun getActivityLog(): List<ActivityLogEntry>
 

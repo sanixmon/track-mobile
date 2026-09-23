@@ -11,6 +11,9 @@ import com.evrenhouse.trackscooter.data.ScooterRepository
 import com.evrenhouse.trackscooter.data.UpdateScooterRequest
 import com.evrenhouse.trackscooter.data.toUserMessage
 import com.evrenhouse.trackscooter.data.ScooterStatus
+import com.evrenhouse.trackscooter.data.TechnicalActivity
+import com.evrenhouse.trackscooter.util.DateUtils
+import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,6 +30,13 @@ data class DetailUiState(
     val saving: Boolean = false,
     val completing: Boolean = false,
     val toast: String? = null,
+    val technicalActivities: List<TechnicalActivity> = emptyList(),
+    val historyLoading: Boolean = false,
+    val historyError: String? = null,
+    val historyDatePreset: String = "all",
+    val historyCategoryFilter: String = "all",
+    val historyCustomStart: String = "",
+    val historyCustomEnd: String = "",
 )
 
 class ScooterDetailViewModel(
@@ -179,6 +189,49 @@ class ScooterDetailViewModel(
         }
     }
 
+
+    fun loadTechnicalHistory(startDate: String? = null, endDate: String? = null) {
+        val id = _state.value.scooterId.ifBlank { return }
+        _state.value = _state.value.copy(historyLoading = true, historyError = null)
+        viewModelScope.launch {
+            runCatching {
+                repository.getScooterTechnicalHistory(id, startDate, endDate)
+            }.onSuccess { res ->
+                _state.value = _state.value.copy(
+                    historyLoading = false,
+                    technicalActivities = res.activities,
+                    historyError = null
+                )
+            }.onFailure { err ->
+                _state.value = _state.value.copy(
+                    historyLoading = false,
+                    historyError = err.toUserMessage()
+                )
+            }
+        }
+    }
+
+    fun setHistoryDatePreset(preset: String, customStart: String = "", customEnd: String = "") {
+        _state.value = _state.value.copy(
+            historyDatePreset = preset,
+            historyCustomStart = customStart,
+            historyCustomEnd = customEnd
+        )
+        val today = LocalDate.now(DateUtils.WIB)
+        val (start, end) = when (preset) {
+            "today" -> today.toString() to today.toString()
+            "7d" -> today.minusDays(7).toString() to today.toString()
+            "30d" -> today.minusDays(30).toString() to today.toString()
+            "month" -> today.withDayOfMonth(1).toString() to today.toString()
+            "custom" -> (customStart.ifBlank { null }) to (customEnd.ifBlank { null })
+            else -> null to null
+        }
+        loadTechnicalHistory(start, end)
+    }
+
+    fun setHistoryCategoryFilter(category: String) {
+        _state.value = _state.value.copy(historyCategoryFilter = category)
+    }
     fun consumeToast() {
         _state.value = _state.value.copy(toast = null)
     }

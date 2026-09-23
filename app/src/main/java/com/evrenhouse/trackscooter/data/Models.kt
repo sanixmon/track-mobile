@@ -163,6 +163,29 @@ data class CompleteMaintenanceResponse(
     @SerialName("record") val record: MaintenanceRecord? = null,
 )
 
+
+@Serializable
+data class TechnicalActivity(
+    @SerialName("id") val id: String,
+    @SerialName("type") val type: String, // "usage" | "maintenance"
+    @SerialName("startTime") val startTime: String,
+    @SerialName("endTime") val endTime: String? = null,
+    @SerialName("durationMinutes") val durationMinutes: Int? = null,
+    @SerialName("durationText") val durationText: String? = null,
+    @SerialName("status") val status: String? = null,
+    @SerialName("note") val note: String? = null,
+    @SerialName("issue") val issue: String? = null,
+    @SerialName("location") val location: String? = null,
+    @SerialName("locationDetail") val locationDetail: String? = null,
+    @SerialName("detail") val detail: String? = null,
+)
+
+@Serializable
+data class ScooterTechnicalHistoryResponse(
+    @SerialName("scooter") val scooter: Scooter,
+    @SerialName("condition") val condition: DeviceCondition? = null,
+    @SerialName("activities") val activities: List<TechnicalActivity> = emptyList(),
+)
 @Serializable
 data class ApiError(
     @SerialName("error") val error: String? = null,

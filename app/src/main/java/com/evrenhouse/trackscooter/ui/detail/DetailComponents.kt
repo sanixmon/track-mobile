@@ -202,6 +202,7 @@ fun FieldEditor(
 fun HistorySection(
     log: List<ActivityLogEntry>,
     maintenance: List<MaintenanceRecord>,
+    onOpenFullHistory: () -> Unit,
     onExport: () -> Unit,
 ) {
     Column(
@@ -218,10 +219,18 @@ fun HistorySection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("RIWAYAT UNIT (${log.size})", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
-            TextButton(onClick = onExport, contentPadding = PaddingValues(0.dp)) {
-                Icon(Icons.Filled.FileDownload, contentDescription = null, tint = Green, modifier = Modifier.size(12.dp))
-                Spacer(Modifier.width(4.dp))
-                Text("Export", color = Green, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                TextButton(onClick = onOpenFullHistory, contentPadding = PaddingValues(0.dp)) {
+                    Icon(Icons.Filled.Schedule, contentDescription = null, tint = Accent, modifier = Modifier.size(12.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Laporan Riwayat", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Text("·", color = Border, fontSize = 11.sp)
+                TextButton(onClick = onExport, contentPadding = PaddingValues(0.dp)) {
+                    Icon(Icons.Filled.FileDownload, contentDescription = null, tint = Green, modifier = Modifier.size(12.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Export", color = Green, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
             }
         }
 

@@ -90,6 +90,7 @@ import com.evrenhouse.trackscooter.util.DateUtils
 import com.evrenhouse.trackscooter.util.DeviceConditionHelper
 import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
 import com.evrenhouse.trackscooter.util.DeviceFields
+import com.evrenhouse.trackscooter.util.MIME_XLSX
 import com.evrenhouse.trackscooter.util.Exporter
 import com.evrenhouse.trackscooter.util.FieldTone
 import com.evrenhouse.trackscooter.util.StatusLabels
@@ -123,6 +124,7 @@ fun ScooterDetailScreen(
     var showOutletDialog by remember { mutableStateOf(false) }
     var statusMenuOpen by remember { mutableStateOf(false) }
     var statusChangeTarget by remember { mutableStateOf<String?>(null) }
+    var showHistorySheet by remember { mutableStateOf(false) }
 
     fun currentSnapshot(): String = (condition + ("monitorDetail" to monitorDetail)).toString()
 
@@ -389,14 +391,18 @@ fun ScooterDetailScreen(
                 HistorySection(
                     log = state.log,
                     maintenance = state.maintenance,
+                    onOpenFullHistory = {
+                        viewModel.loadTechnicalHistory()
+                        showHistorySheet = true
+                    },
                     onExport = {
                         scope.launch {
                             runCatching {
-                                val csv = Exporter.buildHistoryCsv(state.log, state.maintenance)
-                                val filename = "Riwayat-${scooter.id}-${DateUtils.localDateKey(DateUtils.today())}.csv"
-                                Exporter.saveToDownloads(context, filename, csv)
+                                val bytes = Exporter.buildHistoryXlsx(scooter, state.log, state.maintenance)
+                                val filename = "Riwayat-${scooter.id}-${DateUtils.localDateKey(DateUtils.today())}.xlsx"
+                                Exporter.saveBytesToDownloads(context, filename, bytes, MIME_XLSX)
                             }
-                                .onSuccess { sweetAlert.showSuccess("Excel diunduh") }
+                                .onSuccess { sweetAlert.showSuccess("File XLSX berhasil diunduh ($it)") }
                                 .onFailure { sweetAlert.showError(it.message ?: "Gagal export") }
                         }
                     },
@@ -488,6 +494,45 @@ fun ScooterDetailScreen(
                 }
             )
         }
+    }
+
+    if (showHistorySheet && state.scooter != null) {
+        val filteredActivities = when (state.historyCategoryFilter) {
+            "usage" -> state.technicalActivities.filter { it.type == "usage" }
+            "maintenance" -> state.technicalActivities.filter { it.type == "maintenance" }
+            else -> state.technicalActivities
+        }
+
+        ScooterHistoryBottomSheet(
+            scooter = state.scooter!!,
+            activities = filteredActivities,
+            isLoading = state.historyLoading,
+            selectedPreset = state.historyDatePreset,
+            selectedCategory = state.historyCategoryFilter,
+            onSelectPreset = { preset, start, end ->
+                viewModel.setHistoryDatePreset(preset, start, end)
+            },
+            onSelectCategory = { cat ->
+                viewModel.setHistoryCategoryFilter(cat)
+            },
+            onExportXlsx = {
+                scope.launch {
+                    runCatching {
+                        val bytes = Exporter.buildTechnicalHistoryXlsx(
+                            scooter = state.scooter!!,
+                            activities = filteredActivities,
+                            dateRangeLabel = state.historyDatePreset
+                        )
+                        val periodClean = state.historyDatePreset.replace("\\s+".toRegex(), "-")
+                        val filename = "Laporan-Aktivitas-${state.scooter!!.id}-$periodClean.xlsx"
+                        Exporter.saveBytesToDownloads(context, filename, bytes, MIME_XLSX)
+                    }
+                        .onSuccess { sweetAlert.showSuccess("File XLSX berhasil diunduh ($it)") }
+                        .onFailure { sweetAlert.showError(it.message ?: "Gagal export") }
+                }
+            },
+            onDismiss = { showHistorySheet = false }
+        )
     }
 }
 

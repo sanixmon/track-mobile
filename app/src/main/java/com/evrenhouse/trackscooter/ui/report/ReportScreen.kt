@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.ElectricScooter
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Search
@@ -472,6 +471,7 @@ fun ReportScreen(
                                     .clip(RoundedCornerShape(10.dp))
                                     .background(Surface2)
                                     .border(1.dp, Border, RoundedCornerShape(10.dp))
+                                    .clickable { onOpenDetail?.invoke(item.scooterId) }
                                     .padding(10.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
@@ -567,45 +567,6 @@ fun ReportScreen(
                     }
 
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Green.copy(alpha = 0.12f))
-                                .border(1.dp, Green.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                                .clickable {
-                                    sweetAlert.showConfirm(
-                                        title = "Tandai Semua Hadir?",
-                                        message = "Seluruh unit di outlet akan ditandai hadir pada $selectedDate.",
-                                        confirmText = "Ya, Tandai",
-                                        cancelText = "Batal",
-                                        isDanger = false,
-                                        onConfirm = {
-                                            scope.launch {
-                                                runCatching {
-                                                    repository.markAllDailyAttendance(
-                                                        date = selectedDate,
-                                                        outlet = if (selectedOutlet == "all") null else selectedOutlet
-                                                    )
-                                                }.onSuccess {
-                                                    sweetAlert.showSuccess(it.message ?: "Semua hadir")
-                                                    loadAttendanceData()
-                                                }
-                                            }
-                                        }
-                                    )
-                                }
-                                .padding(horizontal = 8.dp, vertical = 6.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(Icons.Filled.DoneAll, null, tint = Green, modifier = Modifier.size(13.dp))
-                                Text("Semua Hadir", color = Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))

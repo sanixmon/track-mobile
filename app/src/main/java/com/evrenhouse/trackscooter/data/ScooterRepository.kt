@@ -161,6 +161,19 @@ class ScooterRepository(private val api: ApiService = ApiClient.service) {
     suspend fun toggleScooter(id: String, forceMaintenance: Boolean = false): ToggleResponse =
         withContext(Dispatchers.IO) { api.toggleScooter(id, ToggleRequest(forceMaintenance)) }
 
+
+    suspend fun checkoutScooter(id: String): ToggleResponse =
+        withContext(Dispatchers.IO) { api.checkoutScooter(id) }
+
+    suspend fun returnScooter(id: String): ToggleResponse =
+        withContext(Dispatchers.IO) { api.returnScooter(id) }
+
+    suspend fun getScooterTechnicalHistory(
+        id: String,
+        startDate: String? = null,
+        endDate: String? = null
+    ): ScooterTechnicalHistoryResponse =
+        withContext(Dispatchers.IO) { api.getScooterTechnicalHistory(id, startDate, endDate) }
     suspend fun swapScooter(
         id: String,
         replacementId: String,
