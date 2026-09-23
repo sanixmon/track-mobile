@@ -576,6 +576,46 @@ fun ReportScreen(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
+                                .background(Green.copy(alpha = 0.12f))
+                                .border(1.dp, Green.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                .clickable {
+                                    sweetAlert.showConfirm(
+                                        title = "Absen Semua Unit?",
+                                        message = "Seluruh unit yang berada di outlet akan ditandai hadir pada $selectedDate.",
+                                        confirmText = "Ya, Tandai Semua",
+                                        cancelText = "Batal",
+                                        onConfirm = {
+                                            scope.launch {
+                                                runCatching {
+                                                    repository.markAllDailyAttendance(
+                                                        date = selectedDate,
+                                                        outlet = if (selectedOutlet == "all") null else selectedOutlet
+                                                    )
+                                                }.onSuccess {
+                                                    sweetAlert.showSuccess(it.message ?: "Semua unit berhasil ditandai hadir")
+                                                    loadAttendanceData()
+                                                }.onFailure {
+                                                    sweetAlert.showError(it.toUserMessage())
+                                                }
+                                            }
+                                        }
+                                    )
+                                }
+                                .padding(horizontal = 8.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(Icons.Filled.Check, null, tint = Green, modifier = Modifier.size(13.dp))
+                                Text("Absen Semua", color = Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
                                 .background(Surface3)
                                 .border(1.dp, Border, RoundedCornerShape(8.dp))
                                 .clickable {

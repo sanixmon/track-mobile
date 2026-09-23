@@ -83,21 +83,23 @@ fun StatusChip(status: String?, modifier: Modifier = Modifier, pulse: Boolean = 
     Row(
         modifier = modifier
             .background(c.subtle, RoundedCornerShape(50))
-            .padding(horizontal = 10.dp, vertical = 4.dp),
+            .padding(horizontal = 8.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         Box(
             modifier = Modifier
-                .size(7.dp)
+                .size(6.dp)
                 .background(c.color, CircleShape),
         )
         Text(
             text = StatusLabels.of(status),
             color = c.color,
-            fontSize = 10.sp,
+            fontSize = 9.5.sp,
             fontWeight = FontWeight.Bold,
-            letterSpacing = 0.3.sp,
+            letterSpacing = 0.2.sp,
+            maxLines = 1,
+            softWrap = false,
         )
     }
 }
@@ -466,34 +468,75 @@ fun SegmentedPillGroup(
     modifier: Modifier = Modifier,
     activeColor: Color = Accent,
 ) {
-    Row(
-        modifier = modifier
-            .background(Surface2, RoundedCornerShape(8.dp))
-            .border(1.dp, Border, RoundedCornerShape(8.dp))
-            .padding(2.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        options.forEach { (value, label) ->
-            val isSelected = value == selected
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(30.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(if (isSelected) activeColor else Color.Transparent)
-                    .clickable { onSelect(value) },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = label,
-                    fontSize = 11.sp,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    color = if (isSelected) Color.White else TextMuted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+    if (options.size > 3) {
+        Column(
+            modifier = modifier
+                .background(Surface2, RoundedCornerShape(8.dp))
+                .border(1.dp, Border, RoundedCornerShape(8.dp))
+                .padding(2.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            options.chunked(3).forEach { rowOptions ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    rowOptions.forEach { (value, label) ->
+                        val isSelected = value == selected
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(32.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (isSelected) activeColor else Color.Transparent)
+                                .clickable { onSelect(value) },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = label,
+                                fontSize = 11.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) Color.White else TextMuted,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                    repeat(3 - rowOptions.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    } else {
+        Row(
+            modifier = modifier
+                .background(Surface2, RoundedCornerShape(8.dp))
+                .border(1.dp, Border, RoundedCornerShape(8.dp))
+                .padding(2.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            options.forEach { (value, label) ->
+                val isSelected = value == selected
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(30.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isSelected) activeColor else Color.Transparent)
+                        .clickable { onSelect(value) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = label,
+                        fontSize = 11.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isSelected) Color.White else TextMuted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }
 }
-

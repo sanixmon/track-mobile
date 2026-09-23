@@ -14,7 +14,7 @@ object ApiClient {
     private val json = Json {
         ignoreUnknownKeys = true
         coerceInputValues = true
-        encodeDefaults = true
+        explicitNulls = false
     }
 
     private val okHttp: OkHttpClient by lazy {

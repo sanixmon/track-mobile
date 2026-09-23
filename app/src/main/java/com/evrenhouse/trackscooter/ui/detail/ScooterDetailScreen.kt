@@ -179,34 +179,60 @@ fun ScooterDetailScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconButton(onClick = onBack) {
+            Row(
+                modifier = Modifier.weight(1f, fill = false),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali", tint = TextMuted)
                 }
                 val isDark = LocalThemeIsDark.current
                 val scooter = state.scooter
                 val idText = scooter?.id ?: scooterId
                 val nameColor = ScooterColors.getScooterNameColor(scooter?.type, idText, scooter?.currentOutlet, isDark)
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(idText, color = nameColor, fontSize = 16.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = idText,
+                            color = nameColor,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            maxLines = 1,
+                        )
                         if (scooter != null) {
                             TypeBadge(scooter.type, id = scooter.id, outlet = scooter.currentOutlet)
-                            val currentOutletId = scooter.currentOutlet ?: Outlets.getHomeOutletForType(scooter.type)
-                            val outletColor = ScooterColors.getOutletColor(currentOutletId)
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .clickable { showOutletDialog = true }
-                                    .padding(horizontal = 4.dp, vertical = 2.dp)
-                            ) {
-                                Text("· ${Outlets.labelOf(currentOutletId)}", color = outletColor, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                                Icon(Icons.Filled.ArrowDropDown, contentDescription = "Ubah Pangkalan", tint = outletColor, modifier = Modifier.size(13.dp))
-                            }
                         }
                     }
-                    Text(TypeLabels.of(scooter?.type), color = TextMuted, fontSize = 11.sp)
+                    if (scooter != null) {
+                        val currentOutletId = scooter.currentOutlet ?: Outlets.getHomeOutletForType(scooter.type)
+                        val outletColor = ScooterColors.getOutletColor(currentOutletId)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Surface2)
+                                .border(1.dp, Border, RoundedCornerShape(6.dp))
+                                .clickable { showOutletDialog = true }
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Icon(Icons.Filled.LocationOn, contentDescription = null, tint = outletColor, modifier = Modifier.size(11.dp))
+                            Text(
+                                text = "Pangkalan: ${Outlets.labelOf(currentOutletId)}",
+                                color = TextPrimary,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Icon(Icons.Filled.ArrowDropDown, contentDescription = "Ubah Pangkalan", tint = TextMuted, modifier = Modifier.size(13.dp))
+                        }
+                    }
                 }
             }
             state.scooter?.let { s ->

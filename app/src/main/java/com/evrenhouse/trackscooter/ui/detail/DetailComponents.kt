@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Construction
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -76,18 +77,26 @@ fun ConditionEditor(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Surface, RoundedCornerShape(12.dp))
-            .border(1.dp, Border, RoundedCornerShape(12.dp))
-            .padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+            .background(Surface2.copy(alpha = 0.85f), RoundedCornerShape(14.dp))
+            .border(1.5.dp, if (isDirty) Accent else Border.copy(alpha = 1.2f), RoundedCornerShape(14.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("KONDISI PERANGKAT", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .background(Accent.copy(alpha = 0.15f), RoundedCornerShape(6.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Filled.Tune, contentDescription = null, tint = Accent, modifier = Modifier.size(13.dp))
+                }
+                Text("KONDISI PERANGKAT", color = TextPrimary, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 if (isDirty && !saving) {
                     Text(
                         "Belum disimpan",
@@ -95,8 +104,9 @@ fun ConditionEditor(
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier
-                            .background(Warning.copy(alpha = 0.12f), RoundedCornerShape(50))
-                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                            .background(Warning.copy(alpha = 0.15f), RoundedCornerShape(50))
+                            .border(1.dp, Warning.copy(alpha = 0.3f), RoundedCornerShape(50))
+                            .padding(horizontal = 7.dp, vertical = 2.dp),
                     )
                 }
             }
@@ -163,30 +173,17 @@ fun FieldEditor(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(Surface2.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+            .background(Surface.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
             .border(1.dp, Border, RoundedCornerShape(8.dp))
             .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = field.label,
-                color = TextPrimary,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-            )
-            val currentLabel = field.options.firstOrNull { it.first == value }?.second
-            Text(
-                text = currentLabel ?: if (value.isEmpty()) "Belum dicek" else value,
-                color = if (value.isEmpty()) TextMuted else activeColor,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
+        Text(
+            text = field.label,
+            color = TextPrimary,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+        )
 
         SegmentedPillGroup(
             options = field.options,
