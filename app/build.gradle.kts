@@ -46,22 +46,16 @@ android {
                 ?: "keystore/release.jks"
 
             val resolvedFile = if (file(rawPath).isAbsolute) file(rawPath) else rootProject.file(rawPath)
-
-            if (resolvedFile.exists()) {
-                storeFile = resolvedFile
-                storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
-                    ?: project.findProperty("RELEASE_KEYSTORE_PASSWORD") as String?
-                    ?: "TrackScooter2026!"
-                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
-                    ?: project.findProperty("RELEASE_KEY_ALIAS") as String?
-                    ?: "trackscooter"
-                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
-                    ?: project.findProperty("RELEASE_KEY_PASSWORD") as String?
-                    ?: "TrackScooter2026!"
-            } else {
-                // Fallback to debug keystore if no release keystore is provided (e.g. local dev without keystore)
-                initWith(signingConfigs.getByName("debug"))
-            }
+            storeFile = resolvedFile
+            storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
+                ?: project.findProperty("RELEASE_KEYSTORE_PASSWORD") as String?
+                ?: "TrackScooter2026!"
+            keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+                ?: project.findProperty("RELEASE_KEY_ALIAS") as String?
+                ?: "trackscooter"
+            keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+                ?: project.findProperty("RELEASE_KEY_PASSWORD") as String?
+                ?: "TrackScooter2026!"
         }
     }
 
