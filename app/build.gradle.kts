@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -7,9 +10,9 @@ plugins {
 
 // Load centralized version properties
 val versionPropsFile = rootProject.file("version.properties")
-val versionProps = java.util.Properties().apply {
+val versionProps = Properties().apply {
     if (versionPropsFile.exists()) {
-        versionPropsFile.inputStream().use { load(it) }
+        FileInputStream(versionPropsFile).use { this.load(it) }
     }
 }
 val appVersionCode = (versionProps.getProperty("VERSION_BUILD") ?: "19").toInt()
