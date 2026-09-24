@@ -92,7 +92,7 @@ jobs:
           fi
       - name: Build Release & Debug APKs
         env:
-          RELEASE_KEYSTORE_PATH: keystore/release.jks
+          RELEASE_KEYSTORE_PATH: ${{ github.workspace }}/keystore/release.jks
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
