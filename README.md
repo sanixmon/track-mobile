@@ -20,11 +20,25 @@ Client Android native (Kotlin) untuk **TrackScooter** — sistem manajemen inven
 - CameraX + ML Kit barcode scanning, ZXing untuk generate QR
 - minSdk 26 (Android 8.0) · targetSdk/compileSdk 35
 
+## Versioning & Bump Versi
+
+Aplikasi menggunakan standar Semantic Versioning yang dikontrol secara terpusat lewat file `version.properties`:
+
+```properties
+VERSION_MAJOR=2
+VERSION_MINOR=7
+VERSION_PATCH=0
+VERSION_BUILD=19
+```
+
+- **PATCH (`VERSION_PATCH`)**: Naikkan untuk bugfix, styling, tweak UI, atau perbaikan kecil lainnya (misal `2.7.0` -> `2.7.1`).
+- **MINOR (`VERSION_MINOR`)**: Naikkan saat ada fitur baru besar yang selesai (reset PATCH ke 0, misal `2.8.0`).
+- **BUILD (`VERSION_BUILD`)**: Wajib selalu naik `+1` setiap kali menghasilkan APK baru agar Android dapat memperbarui instalasi.
+
 ## Build & Rilis Otomatis
 
 - **Auto Releases** (`.github/workflows/release.yml`): Setiap push tag atau trigger manual di GitHub Actions akan otomatis mengompilasi APK (signed release & debug) dan mempublikasikannya ke tab Releases lengkap dengan catatan rilis otomatis dan checksum SHA-256.
 - **Continuous Integration** (`.github/workflows/android.yml`): Setiap push/PR ke `main` otomatis memvalidasi build dan mengunggah artifact APK.
-
 Build lokal:
 
 ```bash

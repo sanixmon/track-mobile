@@ -259,21 +259,6 @@ fun ErrorState(message: String, onRetry: () -> Unit, modifier: Modifier = Modifi
         OutlinedAction(text = "Coba Hubungkan Kembali", onClick = onRetry, color = Accent)
     }
 }
-
-@Composable
-fun EmptyState(text: String, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(Surface, RoundedCornerShape(14.dp))
-            .border(1.dp, Border, RoundedCornerShape(14.dp))
-            .padding(32.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(text, color = TextMuted, fontSize = 12.sp)
-    }
-}
-
 // ── Buttons ────────────────────────────────────────────────
 @Composable
 fun OutlinedAction(text: String, onClick: () -> Unit, color: Color = Accent, enabled: Boolean = true) {

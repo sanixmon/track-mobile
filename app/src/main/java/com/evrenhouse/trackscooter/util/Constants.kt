@@ -33,6 +33,29 @@ object TypeLabels {
     fun of(type: String?): String = ALL[type] ?: type?.uppercase() ?: "-"
 }
 
+data class ScooterCategory(
+    val id: String,
+    val label: String,
+    val shortLabel: String,
+    val types: List<String>,
+)
+
+object ScooterCategories {
+    val DEWASA = ScooterCategory(
+        id = "dewasa",
+        label = "Scooter Dewasa",
+        shortLabel = "Dewasa",
+        types = listOf(ScooterType.SD, ScooterType.SM, ScooterType.SB),
+    )
+    val JUMBO = ScooterCategory(
+        id = "jumbo",
+        label = "Scooter Jumbo",
+        shortLabel = "Jumbo",
+        types = listOf(ScooterType.SJ, ScooterType.SJM, ScooterType.SJB),
+    )
+    val ALL = listOf(DEWASA, JUMBO)
+}
+
 data class Outlet(
     val id: String,
     val label: String,

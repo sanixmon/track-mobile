@@ -5,6 +5,16 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// Load centralized version properties
+val versionPropsFile = rootProject.file("version.properties")
+val versionProps = java.util.Properties().apply {
+    if (versionPropsFile.exists()) {
+        versionPropsFile.inputStream().use { load(it) }
+    }
+}
+val appVersionCode = (versionProps.getProperty("VERSION_BUILD") ?: "19").toInt()
+val appVersionName = "${versionProps.getProperty("VERSION_MAJOR") ?: "2"}.${versionProps.getProperty("VERSION_MINOR") ?: "7"}.${versionProps.getProperty("VERSION_PATCH") ?: "0"}"
+
 // Default API base URL = production. Override per build, e.g.
 //   ./gradlew assembleDebug -PAPI_BASE_URL=http://192.168.1.10:3005
 val apiBaseUrl: String = (project.findProperty("API_BASE_URL") as String?)?.trim()?.takeIf { it.isNotEmpty() }
@@ -18,16 +28,42 @@ android {
         applicationId = "com.evrenhouse.trackscooter"
         minSdk = 26
         targetSdk = 35
-        versionCode = 18
-        versionName = "2.7"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
+        ndk {
+            abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
+        }
+    }
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("RELEASE_KEYSTORE_PATH")
+                ?: project.findProperty("RELEASE_KEYSTORE_PATH") as String?
+                ?: rootProject.file("keystore/release.jks").takeIf { it.exists() }?.absolutePath
+
+            if (keystorePath != null && file(keystorePath).exists()) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
+                    ?: project.findProperty("RELEASE_KEYSTORE_PASSWORD") as String?
+                    ?: "TrackScooter2026!"
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+                    ?: project.findProperty("RELEASE_KEY_ALIAS") as String?
+                    ?: "trackscooter"
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+                    ?: project.findProperty("RELEASE_KEY_PASSWORD") as String?
+                    ?: "TrackScooter2026!"
+            } else {
+                // Fallback to debug keystore if no release keystore is provided (e.g. local dev without keystore)
+                initWith(signingConfigs.getByName("debug"))
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

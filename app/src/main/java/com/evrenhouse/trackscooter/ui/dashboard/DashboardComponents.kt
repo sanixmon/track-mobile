@@ -349,424 +349,158 @@ fun RecentLogTableCard(
         }
     }
 }
-// ── Scooter card (dashboard 1-column list + monitor panel) ──
-@Composable
-fun ScooterCard(scooter: Scooter, onClick: (() -> Unit)? = null, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(Surface, RoundedCornerShape(14.dp))
-            .border(1.dp, Border, RoundedCornerShape(14.dp))
-            .let { if (onClick != null) it.clickable(onClick = onClick) else it }
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        // Row 1: ID + Type Badge on left, StatusChip + Chevron on right
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                val isDark = LocalThemeIsDark.current
-                val nameColor = ScooterColors.getScooterNameColor(scooter.type, scooter.id, scooter.currentOutlet, isDark)
-                Text(
-                    text = scooter.id,
-                    color = nameColor,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace,
-                )
-                TypeBadge(scooter.type, id = scooter.id, outlet = scooter.currentOutlet)
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                StatusChip(scooter.status)
-                if (onClick != null) {
-                    Icon(
-                        Icons.Filled.ChevronRight,
-                        contentDescription = "Detail",
-                        tint = TextSubtle,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
-            }
-        }
 
-        // Row 2: Condition issues (if any)
-        val issues = DeviceConditionHelper.buildIssueList(scooter.deviceCondition)
-        if (issues.isNotEmpty()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                issues.take(4).forEach { issue ->
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                (if (issue.tone == com.evrenhouse.trackscooter.util.FieldTone.WARN) Warning else Red).copy(alpha = 0.12f),
-                                RoundedCornerShape(4.dp),
-                            )
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                    ) {
-                        Text(
-                            text = issue.text,
-                            color = if (issue.tone == com.evrenhouse.trackscooter.util.FieldTone.WARN) Warning else Red,
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
-        }
-
-        if (scooter.status == "maintenance" && !scooter.maintenanceNote.isNullOrBlank()) {
-            Text(
-                text = "Catatan: ${scooter.maintenanceNote}",
-                color = TextMuted,
-                fontSize = 11.sp,
-                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-
-        // Row 3: Live duration or last updated timer
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            LiveTimer(scooter.status, scooter.lastUpdated)
-            Text(
-                text = TypeLabels.of(scooter.type),
-                color = TextSubtle,
-                fontSize = 11.sp,
-            )
-        }
-    }
-}
-
-// ── Type summary ───────────────────────────────────────────
+// ── Type summary: 2 Bento Cards (Scooter Dewasa & Scooter Jumbo) ──
 @Composable
 fun TypeSummaryCard(scooters: List<Scooter>, modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier
-            .background(Surface, RoundedCornerShape(14.dp))
-            .border(1.dp, Border, RoundedCornerShape(14.dp)),
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = "RINGKASAN PER JENIS",
-            color = TextSubtle,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.2.sp,
-            modifier = Modifier.padding(16.dp),
+        val categories = listOf(
+            "Scooter Dewasa" to listOf("sd", "sm", "sb"),
+            "Scooter Jumbo" to listOf("sj", "sjm", "sjb")
         )
-        val types = listOf("sd", "sj", "sb", "sjb", "sm", "sjm")
-        for ((index, type) in types.withIndex()) {
-            val group = scooters.filter { it.type == type }
-            val available = group.count { it.status == "available" }
-            val inUse = group.count { it.status == "in-use" }
-            val kendala = group.count { it.status == "maintenance" }
+
+        for ((catTitle, catTypes) in categories) {
+            val relevantTypes = catTypes.filter { type ->
+                scooters.any { it.type == type }
+            }
+
+            val catTotal = scooters.count { it.type in catTypes }
+            val catReady = scooters.count { it.type in catTypes && it.status == "available" }
+            val catInUse = scooters.count { it.type in catTypes && it.status == "in-use" }
+            val catKendala = scooters.count { it.type in catTypes && it.status == "maintenance" }
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .background(Surface, RoundedCornerShape(14.dp))
+                    .border(1.dp, Border, RoundedCornerShape(14.dp)),
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                // Card Header
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Surface3.copy(alpha = 0.5f), RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
                     Row(
-                        modifier = Modifier.weight(1f, fill = false),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        TypeBadge(type)
                         Text(
-                            text = TypeLabels.of(type),
+                            text = catTitle,
                             color = TextPrimary,
-                            fontSize = 12.sp,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            modifier = Modifier.weight(1f)
                         )
+                        Box(
+                            modifier = Modifier
+                                .background(Surface, RoundedCornerShape(8.dp))
+                                .border(1.dp, Border, RoundedCornerShape(8.dp))
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = "$catTotal unit",
+                                color = TextPrimary,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
                     }
-                    Text("${group.size} unit", color = TextSubtle, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
-                }
-                Spacer(Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("$available ready", color = Green, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                    Text("-", color = TextSubtle)
-                    Text("$inUse diluar", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                    if (kendala > 0) {
-                        Text("-", color = TextSubtle)
-                        Text("$kendala kendala", color = Warning, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("$catReady ready", color = Green, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text("·", color = TextSubtle)
+                        Text("$catInUse disewa", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        if (catKendala > 0) {
+                            Text("·", color = TextSubtle)
+                            Text("$catKendala kendala", color = Warning, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
-            }
-            if (index < types.size - 1) {
+
                 Box(
                     Modifier
                         .fillMaxWidth()
                         .height(1.dp)
-                        .background(Border),
+                        .background(Border)
                 )
-            }
-        }
-    }
-}
 
-// ── Activity feed ──────────────────────────────────────────
-@Composable
-fun ActivityFeedCard(log: List<ActivityLogEntry>, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(Surface, RoundedCornerShape(14.dp))
-            .border(1.dp, Border, RoundedCornerShape(14.dp)),
-    ) {
-        Text(
-            text = "AKTIVITAS TERBARU",
-            color = TextSubtle,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.2.sp,
-            modifier = Modifier.padding(16.dp),
-        )
-        if (log.isEmpty()) {
-            Text(
-                "Belum ada aktivitas.",
-                color = TextMuted,
-                fontSize = 13.sp,
-                modifier = Modifier.padding(24.dp),
-            )
-        } else {
-            Column {
-                log.take(15).forEach { entry ->
-                    FeedRow(entry)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FeedRow(entry: ActivityLogEntry) {
-    val isCheckout = entry.action == ActionLabels.CHECKOUT
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(30.dp)
-                .background(if (isCheckout) Red.copy(alpha = 0.12f) else Green.copy(alpha = 0.12f), RoundedCornerShape(8.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                if (isCheckout) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
-                contentDescription = null,
-                tint = if (isCheckout) Red else Green,
-                modifier = Modifier.size(14.dp),
-            )
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = entry.scooterId,
-                color = Accent,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
-            )
-            Text(
-                text = "${TypeLabels.of(entry.scooterType)} · ${DateUtils.timeAgo(entry.timestamp)}",
-                color = TextMuted,
-                fontSize = 10.sp,
-                maxLines = 1,
-            )
-        }
-        Text(
-            text = if (isCheckout) "Keluar" else "Masuk",
-            color = if (isCheckout) Red else Green,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
-        )
-    }
-}
-
-// ── Activity history table (search + filter + pagination) ──
-data class HistoryFilters(
-    val search: String = "",
-    val action: String = "all",
-    val page: Int = 1,
-)
-
-@Composable
-fun HistoryTable(
-    log: List<ActivityLogEntry>,
-    filters: HistoryFilters,
-    onFilters: (HistoryFilters) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val itemsPerPage = 8
-    val filtered = log.filter { entry ->
-        val matchesSearch = entry.scooterId.contains(filters.search, ignoreCase = true)
-        val matchesAction = filters.action == "all" || entry.action == filters.action
-        matchesSearch && matchesAction
-    }
-    val totalPages = ((filtered.size + itemsPerPage - 1) / itemsPerPage).coerceAtLeast(1)
-    val safePage = filters.page.coerceIn(1, totalPages)
-    val paged = filtered.drop((safePage - 1) * itemsPerPage).take(itemsPerPage)
-
-    Column(
-        modifier = modifier
-            .background(Surface, RoundedCornerShape(14.dp))
-            .border(1.dp, Border, RoundedCornerShape(14.dp)),
-    ) {
-        // Header + filters
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "RIWAYAT AKTIVITAS LENGKAP",
-                color = TextSubtle,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.2.sp,
-            )
-            Text("Total ${filtered.size} riwayat ditemukan", color = TextMuted, fontSize = 11.sp)
-            Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                androidx.compose.material3.OutlinedTextField(
-                    value = filters.search,
-                    onValueChange = { onFilters(filters.copy(search = it, page = 1)) },
-                    placeholder = { Text("Cari ID...", color = TextSubtle, fontSize = 12.sp) },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp),
-                    textStyle = MaterialTheme.typography.bodySmall,
-                )
-                FilterDropdown(
-                    label = if (filters.action == "all") "Semua" else if (filters.action == "checkout") "Keluar" else "Masuk",
-                    options = listOf("all" to "Semua", "checkout" to "Keluar", "return" to "Masuk"),
-                    selected = filters.action,
-                    onSelect = { onFilters(filters.copy(action = it, page = 1)) },
-                )
-            }
-        }
-
-        // Rows
-        if (paged.isEmpty()) {
-            Text(
-                "Tidak ada data riwayat yang cocok.",
-                color = TextMuted,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(24.dp),
-            )
-        } else {
-            Column {
-                paged.forEach { entry ->
-                    HistoryRow(entry)
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(1.dp)
-                            .background(Border),
+                // Sub-types rows
+                if (relevantTypes.isEmpty()) {
+                    Text(
+                        text = "Tidak ada unit di kategori ini.",
+                        color = TextMuted,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(16.dp)
                     )
+                } else {
+                    for ((idx, type) in relevantTypes.withIndex()) {
+                        val group = scooters.filter { it.type == type }
+                        val available = group.count { it.status == "available" }
+                        val inUse = group.count { it.status == "in-use" }
+                        val kendala = group.count { it.status == "maintenance" }
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    modifier = Modifier.weight(1f, fill = false),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    TypeBadge(type)
+                                    Text(
+                                        text = TypeLabels.of(type),
+                                        color = TextPrimary,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                                Text("${group.size} unit", color = TextSubtle, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("$available ready", color = Green, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                Text("·", color = TextSubtle)
+                                Text("$inUse disewa", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                if (kendala > 0) {
+                                    Text("·", color = TextSubtle)
+                                    Text("$kendala kendala", color = Warning, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                }
+                            }
+                        }
+                        if (idx < relevantTypes.size - 1) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(1.dp)
+                                    .background(Border)
+                            )
+                        }
+                    }
                 }
             }
         }
-
-        // Pagination
-        if (totalPages > 1) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                OutlinedPill(
-                    text = "Sebelumnya",
-                    enabled = safePage > 1,
-                    onClick = { onFilters(filters.copy(page = safePage - 1)) },
-                )
-                Text("Halaman $safePage dari $totalPages", color = TextMuted, fontSize = 11.sp)
-                OutlinedPill(
-                    text = "Berikutnya",
-                    enabled = safePage < totalPages,
-                    onClick = { onFilters(filters.copy(page = safePage + 1)) },
-                )
-            }
-        }
     }
 }
 
-@Composable
-private fun HistoryRow(entry: ActivityLogEntry) {
-    val isCheckout = entry.action == ActionLabels.CHECKOUT
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = entry.scooterId,
-                color = Accent,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
-            )
-            Text(
-                text = TypeLabels.of(entry.scooterType),
-                color = TextMuted,
-                fontSize = 10.sp,
-            )
-        }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Icon(
-                if (isCheckout) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
-                contentDescription = null,
-                tint = if (isCheckout) Red else Green,
-                modifier = Modifier.size(11.dp),
-            )
-            Text(
-                text = if (isCheckout) "Dipakai" else "Tersedia",
-                color = if (isCheckout) Red else Green,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = TextSubtle, modifier = Modifier.size(11.dp))
-                Text(
-                    text = DateUtils.formatFullSec(entry.timestamp),
-                    color = TextMuted,
-                    fontSize = 10.sp,
-                )
-            }
-        }
-    }
-}
 
 // ── Maintenance tracking table ─────────────────────────────
 @Composable
