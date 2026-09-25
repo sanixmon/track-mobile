@@ -85,6 +85,7 @@ import com.evrenhouse.trackscooter.ui.theme.Border
 import com.evrenhouse.trackscooter.ui.theme.Green
 import com.evrenhouse.trackscooter.ui.theme.Red
 import com.evrenhouse.trackscooter.ui.theme.Surface
+import com.evrenhouse.trackscooter.ui.theme.Surface2
 import com.evrenhouse.trackscooter.ui.theme.Surface3
 import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary

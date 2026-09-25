@@ -734,8 +734,11 @@ fun ScanAttendanceRecentLogCard(
                     Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Border))
                 }
                 val timeStr = remember(record.scannedAt) {
-                    val dt = DateUtils.parse(record.scannedAt)
-                    if (dt != null) DateUtils.formatTime(dt) else record.scannedAt
+                    val raw = record.scannedAt
+                    if (raw != null) {
+                        val dt = DateUtils.parse(raw)
+                        if (dt != null) DateUtils.formatTime(dt) else raw
+                    } else "-"
                 }
 
                 Row(
