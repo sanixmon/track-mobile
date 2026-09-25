@@ -108,7 +108,7 @@ fun ScanScreen(
             else dataState.scooters.filter {
                 (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == globalOutlet
             }
-            list.sortedWith(compareBy { it.id.filter { ch -> ch.isDigit() }.toIntOrNull() ?: 9999 })
+            list.sortedWith(compareBy<Scooter> { it.id.filter { ch -> !ch.isDigit() } }.thenBy { it.id.filter { ch -> ch.isDigit() }.toIntOrNull() ?: 0 })
         }
     }
 
@@ -244,9 +244,15 @@ fun ScanScreen(
             )
 
             // Matching scooters chips
-            val matchingScooters = remember(outletFilteredScooters, manualValue) {
-                if (manualValue.isBlank()) outletFilteredScooters
-                else outletFilteredScooters.filter { it.id.contains(manualValue.trim(), ignoreCase = true) }
+            // Matching scooters chips: when typing manual search, search all scooters across outlets
+            val matchingScooters = remember(dataState.scooters, outletFilteredScooters, manualValue) {
+                if (manualValue.isBlank()) {
+                    outletFilteredScooters
+                } else {
+                    dataState.scooters
+                        .filter { it.id.contains(manualValue.trim(), ignoreCase = true) }
+                        .sortedWith(compareBy<Scooter> { it.id.filter { ch -> !ch.isDigit() } }.thenBy { it.id.filter { ch -> ch.isDigit() }.toIntOrNull() ?: 0 })
+                }
             }
 
             if (outletFilteredScooters.isEmpty()) {

@@ -256,7 +256,8 @@ fun ReportScreen(
     // Section 2: Filtered Attendance Units
     val filteredAttendanceUnits by remember(expectedInOutlet, attendanceSearch, attendanceFilter, attendanceMap) {
         derivedStateOf {
-            expectedInOutlet
+            val baseUnits = if (attendanceSearch.isNotBlank()) data.scooters.filter { it.status != ScooterStatus.IN_USE } else expectedInOutlet
+            baseUnits
                 .filter { s ->
                     val matchSearch = attendanceSearch.isBlank() || s.id.contains(attendanceSearch, ignoreCase = true)
                     val matchFilter = when (attendanceFilter) {
@@ -266,7 +267,7 @@ fun ReportScreen(
                     }
                     matchSearch && matchFilter
                 }
-                .sortedWith(compareBy { it.id.filter { ch -> ch.isDigit() }.toIntOrNull() ?: 9999 })
+                .sortedWith(compareBy<Scooter> { it.id.filter { ch -> !ch.isDigit() } }.thenBy { it.id.filter { ch -> ch.isDigit() }.toIntOrNull() ?: 0 })
         }
     }
 

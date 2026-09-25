@@ -140,7 +140,7 @@ fun ScooterList(
                 )
                 SimpleDropdown(
                     label = if (filterType == "all") "Semua Jenis" else TypeLabels.of(filterType),
-                    options = listOf("all" to "Semua Jenis", "sd" to "Standar (SD)", "sj" to "Jumbo (SJ)"),
+                    options = listOf("all" to "Semua Jenis") + TypeLabels.ALL.map { (k, v) -> k to v },
                     selected = filterType,
                     onSelect = onFilterType,
                     modifier = Modifier.weight(1f),
@@ -754,13 +754,14 @@ fun sortLabel(sortBy: String): String = when (sortBy) {
 }
 
 fun compareScooters(sortBy: String, todayCount: (String) -> Int): Comparator<Scooter> = when (sortBy) {
-    "id-desc" -> compareByDescending<Scooter> { it.id.numericPart() }.thenByDescending { it.id }
+    "id-desc" -> compareByDescending<Scooter> { it.id.idPrefix() }.thenByDescending { it.id.numericPart() }
     "today-checkout" -> compareByDescending<Scooter> { todayCount(it.id) }
-    "status" -> compareBy<Scooter> { StatusOrder.ALL[it.status] ?: 99 }.thenBy { it.id.numericPart() }
-    "type" -> compareBy<Scooter> { it.type }.thenBy { it.id.numericPart() }
-    else -> compareBy<Scooter> { it.id.numericPart() }.thenBy { it.id }
+    "status" -> compareBy<Scooter> { StatusOrder.ALL[it.status] ?: 99 }.thenBy { it.id.idPrefix() }.thenBy { it.id.numericPart() }
+    "type" -> compareBy<Scooter> { it.type }.thenBy { it.id.idPrefix() }.thenBy { it.id.numericPart() }
+    else -> compareBy<Scooter> { it.id.idPrefix() }.thenBy { it.id.numericPart() }
 }
 
+fun String.idPrefix(): String = this.filter { !it.isDigit() }
 fun String.numericPart(): Int = this.filter(Char::isDigit).toIntOrNull() ?: 0
 
 @Composable

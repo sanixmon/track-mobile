@@ -146,7 +146,7 @@ fun ManageScreen(
         derivedStateOf {
             data.scooters
                 .filter { s ->
-                    val matchesOutlet = activeOutlet == "all" || (s.currentOutlet ?: Outlets.getHomeOutletForType(s.type)) == activeOutlet
+                    val matchesOutlet = if (search.isNotBlank()) true else (activeOutlet == "all" || (s.currentOutlet ?: Outlets.getHomeOutletForType(s.type)) == activeOutlet)
                     val matchesSearch = s.id.contains(search, ignoreCase = true)
                     val matchesStatus = filterStatus == "all" || s.status == filterStatus
                     val matchesType = filterType == "all" || s.type == filterType
