@@ -21,14 +21,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -50,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -60,6 +62,7 @@ import com.evrenhouse.trackscooter.data.Scooter
 import com.evrenhouse.trackscooter.data.ScooterStatus
 import com.evrenhouse.trackscooter.ui.common.AppViewModelFactory
 import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
+import com.evrenhouse.trackscooter.ui.common.OutletDropdown
 import com.evrenhouse.trackscooter.ui.common.OutlinedAction
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
 import com.evrenhouse.trackscooter.ui.common.TypeBadge
@@ -67,28 +70,29 @@ import com.evrenhouse.trackscooter.ui.common.repository
 import com.evrenhouse.trackscooter.ui.theme.Accent
 import com.evrenhouse.trackscooter.ui.theme.Border
 import com.evrenhouse.trackscooter.ui.theme.Green
-import com.evrenhouse.trackscooter.ui.theme.Red
+import com.evrenhouse.trackscooter.ui.theme.LocalThemeIsDark
 import com.evrenhouse.trackscooter.ui.theme.Surface
 import com.evrenhouse.trackscooter.ui.theme.Surface2
-import com.evrenhouse.trackscooter.ui.theme.Surface3
 import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
-import com.evrenhouse.trackscooter.ui.theme.Warning
-import com.evrenhouse.trackscooter.ui.theme.LocalThemeIsDark
-import com.evrenhouse.trackscooter.util.ScooterColors
 import com.evrenhouse.trackscooter.util.Outlets
-import com.evrenhouse.trackscooter.util.StatusLabels
+import com.evrenhouse.trackscooter.util.ScooterColors
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.Executors
 
+enum class ScanSubTab(val label: String, val icon: ImageVector) {
+    SCAN("Scan", Icons.Filled.QrCodeScanner),
+    BY_ID("By ID", Icons.Filled.Tag),
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ScanScreen(
     dataViewModel: ScooterDataViewModel = viewModel(factory = AppViewModelFactory(repository())),
-    viewModel: ScanViewModel = viewModel(factory = AppViewModelFactory(repository()))
+    viewModel: ScanViewModel = viewModel(factory = AppViewModelFactory(repository())),
 ) {
     val state by viewModel.state.collectAsState()
     val dataState by dataViewModel.state.collectAsState()
@@ -97,19 +101,36 @@ fun ScanScreen(
     val context = LocalContext.current
     val sweetAlert = LocalSweetAlert.current
 
-    var mode by rememberSaveable { mutableStateOf<String?>(null) } // null | "camera" | "image"
-    var manualValue by rememberSaveable { mutableStateOf("") }
-    var showManual by rememberSaveable { mutableStateOf(false) }
+    var selectedSubTab by rememberSaveable { mutableStateOf(ScanSubTab.SCAN) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
     var decodingImage by remember { mutableStateOf(false) }
 
-    // Filter scooters by the global unified outlet selection
-    val outletFilteredScooters by remember(dataState.scooters, globalOutlet) {
+    // Ready scooters (ScooterStatus.AVAILABLE) filtered by global outlet
+    val outletFilteredReadyScooters by remember(dataState.scooters, globalOutlet) {
         derivedStateOf {
-            val list = if (globalOutlet == "all") dataState.scooters
-            else dataState.scooters.filter {
-                (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == globalOutlet
+            val list = dataState.scooters.filter { s ->
+                val isReady = s.status == ScooterStatus.AVAILABLE
+                val matchesOutlet = if (globalOutlet == "all") true
+                else (s.currentOutlet ?: Outlets.getHomeOutletForType(s.type)) == globalOutlet
+                isReady && matchesOutlet
             }
-            list.sortedWith(compareBy<Scooter> { it.id.filter { ch -> !ch.isDigit() } }.thenBy { it.id.filter { ch -> ch.isDigit() }.toIntOrNull() ?: 0 })
+            list.sortedWith(
+                compareBy<Scooter> { it.id.filter { ch -> !ch.isDigit() } }
+                    .thenBy { it.id.filter { ch -> ch.isDigit() }.toIntOrNull() ?: 0 }
+            )
+        }
+    }
+
+    // Ready scooters filtered by search query
+    val displayReadyScooters by remember(outletFilteredReadyScooters, searchQuery) {
+        derivedStateOf {
+            if (searchQuery.isBlank()) {
+                outletFilteredReadyScooters
+            } else {
+                outletFilteredReadyScooters.filter {
+                    it.id.contains(searchQuery.trim(), ignoreCase = true)
+                }
+            }
         }
     }
 
@@ -147,87 +168,139 @@ fun ScanScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        // Header & Unified Global Outlet Picker
-        // Header
+        // ── Header ──
         Column {
             Text("Scan QR Scooter", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Text("Pindai QR code untuk toggle status sewa", color = TextMuted, fontSize = 12.sp)
+            Text(
+                text = if (selectedSubTab == ScanSubTab.SCAN) "Pindai QR code scooter untuk toggle status sewa"
+                else "Pilih unit ready berdasarkan ID & outlet",
+                color = TextMuted,
+                fontSize = 12.sp,
+            )
         }
 
-        // Mode picker
-        if (mode == null) {
-            ModeButton(
-                icon = { tint -> Icon(Icons.Filled.CameraAlt, null, Modifier.size(17.dp), tint = tint) },
-                label = "Gunakan Kamera",
-                sub = "Arahkan kamera ke QR code",
-                onClick = { mode = "camera" },
-            )
-            ModeButton(
-                icon = { tint -> Icon(Icons.Filled.Image, null, Modifier.size(17.dp), tint = tint) },
-                label = "Upload dari Galeri",
-                sub = "Pilih gambar QR dari perangkat",
-                onClick = {
-                    galleryLauncher.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+        // ── 2 Sub Tab Selector (Sub Tab 1: Scan, Sub Tab 2: By ID) ──
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Surface2, RoundedCornerShape(12.dp))
+                .border(1.dp, Border, RoundedCornerShape(12.dp))
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            ScanSubTab.entries.forEach { tab ->
+                val isSelected = selectedSubTab == tab
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(if (isSelected) Accent else Color.Transparent)
+                        .clickable { selectedSubTab = tab }
+                        .padding(vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Icon(
+                        imageVector = tab.icon,
+                        contentDescription = null,
+                        tint = if (isSelected) Color.White else TextMuted,
+                        modifier = Modifier.size(16.dp),
                     )
-                },
-            )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = tab.label,
+                        color = if (isSelected) Color.White else TextMuted,
+                        fontSize = 13.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    )
+                    if (tab == ScanSubTab.BY_ID) {
+                        Spacer(Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    if (isSelected) Color.White.copy(alpha = 0.25f)
+                                    else Green.copy(alpha = 0.2f),
+                                    CircleShape,
+                                )
+                                .padding(horizontal = 6.dp, vertical = 1.dp),
+                        ) {
+                            Text(
+                                text = outletFilteredReadyScooters.size.toString(),
+                                color = if (isSelected) Color.White else Green,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                }
+            }
         }
 
-        // Camera scanner
-        if (mode == "camera") {
+        // ══════════════════════════════════════════════════════════
+        // SUB TAB 1: SCAN (LANGSUNG OPEN KAMERA)
+        // ══════════════════════════════════════════════════════════
+        if (selectedSubTab == ScanSubTab.SCAN) {
             CameraScanner(
                 isProcessing = state.busy || !state.scanning,
                 onScan = { viewModel.onScanned(it) },
                 onError = { sweetAlert.showError(it) },
             )
-            OutlinedAction(text = "Ganti metode scan", onClick = { mode = null }, color = TextMuted)
-        }
 
-        if (decodingImage) {
-            Text("Mendekode QR dari gambar...", color = TextMuted, fontSize = 12.sp)
-        }
-
-        // ── Pilih Cepat Unit (Dipengaruhi oleh Outlet Picker Global) ──
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(Surface)
-                .border(1.dp, Border, RoundedCornerShape(14.dp))
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(Icons.Filled.TouchApp, contentDescription = null, tint = Accent, modifier = Modifier.size(16.dp))
-                    Text("PILIH CEPAT UNIT", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
-                }
-
-                Text(
-                    text = if (globalOutlet == "all") "Semua Outlet (${outletFilteredScooters.size} unit)"
-                    else "${Outlets.labelOf(globalOutlet)} (${outletFilteredScooters.size} unit)",
-                    color = Accent,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
+            if (decodingImage) {
+                Text("Mendekode QR dari gambar...", color = TextMuted, fontSize = 12.sp)
             }
 
-            // Search / Filter Input
+            // Quick alternative: Gallery upload
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedAction(
+                    text = "Upload QR dari Galeri",
+                    icon = Icons.Filled.Image,
+                    onClick = {
+                        galleryLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                    color = TextMuted,
+                )
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // SUB TAB 2: BY ID (LIST UNIT READY AFFECTED BY OUTLET FILTER)
+        // ══════════════════════════════════════════════════════════
+        if (selectedSubTab == ScanSubTab.BY_ID) {
+            // Outlet Dropdown Filter
+            OutletDropdown(
+                selectedOutletId = globalOutlet,
+                onOutletSelected = { dataViewModel.setSelectedOutlet(it) },
+                getOutletCount = { outletId ->
+                    if (outletId == "all") {
+                        dataState.scooters.count { it.status == ScooterStatus.AVAILABLE }
+                    } else {
+                        dataState.scooters.count {
+                            (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == outletId &&
+                            it.status == ScooterStatus.AVAILABLE
+                        }
+                    }
+                },
+                labelPrefix = "Filter Outlet:",
+            )
+
+            // Search by Unit ID
             OutlinedTextField(
-                value = manualValue,
-                onValueChange = { manualValue = it.uppercase() },
-                placeholder = { Text("Cari atau ketik nomor ID...", color = TextSubtle, fontSize = 12.sp) },
+                value = searchQuery,
+                onValueChange = { searchQuery = it.uppercase() },
+                placeholder = { Text("Cari nomor ID unit (cth: SD-01)...", color = TextSubtle, fontSize = 12.sp) },
+                leadingIcon = {
+                    Icon(Icons.Filled.Search, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
+                },
                 trailingIcon = {
-                    if (manualValue.isNotEmpty()) {
-                        IconButton(onClick = { manualValue = "" }, modifier = Modifier.size(24.dp)) {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(24.dp)) {
                             Icon(Icons.Filled.Clear, contentDescription = "Clear", tint = TextMuted, modifier = Modifier.size(16.dp))
                         }
                     }
@@ -235,85 +308,134 @@ fun ScanScreen(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 shape = RoundedCornerShape(10.dp),
-                textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                ),
                 colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Accent,
                     unfocusedBorderColor = Border,
                     focusedTextColor = TextPrimary,
                     unfocusedTextColor = TextPrimary,
-                )
+                ),
             )
 
-            // Matching scooters chips
-            // Matching scooters chips: when typing manual search, search all scooters across outlets
-            val matchingScooters = remember(dataState.scooters, outletFilteredScooters, manualValue) {
-                if (manualValue.isBlank()) {
-                    outletFilteredScooters
-                } else {
-                    dataState.scooters
-                        .filter { it.id.contains(manualValue.trim(), ignoreCase = true) }
-                        .sortedWith(compareBy<Scooter> { it.id.filter { ch -> !ch.isDigit() } }.thenBy { it.id.filter { ch -> ch.isDigit() }.toIntOrNull() ?: 0 })
+            // Header Ready Summary
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(Green, CircleShape),
+                    )
+                    Text(
+                        text = "UNIT READY (${displayReadyScooters.size})",
+                        color = TextSubtle,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.8.sp,
+                    )
                 }
+
+                Text(
+                    text = "Ketuk unit untuk proses sewa",
+                    color = TextMuted,
+                    fontSize = 11.sp,
+                )
             }
 
-            if (outletFilteredScooters.isEmpty()) {
+            // List / FlowRow of Ready Scooters
+            if (displayReadyScooters.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 14.dp),
-                    contentAlignment = Alignment.Center
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Surface)
+                        .border(1.dp, Border, RoundedCornerShape(12.dp))
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        text = if (globalOutlet == "all") "Tidak ada armada scooter."
-                        else "Tidak ada armada scooter terdaftar di ${Outlets.labelOf(globalOutlet)}.",
-                        color = TextMuted,
-                        fontSize = 12.sp
-                    )
-                }
-            } else if (matchingScooters.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Ketuk unit untuk proses langsung:", color = TextSubtle, fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold)
-
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        matchingScooters.forEach { s ->
-                            val isSelected = manualValue.equals(s.id, ignoreCase = true)
-                            val statusColor = when (s.status) {
-                                ScooterStatus.AVAILABLE -> Green
-                                ScooterStatus.IN_USE -> Accent
-                                ScooterStatus.MAINTENANCE -> Warning
-                                else -> TextMuted
-                            }
+                        Icon(
+                            imageVector = Icons.Filled.CheckCircle,
+                            contentDescription = null,
+                            tint = TextSubtle,
+                            modifier = Modifier.size(28.dp),
+                        )
+                        Text(
+                            text = if (searchQuery.isNotBlank()) "Tidak ada unit ready dengan ID \"$searchQuery\""
+                            else if (globalOutlet == "all") "Tidak ada unit ready saat ini."
+                            else "Tidak ada unit ready di ${Outlets.labelOf(globalOutlet)}.",
+                            color = TextMuted,
+                            fontSize = 12.sp,
+                        )
+                    }
+                }
+            } else {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    val isDark = LocalThemeIsDark.current
+                    displayReadyScooters.forEach { s ->
+                        val isSelected = searchQuery.equals(s.id, ignoreCase = true)
+                        val nameColor = if (isSelected) Accent else ScooterColors.getScooterNameColor(s.type, s.id, s.currentOutlet, isDark)
+                        val outletName = Outlets.shortLabelOf(s.currentOutlet ?: Outlets.getHomeOutletForType(s.type))
 
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(if (isSelected) Accent.copy(alpha = 0.2f) else Surface2)
-                                    .border(1.dp, if (isSelected) Accent else Border, RoundedCornerShape(8.dp))
-                                    .clickable(enabled = state.scanning && !state.busy) {
-                                        viewModel.onScanned(s.id)
-                                    }
-                                    .padding(horizontal = 9.dp, vertical = 7.dp)
-                            ) {
-                                val isDark = LocalThemeIsDark.current
-                                val nameColor = if (isSelected) Accent else ScooterColors.getScooterNameColor(s.type, s.id, s.currentOutlet, isDark)
-                                Text(
-                                    text = s.id,
-                                    color = nameColor,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .background(statusColor, CircleShape)
-                                )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (isSelected) Accent.copy(alpha = 0.2f) else Surface)
+                                .border(1.dp, if (isSelected) Accent else Border, RoundedCornerShape(10.dp))
+                                .clickable(enabled = state.scanning && !state.busy) {
+                                    viewModel.onScanned(s.id)
+                                }
+                                .padding(horizontal = 12.dp, vertical = 9.dp),
+                        ) {
+                            Column {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    Text(
+                                        text = s.id,
+                                        color = nameColor,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace,
+                                    )
+                                    TypeBadge(type = s.type)
+                                }
+                                Spacer(Modifier.height(3.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .background(Green, CircleShape),
+                                    )
+                                    Text(
+                                        text = outletName,
+                                        color = TextSubtle,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Medium,
+                                    )
+                                }
                             }
                         }
                     }
@@ -321,21 +443,22 @@ fun ScanScreen(
             }
 
             // Submit button if manual input typed
-            if (manualValue.isNotBlank()) {
+            if (searchQuery.isNotBlank()) {
                 Button(
                     onClick = {
-                        viewModel.onScanned(manualValue.trim())
-                        manualValue = ""
+                        viewModel.onScanned(searchQuery.trim())
+                        searchQuery = ""
                     },
                     enabled = state.scanning && !state.busy,
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = Accent),
                 ) {
-                    Text("Proses Unit $manualValue", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("Proses Unit $searchQuery", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
+
         Spacer(Modifier.height(24.dp))
     }
 
@@ -346,41 +469,8 @@ fun ScanScreen(
             breakText = state.pendingBreakText,
             submitting = state.busy,
             onConfirm = { viewModel.confirmScan() },
-            onDismiss = { viewModel.dismissConfirmation() }
+            onDismiss = { viewModel.dismissConfirmation() },
         )
-    }
-}
-
-@Composable
-private fun ModeButton(
-    icon: @Composable (Color) -> Unit,
-    label: String,
-    sub: String,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(Surface)
-            .border(1.dp, Border, RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .background(Accent.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            icon(Accent)
-        }
-        Column {
-            Text(label, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            Text(sub, color = TextMuted, fontSize = 11.sp)
-        }
     }
 }
 

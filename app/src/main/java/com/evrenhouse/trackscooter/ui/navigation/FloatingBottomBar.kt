@@ -84,11 +84,13 @@ fun FloatingBottomBar(
         ) {
             items.forEach { item ->
                 val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
+                val isScan = item.route == Routes.SCAN
                 FloatingNavItem(
                     item = item,
                     selected = selected,
+                    isScan = isScan,
                     onClick = { onNavigate(item) },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(if (isScan) 1.5f else 1f),
                 )
             }
         }
@@ -99,6 +101,7 @@ fun FloatingBottomBar(
 private fun FloatingNavItem(
     item: BottomNavItem,
     selected: Boolean,
+    isScan: Boolean = false,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -112,22 +115,47 @@ private fun FloatingNavItem(
         label = "nav_scale",
     )
 
+    // Tombol scan 1,5x lebih besar dari tombol lain
     val iconSize by animateDpAsState(
-        targetValue = if (selected) 20.dp else 17.dp,
+        targetValue = if (isScan) {
+            if (selected) 30.dp else 26.dp
+        } else {
+            if (selected) 20.dp else 17.dp
+        },
         animationSpec = tween(durationMillis = 180),
         label = "nav_icon_size",
     )
 
     val animatedPillColor by animateColorAsState(
-        targetValue = if (selected) Accent.copy(alpha = 0.16f) else Color.Transparent,
+        targetValue = when {
+            isScan && selected -> Accent
+            isScan -> Accent.copy(alpha = 0.18f)
+            selected -> Accent.copy(alpha = 0.16f)
+            else -> Color.Transparent
+        },
         animationSpec = tween(180),
         label = "nav_pill_color",
     )
 
     val animatedContentColor by animateColorAsState(
-        targetValue = if (selected) Accent else TextMuted,
+        targetValue = when {
+            isScan && selected -> Color.White
+            isScan -> Accent
+            selected -> Accent
+            else -> TextMuted
+        },
         animationSpec = tween(180),
         label = "nav_content_color",
+    )
+
+    val labelColor by animateColorAsState(
+        targetValue = when {
+            isScan -> Accent
+            selected -> Accent
+            else -> TextMuted
+        },
+        animationSpec = tween(180),
+        label = "nav_label_color",
     )
 
     Column(
@@ -145,12 +173,15 @@ private fun FloatingNavItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        // Pill indikator di belakang icon (seperti ShortNavigationBarItem di ArchiveTune)
+        // Pill indikator di belakang icon (1,5x lebih besar jika scan)
         Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(if (isScan) 16.dp else 12.dp))
                 .background(animatedPillColor)
-                .padding(horizontal = 12.dp, vertical = 4.dp),
+                .padding(
+                    horizontal = if (isScan) 18.dp else 12.dp,
+                    vertical = if (isScan) 6.dp else 4.dp,
+                ),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -163,9 +194,17 @@ private fun FloatingNavItem(
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = item.label,
-            color = animatedContentColor,
-            fontSize = if (selected) 10.5.sp else 9.5.sp,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            color = labelColor,
+            fontSize = if (isScan) {
+                if (selected) 12.5.sp else 11.5.sp
+            } else {
+                if (selected) 10.5.sp else 9.5.sp
+            },
+            fontWeight = if (isScan) {
+                if (selected) FontWeight.Bold else FontWeight.SemiBold
+            } else {
+                if (selected) FontWeight.SemiBold else FontWeight.Normal
+            },
             maxLines = 1,
         )
     }

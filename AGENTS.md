@@ -29,3 +29,28 @@ VERSION_BUILD=19
   - Pertahankan filter ABI hanya untuk `arm64-v8a` dan `armeabi-v7a` di `defaultConfig` agar APK tidak membengkak oleh binary emulator x86/x86_64.
 - **Izin Manifest**:
   - Jangan menambahkan izin berisiko tinggi (`ACCESS_FINE_LOCATION`, `SMS`, `STORAGE_MANAGER`) kecuali benar-benar dibutuhkan oleh spesifikasi domain.
+
+
+## 3. Build & Release Protocol (GitHub CI & GH CLI)
+
+- **Semua Build Bergantung pada GitHub CI**:
+  - Lingkungan lokal tidak melakukan build APK langsung. Semua build didelegasikan dan dijalankan melalui GitHub CI (`gh` CLI / GitHub Actions).
+  - Pemicuan workflow build dilakukan via `gh workflow run` atau push ke repository remote.
+- **Larangan Release APK Otomatis**:
+  - **DILARANG** melakukan build atau trigger release APK secara sembarangan/otomatis.
+  - Jika ingin melakukan build, **WAJIB** build debug terlebih dahulu (`android.yml` / debug APK).
+  - Release APK **HANYA** boleh dilakukan ketika pengguna secara eksplisit meminta rilis.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues via `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default canonical roles (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context (`CONTEXT.md` and `docs/adr/` at repo root). See `docs/agents/domain.md`.
