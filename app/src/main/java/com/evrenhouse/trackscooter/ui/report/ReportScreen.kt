@@ -584,6 +584,7 @@ fun ReportScreen(
                     }
                 }
             }
+        }
 
             // ══════════════════════════════════════════════════════════
             // SUB TAB 2: SCAN ABSEN (KAMERA SCANNER ABSENSI SAJA)
