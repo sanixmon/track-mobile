@@ -163,10 +163,7 @@ fun ManageScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         // Header
-        Column {
-            Text("Kelola Scooter", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Text("Tambah unit scooter baru, ubah status unit, dan unduh QR code untuk operasional", color = TextMuted, fontSize = 13.sp)
-        }
+        Text("Kelola", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
         var dataMenuExpanded by remember { mutableStateOf(false) }
 

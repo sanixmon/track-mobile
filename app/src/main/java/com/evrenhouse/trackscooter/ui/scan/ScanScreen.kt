@@ -173,15 +173,7 @@ fun ScanScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         // ── Header ──
-        Column {
-            Text("Scan QR Scooter", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Text(
-                text = if (currentSubTab == ScanSubTab.SCAN) "Pindai QR code scooter untuk toggle status sewa"
-                else "Pilih unit ready berdasarkan ID & outlet",
-                color = TextMuted,
-                fontSize = 12.sp,
-            )
-        }
+        Text("Scan", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
         // ── 2 Sub Tab Selector (Sub Tab 1: Scan, Sub Tab 2: By ID) ──
         Row(

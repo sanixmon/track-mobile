@@ -120,10 +120,7 @@ fun DashboardScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column {
-                        Text("Dashboard", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                        Text("Pantau status scooter secara real-time", color = TextMuted, fontSize = 13.sp)
-                    }
+                    Text("Dashboard", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     val isDark = LocalThemeIsDark.current
                     val toggleTheme = LocalThemeToggle.current
 

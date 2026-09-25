@@ -92,84 +92,69 @@ fun LivePulseHeader(
         label = "pulseAlpha",
     )
 
-    Column(
+    Row(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Pemantauan",
-                color = TextPrimary,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-            )
+        Text(
+            text = "Monitor",
+            color = TextPrimary,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+        )
 
-            // Live status badge (1:1 with web)
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+        // Live status badge (1:1 with web)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier
+                .background(
+                    color = when {
+                        isReconnecting -> Warning.copy(alpha = 0.12f)
+                        isLiveConnected -> Green.copy(alpha = 0.12f)
+                        else -> Red.copy(alpha = 0.12f)
+                    },
+                    shape = RoundedCornerShape(20.dp),
+                )
+                .border(
+                    1.dp,
+                    when {
+                        isReconnecting -> Warning.copy(alpha = 0.3f)
+                        isLiveConnected -> Green.copy(alpha = 0.3f)
+                        else -> Red.copy(alpha = 0.3f)
+                    },
+                    RoundedCornerShape(20.dp),
+                )
+                .padding(horizontal = 10.dp, vertical = 4.dp),
+        ) {
+            Box(
                 modifier = Modifier
+                    .size(8.dp)
                     .background(
                         color = when {
-                            isReconnecting -> Warning.copy(alpha = 0.12f)
-                            isLiveConnected -> Green.copy(alpha = 0.12f)
-                            else -> Red.copy(alpha = 0.12f)
+                            isReconnecting -> Warning.copy(alpha = pulseAlpha)
+                            isLiveConnected -> Green.copy(alpha = pulseAlpha)
+                            else -> Red.copy(alpha = pulseAlpha)
                         },
-                        shape = RoundedCornerShape(20.dp)
-                    )
-                    .border(
-                        1.dp,
-                        when {
-                            isReconnecting -> Warning.copy(alpha = 0.3f)
-                            isLiveConnected -> Green.copy(alpha = 0.3f)
-                            else -> Red.copy(alpha = 0.3f)
-                        },
-                        RoundedCornerShape(20.dp)
-                    )
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(
-                            color = when {
-                                isReconnecting -> Warning.copy(alpha = pulseAlpha)
-                                isLiveConnected -> Green.copy(alpha = pulseAlpha)
-                                else -> Red.copy(alpha = pulseAlpha)
-                            },
-                            shape = CircleShape,
-                        )
-                )
-                Text(
-                    text = when {
-                        isReconnecting -> "Menghubungkan..."
-                        isLiveConnected -> "Terhubung real-time"
-                        else -> "Koneksi terputus"
-                    },
-                    color = when {
-                        isReconnecting -> Warning
-                        isLiveConnected -> Green
-                        else -> Red
-                    },
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+                        shape = CircleShape,
+                    ),
+            )
+            Text(
+                text = when {
+                    isReconnecting -> "Menghubungkan..."
+                    isLiveConnected -> "Terhubung real-time"
+                    else -> "Koneksi terputus"
+                },
+                color = when {
+                    isReconnecting -> Warning
+                    isLiveConnected -> Green
+                    else -> Red
+                },
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+            )
         }
-
-        Text(
-            text = if (outletName.isNullOrBlank() || outletName == "Semua Outlet") {
-                "Pantau armada yang sedang digunakan pelanggan secara real-time."
-            } else {
-                "Pantau armada $outletName secara real-time."
-            },
-            color = TextMuted,
-            fontSize = 12.sp,
-        )
     }
 }
 

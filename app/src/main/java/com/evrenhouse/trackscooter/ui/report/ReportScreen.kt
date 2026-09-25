@@ -100,11 +100,6 @@ fun ReportScreen(
 
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.US) }
     val todayStr = remember { dateFormat.format(Date()) }
-    val yesterdayStr = remember {
-        val cal = Calendar.getInstance()
-        cal.add(Calendar.DAY_OF_YEAR, -1)
-        dateFormat.format(cal.time)
-    }
 
     var selectedDate by rememberSaveable { mutableStateOf(todayStr) }
     val selectedOutlet by viewModel.selectedOutlet.collectAsState()
@@ -199,15 +194,7 @@ fun ReportScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         // ── Header ──
-        Column {
-            Text("Laporan & Closing", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Text(
-                text = if (currentSubTab == ReportSubTab.CLOSING) "Checklist kehadiran fisik unit saat closing outlet"
-                else "Pindai QR code scooter untuk mencatat kehadiran",
-                color = TextMuted,
-                fontSize = 12.sp,
-            )
-        }
+        Text("Laporan", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
         // ── 2 Sub Tab Selector (Closing & Scan Absen) ──
         Row(
@@ -270,132 +257,6 @@ fun ReportScreen(
             }
         }
 
-        // ── Date Picker & Outlet Dropdown Header ──
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // Kemarin button
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (selectedDate == yesterdayStr) Accent else Surface2)
-                            .border(1.dp, if (selectedDate == yesterdayStr) Accent else Border, RoundedCornerShape(8.dp))
-                            .clickable { selectedDate = yesterdayStr }
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = "Kemarin",
-                            color = if (selectedDate == yesterdayStr) Color.White else TextPrimary,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-
-                    // Hari Ini button
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (selectedDate == todayStr) Accent else Surface2)
-                            .border(1.dp, if (selectedDate == todayStr) Accent else Border, RoundedCornerShape(8.dp))
-                            .clickable { selectedDate = todayStr }
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = "Hari Ini",
-                            color = if (selectedDate == todayStr) Color.White else TextPrimary,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                }
-
-                // Calendar Picker Trigger
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Surface2)
-                        .border(1.dp, Border, RoundedCornerShape(8.dp))
-                        .clickable {
-                            val cal = Calendar.getInstance()
-                            DatePickerDialog(
-                                context,
-                                { _, y, m, d ->
-                                    val formatted = String.format(Locale.US, "%04d-%02d-%02d", y, m + 1, d)
-                                    selectedDate = formatted
-                                },
-                                cal.get(Calendar.YEAR),
-                                cal.get(Calendar.MONTH),
-                                cal.get(Calendar.DAY_OF_MONTH),
-                            ).show()
-                        }
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Icon(Icons.Filled.CalendarMonth, null, tint = Accent, modifier = Modifier.size(14.dp))
-                    Text(selectedDate, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                }
-            }
-
-            // Global Outlet Dropdown Filter
-            OutletDropdown(
-                selectedOutletId = selectedOutlet,
-                onOutletSelected = { viewModel.setSelectedOutlet(it) },
-                labelPrefix = "Filter Outlet:",
-            )
-        }
-
-        // ── 4 KPI Status Cards ──
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                ReportStatCard(
-                    title = "Unit Ready",
-                    value = "${outletScooters.count { it.status == ScooterStatus.AVAILABLE }}",
-                    sub = "Siap Sewa",
-                    color = Green,
-                    modifier = Modifier.weight(1f),
-                )
-                ReportStatCard(
-                    title = "Unit Diluar",
-                    value = "${outletScooters.count { it.status == ScooterStatus.IN_USE }}",
-                    sub = "Sedang Sewa",
-                    color = Accent,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                ReportStatCard(
-                    title = "Unit Kendala",
-                    value = "${outletScooters.count { it.status == ScooterStatus.MAINTENANCE }}",
-                    sub = "Perbaikan",
-                    color = Warning,
-                    modifier = Modifier.weight(1f),
-                )
-                ReportStatCard(
-                    title = "Progres Absen",
-                    value = "$progressPercent%",
-                    sub = "$attendedCount/${expectedInOutlet.size} Unit",
-                    color = if (progressPercent == 100) Green else Accent,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-
         // ── Swipeable Pager for Sub Tabs ──
         HorizontalPager(
             state = pagerState,
@@ -408,12 +269,105 @@ fun ReportScreen(
                 // ══════════════════════════════════════════════════════════
                 ReportSubTab.CLOSING -> {
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Surface)
-                            .border(1.dp, Border, RoundedCornerShape(16.dp)),
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
+                        // ── Filter Outlet & Date Picker (Sejajar) ──
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            OutletDropdown(
+                                selectedOutletId = selectedOutlet,
+                                onOutletSelected = { viewModel.setSelectedOutlet(it) },
+                                labelPrefix = "Filter Outlet:",
+                                modifier = Modifier.weight(1f),
+                            )
+
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Surface2)
+                                    .border(1.dp, Border, RoundedCornerShape(10.dp))
+                                    .clickable {
+                                        val cal = Calendar.getInstance()
+                                        DatePickerDialog(
+                                            context,
+                                            { _, y, m, d ->
+                                                val formatted = String.format(Locale.US, "%04d-%02d-%02d", y, m + 1, d)
+                                                selectedDate = formatted
+                                            },
+                                            cal.get(Calendar.YEAR),
+                                            cal.get(Calendar.MONTH),
+                                            cal.get(Calendar.DAY_OF_MONTH),
+                                        ).show()
+                                    }
+                                    .padding(horizontal = 12.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Icon(Icons.Filled.CalendarMonth, null, tint = Accent, modifier = Modifier.size(16.dp))
+                                Text(
+                                    text = selectedDate,
+                                    color = TextPrimary,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                )
+                            }
+                        }
+
+                        // ── 4 KPI Status Cards ──
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                ReportStatCard(
+                                    title = "Unit Ready",
+                                    value = "${outletScooters.count { it.status == ScooterStatus.AVAILABLE }}",
+                                    sub = "Siap Sewa",
+                                    color = Green,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                ReportStatCard(
+                                    title = "Unit Diluar",
+                                    value = "${outletScooters.count { it.status == ScooterStatus.IN_USE }}",
+                                    sub = "Sedang Sewa",
+                                    color = Accent,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                ReportStatCard(
+                                    title = "Unit Kendala",
+                                    value = "${outletScooters.count { it.status == ScooterStatus.MAINTENANCE }}",
+                                    sub = "Perbaikan",
+                                    color = Warning,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                ReportStatCard(
+                                    title = "Progres Absen",
+                                    value = "$progressPercent%",
+                                    sub = "$attendedCount/${expectedInOutlet.size} Unit",
+                                    color = if (progressPercent == 100) Green else Accent,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+
+                        // ── Checklist Kehadiran Box ──
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Surface)
+                                .border(1.dp, Border, RoundedCornerShape(16.dp)),
+                        ) {
                         // Title & Reset Action
                         Row(
                             modifier = Modifier
@@ -624,77 +578,48 @@ fun ReportScreen(
                                                 fontWeight = FontWeight.Bold,
                                             )
                                         }
-                                    }
                                 }
-                            }
-                        }
-                    }
-                }
-
-                // ══════════════════════════════════════════════════════════
-                // SUB TAB 2: SCAN ABSEN (KAMERA SCANNER ABSENSI)
-                // ══════════════════════════════════════════════════════════
-                ReportSubTab.SCAN -> {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(14.dp),
-                    ) {
-                        var isScanningAttendance by remember { mutableStateOf(false) }
-
-                        CameraScanner(
-                            isProcessing = isScanningAttendance,
-                            onScan = { rawCode ->
-                                val scannedId = rawCode.trim().uppercase()
-                                if (!isScanningAttendance && scannedId.isNotBlank()) {
-                                    isScanningAttendance = true
-                                    scope.launch {
-                                        runCatching {
-                                            repository.recordDailyAttendance(
-                                                scooterId = scannedId,
-                                                date = selectedDate,
-                                                outlet = if (selectedOutlet == "all") null else selectedOutlet,
-                                            )
-                                        }.onSuccess { res ->
-                                            sweetAlert.showSuccess(res.message ?: "Unit $scannedId berhasil diabsen!")
-                                            loadAttendanceData()
-                                            viewModel.refresh()
-                                        }.onFailure { err ->
-                                            sweetAlert.showError(err.toUserMessage())
-                                        }
-                                        isScanningAttendance = false
-                                    }
-                                }
-                            },
-                            onError = { sweetAlert.showError(it) },
-                        )
-
-                        // Info box below scanner
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Surface)
-                                .border(1.dp, Border, RoundedCornerShape(12.dp))
-                                .padding(16.dp),
-                        ) {
-                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text(
-                                    text = "Scan QR untuk Absen Closing",
-                                    color = TextPrimary,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                                Text(
-                                    text = "Arahkan kamera ke QR code scooter. Kehadiran unit untuk tanggal $selectedDate (${if (selectedOutlet == "all") "Semua Outlet" else Outlets.labelOf(selectedOutlet)}) akan otomatis tercatat.",
-                                    color = TextMuted,
-                                    fontSize = 11.5.sp,
-                                )
                             }
                         }
                     }
                 }
             }
+
+            // ══════════════════════════════════════════════════════════
+            // SUB TAB 2: SCAN ABSEN (KAMERA SCANNER ABSENSI SAJA)
+            // ══════════════════════════════════════════════════════════
+            ReportSubTab.SCAN -> {
+                var isScanningAttendance by remember { mutableStateOf(false) }
+
+                CameraScanner(
+                    isProcessing = isScanningAttendance,
+                    onScan = { rawCode ->
+                        val scannedId = rawCode.trim().uppercase()
+                        if (!isScanningAttendance && scannedId.isNotBlank()) {
+                            isScanningAttendance = true
+                            scope.launch {
+                                runCatching {
+                                    repository.recordDailyAttendance(
+                                        scooterId = scannedId,
+                                        date = selectedDate,
+                                        outlet = if (selectedOutlet == "all") null else selectedOutlet,
+                                    )
+                                }.onSuccess { res ->
+                                    sweetAlert.showSuccess(res.message ?: "Unit $scannedId berhasil diabsen!")
+                                    loadAttendanceData()
+                                    viewModel.refresh()
+                                }.onFailure { err ->
+                                    sweetAlert.showError(err.toUserMessage())
+                                }
+                                isScanningAttendance = false
+                            }
+                        }
+                    },
+                    onError = { sweetAlert.showError(it) },
+                )
+            }
         }
+    }
 
         Spacer(Modifier.height(32.dp))
     }
