@@ -154,6 +154,7 @@ jobs:
               --title "$TITLE" \
               --generate-notes \
               "${FLAGS[@]}"
+          fi
 
       - name: Publish to Public Distribution Repo (sanixmon/track-releases)
         env:
