@@ -247,3 +247,37 @@ data class SimpleSuccessResponse(
     @SerialName("message") val message: String? = null,
 )
 
+@Serializable
+data class AppVersionResponse(
+    @SerialName("versionCode") val versionCode: Int? = null,
+    @SerialName("version_code") val versionCodeSnake: Int? = null,
+    @SerialName("versionName") val versionName: String? = null,
+    @SerialName("version_name") val versionNameSnake: String? = null,
+    @SerialName("downloadUrl") val downloadUrl: String? = null,
+    @SerialName("download_url") val downloadUrlSnake: String? = null,
+    @SerialName("minVersionCode") val minVersionCode: Int? = null,
+    @SerialName("min_version_code") val minVersionCodeSnake: Int? = null,
+    @SerialName("forceUpdate") val forceUpdate: Boolean? = null,
+    @SerialName("force_update") val forceUpdateSnake: Boolean? = null,
+    @SerialName("title") val title: String? = null,
+    @SerialName("changelog") val changelog: String? = null,
+) {
+    val resolvedVersionCode: Int get() = versionCode ?: versionCodeSnake ?: 0
+    val resolvedVersionName: String get() = versionName ?: versionNameSnake ?: ""
+    val resolvedDownloadUrl: String get() = downloadUrl ?: downloadUrlSnake ?: ""
+    val resolvedForceUpdate: Boolean get() = forceUpdate ?: forceUpdateSnake ?: false
+}
+
+data class AppUpdateInfo(
+    val isUpdateAvailable: Boolean,
+    val latestVersionName: String = "",
+    val latestVersionCode: Int = 0,
+    val currentVersionName: String = "",
+    val currentVersionCode: Int = 0,
+    val downloadUrl: String = "",
+    val forceUpdate: Boolean = false,
+    val title: String? = null,
+    val changelog: String? = null,
+    val errorMessage: String? = null,
+)
+

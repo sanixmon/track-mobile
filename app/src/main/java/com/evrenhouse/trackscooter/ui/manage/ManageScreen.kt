@@ -1,4 +1,5 @@
 package com.evrenhouse.trackscooter.ui.manage
+import com.evrenhouse.trackscooter.BuildConfig
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -291,6 +293,29 @@ fun ManageScreen(
                         },
                         enabled = !busyAction,
                     )
+
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text("Cek Pembaruan", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                                Text("Versi v${BuildConfig.VERSION_NAME}", fontSize = 10.sp, color = TextMuted)
+                            }
+                        },
+                        leadingIcon = { Icon(Icons.Filled.SystemUpdate, null, tint = Accent, modifier = Modifier.size(16.dp)) },
+                        onClick = {
+                            dataMenuExpanded = false
+                            viewModel.checkForAppUpdate { info ->
+                                if (!info.isUpdateAvailable) {
+                                    if (info.errorMessage != null) {
+                                        sweetAlert.showError("Gagal memeriksa pembaruan: ${info.errorMessage}")
+                                    } else {
+                                        sweetAlert.showSuccess("Aplikasi sudah versi terbaru (v${info.currentVersionName})")
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !busyAction,
+                    )
                 }
             }
         }
@@ -367,6 +392,22 @@ fun ManageScreen(
                     onEditScooter = { editingScooter = it },
                 )
             }
+        }
+
+        // App Version Info Footer
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = "TrackScooter Mobile v${BuildConfig.VERSION_NAME} (Build ${BuildConfig.VERSION_CODE})",
+                color = TextSubtle,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+            )
         }
     }
 

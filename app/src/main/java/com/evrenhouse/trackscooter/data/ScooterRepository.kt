@@ -1,4 +1,6 @@
 package com.evrenhouse.trackscooter.data
+import com.evrenhouse.trackscooter.BuildConfig
+import com.evrenhouse.trackscooter.util.VersionUtils
 
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
@@ -184,5 +186,40 @@ class ScooterRepository(private val api: ApiService = ApiClient.service) {
         api.swapScooter(id, SwapScooterRequest(replacementId, note, issue, markBroken))
     }
     suspend fun downloadBackup(): ResponseBody = withContext(Dispatchers.IO) { api.downloadBackup() }
+
+    suspend fun checkAppUpdate(): AppUpdateInfo = withContext(Dispatchers.IO) {
+        val currentCode = BuildConfig.VERSION_CODE
+        val currentName = BuildConfig.VERSION_NAME
+        runCatching {
+            val res = api.getAppVersion()
+            val targetCode = res.resolvedVersionCode
+            val targetName = res.resolvedVersionName
+            val isCodeHigher = targetCode > currentCode
+            val isNameHigher = targetCode == 0 && VersionUtils.isVersionHigher(targetName, currentName)
+            val isUpdateAvailable = isCodeHigher || isNameHigher
+            val downloadUrl = res.resolvedDownloadUrl.ifBlank {
+                "https://github.com/sanixmon/track-mobile/releases/latest"
+            }
+            AppUpdateInfo(
+                isUpdateAvailable = isUpdateAvailable,
+                latestVersionName = targetName.ifBlank { "v$targetCode" },
+                latestVersionCode = targetCode,
+                currentVersionName = currentName,
+                currentVersionCode = currentCode,
+                downloadUrl = downloadUrl,
+                forceUpdate = res.resolvedForceUpdate,
+                title = res.title,
+                changelog = res.changelog,
+            )
+        }.getOrElse { e ->
+            Log.w("ScooterRepository", "Failed to check app update", e)
+            AppUpdateInfo(
+                isUpdateAvailable = false,
+                currentVersionName = currentName,
+                currentVersionCode = currentCode,
+                errorMessage = e.message,
+            )
+        }
+    }
 }
 

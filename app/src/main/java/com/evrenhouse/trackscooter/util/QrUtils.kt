@@ -12,13 +12,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 object QrUtils {
-
-    const val COLOR_UTARA = 0xFFDC2626.toInt()       // Merah
+    const val COLOR_UTARA = 0xFF000000.toInt()       // Hitam
     const val COLOR_UTARA_MOTOR = 0xFF0284C7.toInt() // Biru langit
     const val COLOR_BARAT = 0xFF15803D.toInt()       // Hijau sedikit tua
-    const val COLOR_DEFAULT = 0xFF0D1017.toInt()
+    const val COLOR_DEFAULT = 0xFF000000.toInt()
     const val LIGHT = 0xFFFFFFFF.toInt()
-
     fun getQrColorForOutlet(outlet: String?): Int {
         return when (outlet?.lowercase()) {
             "utara" -> COLOR_UTARA

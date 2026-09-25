@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.evrenhouse.trackscooter.data.ActivityLogEntry
+import com.evrenhouse.trackscooter.data.AppUpdateInfo
 import com.evrenhouse.trackscooter.data.LocalDataUpdate
 import com.evrenhouse.trackscooter.data.MaintenanceRecord
 import com.evrenhouse.trackscooter.data.Scooter
@@ -57,6 +58,28 @@ class ScooterDataViewModel(
         runCatching { OutletPrefs.setSelectedOutlet(TrackScooterApp.instance, outletId) }
     }
 
+    private val _appUpdate = MutableStateFlow<AppUpdateInfo?>(null)
+    val appUpdate: StateFlow<AppUpdateInfo?> = _appUpdate.asStateFlow()
+
+    private val _isCheckingUpdate = MutableStateFlow(false)
+    val isCheckingUpdate: StateFlow<Boolean> = _isCheckingUpdate.asStateFlow()
+
+    fun checkForAppUpdate(onResult: ((AppUpdateInfo) -> Unit)? = null) {
+        viewModelScope.launch {
+            _isCheckingUpdate.value = true
+            val info = repository.checkAppUpdate()
+            _isCheckingUpdate.value = false
+            if (info.isUpdateAvailable) {
+                _appUpdate.value = info
+            }
+            onResult?.invoke(info)
+        }
+    }
+
+    fun dismissUpdateDialog() {
+        _appUpdate.value = null
+    }
+
     private var pollingJob: Job? = null
     private var streamJob: Job? = null
     private var localUpdatesJob: Job? = null
@@ -66,6 +89,7 @@ class ScooterDataViewModel(
         observeLocalUpdates()
         observeStream()
         startPolling()
+        checkForAppUpdate()
     }
 
     /** Complete a repair record then refresh. Throws on failure. */

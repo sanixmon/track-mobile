@@ -1,5 +1,13 @@
 package com.evrenhouse.trackscooter.ui.navigation
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalContext
+import com.evrenhouse.trackscooter.ui.common.AppUpdateDialog
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -50,6 +58,24 @@ fun AppNavHost() {
         var selectedDetailId by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf<String?>(null) }
         // One shared data source across Dashboard / Monitor / Manage (single 30s poll)
         val dataViewModel: ScooterDataViewModel = viewModel(factory = AppViewModelFactory(repository()))
+        val context = LocalContext.current
+        val appUpdate by dataViewModel.appUpdate.collectAsState()
+        var hasAutoRedirected by rememberSaveable { mutableStateOf(false) }
+
+        LaunchedEffect(appUpdate) {
+            val update = appUpdate
+            if (update != null && update.isUpdateAvailable && !hasAutoRedirected) {
+                hasAutoRedirected = true
+                val url = update.downloadUrl.takeIf { it.isNotBlank() }
+                    ?: "https://github.com/sanixmon/track-mobile/releases/latest"
+                runCatching {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                }
+            }
+        }
 
         // Hide bottom bar on the detail screen (full-screen modal-like page)
         val showBottomBar = bottomItems.any { item ->
@@ -125,6 +151,26 @@ fun AppNavHost() {
                 scooterId = id,
                 onDismiss = { selectedDetailId = null }
             )
+        }
+        appUpdate?.let { update ->
+            if (update.isUpdateAvailable) {
+                AppUpdateDialog(
+                    updateInfo = update,
+                    onDownload = {
+                        val url = update.downloadUrl.takeIf { it.isNotBlank() }
+                            ?: "https://github.com/sanixmon/track-mobile/releases/latest"
+                        runCatching {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(intent)
+                        }
+                    },
+                    onDismiss = {
+                        dataViewModel.dismissUpdateDialog()
+                    }
+                )
+            }
         }
     }
 }

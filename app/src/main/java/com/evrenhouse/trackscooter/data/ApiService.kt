@@ -73,4 +73,7 @@ interface ApiService {
 
     @POST("api/attendance/reset")
     suspend fun resetDailyAttendance(@Body body: ResetAttendanceRequest): SimpleSuccessResponse
+
+    @GET("api/app-version")
+    suspend fun getAppVersion(): AppVersionResponse
 }
