@@ -67,7 +67,7 @@ fun AppNavHost() {
             if (update != null && update.isUpdateAvailable && !hasAutoRedirected) {
                 hasAutoRedirected = true
                 val url = update.downloadUrl.takeIf { it.isNotBlank() }
-                    ?: "https://github.com/sanixmon/track-mobile/releases/latest"
+                    ?: "https://github.com/sanixmon/track-releases/releases/latest/download/track-scooter.apk"
                 runCatching {
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -158,7 +158,7 @@ fun AppNavHost() {
                     updateInfo = update,
                     onDownload = {
                         val url = update.downloadUrl.takeIf { it.isNotBlank() }
-                            ?: "https://github.com/sanixmon/track-mobile/releases/latest"
+                            ?: "https://github.com/sanixmon/track-releases/releases/latest/download/track-scooter.apk"
                         runCatching {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
                                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

@@ -198,7 +198,7 @@ class ScooterRepository(private val api: ApiService = ApiClient.service) {
             val isNameHigher = targetCode == 0 && VersionUtils.isVersionHigher(targetName, currentName)
             val isUpdateAvailable = isCodeHigher || isNameHigher
             val downloadUrl = res.resolvedDownloadUrl.ifBlank {
-                "https://github.com/sanixmon/track-mobile/releases/latest"
+                "https://github.com/sanixmon/track-releases/releases/latest/download/track-scooter.apk"
             }
             AppUpdateInfo(
                 isUpdateAvailable = isUpdateAvailable,

@@ -107,6 +107,7 @@ jobs:
           if [ -f "$RELEASE_APK" ]; then
             cp "$RELEASE_APK" "release-assets/track-scooter-${TAG}-release.apk"
             cp "$RELEASE_APK" "release-assets/track-scooter-${TAG}.apk"
+            cp "$RELEASE_APK" "release-assets/track-scooter.apk"
           fi
           
           DEBUG_APK=$(find app/build/outputs/apk/debug -name "*.apk" | head -n1)
@@ -153,4 +154,26 @@ jobs:
               --title "$TITLE" \
               --generate-notes \
               "${FLAGS[@]}"
+
+      - name: Publish to Public Distribution Repo (sanixmon/track-releases)
+        env:
+          GH_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
+          TAG: ${{ steps.vars.outputs.tag }}
+          TITLE: ${{ steps.vars.outputs.title }}
+        run: |
+          if [ -n "$GH_TOKEN" ]; then
+            echo "Publishing release $TAG to public repo sanixmon/track-releases..."
+            if gh release view "$TAG" -R sanixmon/track-releases >/dev/null 2>&1; then
+              echo "Release $TAG already exists on public repo. Uploading/updating assets..."
+              gh release upload "$TAG" release-assets/* -R sanixmon/track-releases --clobber
+            else
+              echo "Creating release $TAG on public repo sanixmon/track-releases..."
+              gh release create "$TAG" release-assets/* \
+                -R sanixmon/track-releases \
+                --title "$TITLE" \
+                --generate-notes
+            fi
+            echo "Successfully published to public repo sanixmon/track-releases."
+          else
+            echo "Warning: GH_RELEASE_TOKEN is not configured; skipping public repo publish."
           fi

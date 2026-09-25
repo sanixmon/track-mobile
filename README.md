@@ -36,10 +36,9 @@ VERSION_BUILD=20
 
 ## Build & Rilis Otomatis
 
-- **Auto Releases** (`.github/workflows/release.yml`): Setiap push tag atau trigger manual di GitHub Actions akan otomatis mengompilasi APK (signed release & debug) dan mempublikasikannya ke tab Releases lengkap dengan catatan rilis otomatis dan checksum SHA-256.
+- **Auto Releases** (`.github/workflows/release.yml`): Setiap push tag atau trigger manual di GitHub Actions akan otomatis mengompilasi APK (signed release & debug) dan mempublikasikannya ke tab Releases di repository ini sekaligus mendistribusikannya ke repository publik [sanixmon/track-releases](https://github.com/sanixmon/track-releases) agar pengguna dapat mengunduh APK tanpa login/autentikasi.
 - **Continuous Integration** (`.github/workflows/android.yml`): Setiap push/PR ke `main` otomatis memvalidasi build dan mengunggah artifact APK.
 Build lokal:
-
 ```bash
 ./gradlew assembleDebug          # APK debug
 ./gradlew assembleRelease        # APK release
@@ -56,7 +55,7 @@ Aplikasi secara otomatis memeriksa ketersediaan pembaruan saat pertama kali dibu
    {
      "versionCode": 20,
      "versionName": "2.7.1",
-     "downloadUrl": "https://github.com/sanixmon/track-mobile/releases/latest",
+     "downloadUrl": "https://github.com/sanixmon/track-releases/releases/latest/download/track-scooter.apk",
      "minVersionCode": 19,
      "forceUpdate": false,
      "title": "Pembaruan Tersedia",
