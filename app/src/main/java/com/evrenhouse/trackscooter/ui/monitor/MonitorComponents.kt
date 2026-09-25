@@ -290,6 +290,8 @@ fun LiveSessionCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
+            val isDark = LocalThemeIsDark.current
+            val nameColor = ScooterColors.getScooterNameColor(scooter.type, scooter.id, scooter.currentOutlet, isDark)
             Text(
                 text = scooter.id,
                 color = nameColor,
