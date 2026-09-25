@@ -124,10 +124,11 @@ jobs:
 
       - name: Upload artifacts to workflow run
         uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: track-scooter-${{ steps.vars.outputs.tag }}-apks
           path: release-assets/*
-          retention-days: 30
+          retention-days: 1
 
       - name: Publish GitHub Release
         env:
