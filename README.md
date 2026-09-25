@@ -26,8 +26,8 @@ Aplikasi menggunakan standar Semantic Versioning yang dikontrol secara terpusat 
 ```properties
 VERSION_MAJOR=2
 VERSION_MINOR=7
-VERSION_PATCH=1
-VERSION_BUILD=20
+VERSION_PATCH=2
+VERSION_BUILD=21
 ```
 
 - **PATCH (`VERSION_PATCH`)**: Naikkan untuk bugfix, styling, tweak UI, atau perbaikan kecil lainnya (misal `2.7.0` -> `2.7.1`).
