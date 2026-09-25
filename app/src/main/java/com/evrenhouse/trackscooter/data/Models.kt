@@ -46,6 +46,7 @@ data class DeviceCondition(
 data class ActiveMaintenance(
     @SerialName("id") val id: String,
     @SerialName("location") val location: String,
+    @SerialName("location_detail") val locationDetail: String? = null,
     @SerialName("issue") val issue: String? = null,
     @SerialName("note") val note: String? = null,
     @SerialName("status") val status: String,

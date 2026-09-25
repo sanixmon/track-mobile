@@ -338,15 +338,46 @@ fun ScooterRow(
             )
         }
 
-        if (scooter.status == ScooterStatus.MAINTENANCE && !scooter.maintenanceNote.isNullOrBlank()) {
-            Text(
-                "Catatan: ${scooter.maintenanceNote}",
-                color = TextMuted,
-                fontSize = 11.sp,
-                fontStyle = FontStyle.Italic,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+        if (scooter.status == ScooterStatus.MAINTENANCE) {
+            val am = scooter.activeMaintenance
+            val isLuar = am?.location == "luar"
+            val locDetail = am?.locationDetail?.takeIf { it.isNotBlank() }
+            val issueText = am?.issue?.takeIf { it.isNotBlank() } ?: scooter.maintenanceNote
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .background(
+                            if (isLuar) Red.copy(alpha = 0.12f) else Warning.copy(alpha = 0.12f),
+                            RoundedCornerShape(6.dp),
+                        )
+                        .border(
+                            1.dp,
+                            if (isLuar) Red.copy(alpha = 0.35f) else Warning.copy(alpha = 0.35f),
+                            RoundedCornerShape(6.dp),
+                        )
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = if (isLuar) "Luar: ${locDetail ?: "Luar Outlet"}" else "Di Outlet",
+                        color = if (isLuar) Red else Warning,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                if (!issueText.isNullOrBlank()) {
+                    Text(
+                        text = issueText,
+                        color = TextMuted,
+                        fontSize = 11.sp,
+                        fontStyle = FontStyle.Italic,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
     }
 }
@@ -358,10 +389,10 @@ fun StatusChangeDialog(
     onDismiss: () -> Unit,
     onConfirm: (location: String, locationDetail: String?, issue: String, note: String?) -> Unit,
 ) {
-    var location by remember { mutableStateOf("outlet") }
-    var locationDetail by remember { mutableStateOf("") }
-    var issue by remember { mutableStateOf(scooter.maintenanceNote ?: "") }
-    var note by remember { mutableStateOf("") }
+    var location by remember(scooter) { mutableStateOf(scooter.activeMaintenance?.location ?: "outlet") }
+    var locationDetail by remember(scooter) { mutableStateOf(scooter.activeMaintenance?.locationDetail ?: "") }
+    var issue by remember(scooter) { mutableStateOf(scooter.activeMaintenance?.issue ?: scooter.maintenanceNote ?: "") }
+    var note by remember(scooter) { mutableStateOf(scooter.activeMaintenance?.note ?: "") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     val title = when (newStatus) {
@@ -471,10 +502,10 @@ fun EditScooterDialog(
     }
     var selectedOutlet by remember { mutableStateOf(initialOutlet) }
     var selectedStatus by remember { mutableStateOf(scooter.status) }
-    var location by remember { mutableStateOf("outlet") }
-    var locationDetail by remember { mutableStateOf("") }
-    var issue by remember { mutableStateOf(scooter.maintenanceNote ?: "") }
-    var note by remember { mutableStateOf("") }
+    var location by remember(scooter) { mutableStateOf(scooter.activeMaintenance?.location ?: "outlet") }
+    var locationDetail by remember(scooter) { mutableStateOf(scooter.activeMaintenance?.locationDetail ?: "") }
+    var issue by remember(scooter) { mutableStateOf(scooter.activeMaintenance?.issue ?: scooter.maintenanceNote ?: "") }
+    var note by remember(scooter) { mutableStateOf(scooter.activeMaintenance?.note ?: "") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     var outletDropdownOpen by remember { mutableStateOf(false) }

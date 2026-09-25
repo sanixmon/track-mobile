@@ -369,8 +369,9 @@ fun ScooterDetailScreen(
                         Icon(Icons.Filled.WarningAmber, contentDescription = null, tint = Warning, modifier = Modifier.size(18.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Perbaikan Berjalan", color = Warning, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            val locLabel = if (am.location == "outlet") "Di Outlet" else if (!am.locationDetail.isNullOrBlank()) "Luar · ${am.locationDetail}" else "Keluar / Di Luar"
                             Text(
-                                "${if (am.location == "outlet") "Di Outlet" else "Keluar / Di Luar"}${if (!am.issue.isNullOrBlank()) " · ${am.issue}" else ""}",
+                                "$locLabel${if (!am.issue.isNullOrBlank()) " · ${am.issue}" else ""}",
                                 color = TextMuted,
                                 fontSize = 11.sp,
                             )

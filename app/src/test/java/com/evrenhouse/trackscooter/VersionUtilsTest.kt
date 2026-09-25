@@ -1,6 +1,9 @@
 package com.evrenhouse.trackscooter
 
+import com.evrenhouse.trackscooter.data.Scooter
 import com.evrenhouse.trackscooter.util.VersionUtils
+import kotlinx.serialization.json.Json
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -55,5 +58,31 @@ class VersionUtilsTest {
         assertTrue(VersionUtils.isVersionHigher("2.8", "2.7.0"))
         assertTrue(VersionUtils.isVersionHigher("2.7.1.1", "2.7.1"))
         assertFalse(VersionUtils.isVersionHigher("2.7", "2.7.0"))
+    }
+
+    @Test
+    fun activeMaintenanceDeserializesLocationDetail() {
+        val json = Json { ignoreUnknownKeys = true }
+        val raw = """
+            {
+              "id": "SB-59",
+              "type": "sb",
+              "status": "maintenance",
+              "current_outlet": "utara",
+              "maintenance_note": "dinamo",
+              "active_maintenance": {
+                "id": "mnt-1",
+                "location": "luar",
+                "location_detail": "maharani",
+                "issue": "dinamo",
+                "status": "repair",
+                "started_at": "2026-09-25T23:08:34.194Z"
+              }
+            }
+        """.trimIndent()
+        val scooter = json.decodeFromString<Scooter>(raw)
+        assertEquals("luar", scooter.activeMaintenance?.location)
+        assertEquals("maharani", scooter.activeMaintenance?.locationDetail)
+        assertEquals("dinamo", scooter.activeMaintenance?.issue)
     }
 }
