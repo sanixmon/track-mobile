@@ -44,7 +44,7 @@ val LightPalette = AppColors(
     isDark = false,
 )
 
-val LocalAppColors = staticCompositionLocalOf { DarkPalette }
+val LocalAppColors = staticCompositionLocalOf { LightPalette }
 
 val Bg: Color
     @Composable

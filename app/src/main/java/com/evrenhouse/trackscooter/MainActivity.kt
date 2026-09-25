@@ -24,7 +24,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            var isDark by rememberSaveable { mutableStateOf(true) }
+            var isDark by rememberSaveable { mutableStateOf(false) }
 
             CompositionLocalProvider(
                 LocalThemeIsDark provides isDark,

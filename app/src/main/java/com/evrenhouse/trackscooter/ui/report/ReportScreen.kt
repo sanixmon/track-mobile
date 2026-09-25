@@ -7,7 +7,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,24 +15,21 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ElectricScooter
+import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Store
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,13 +46,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.evrenhouse.trackscooter.data.ActivityLogEntry
 import com.evrenhouse.trackscooter.data.AttendanceRecord
 import com.evrenhouse.trackscooter.data.Scooter
 import com.evrenhouse.trackscooter.data.ScooterRepository
@@ -66,10 +61,11 @@ import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
 import com.evrenhouse.trackscooter.ui.common.OutletDropdown
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
 import com.evrenhouse.trackscooter.ui.common.repository
+import com.evrenhouse.trackscooter.ui.scan.CameraScanner
 import com.evrenhouse.trackscooter.ui.theme.Accent
 import com.evrenhouse.trackscooter.ui.theme.Border
 import com.evrenhouse.trackscooter.ui.theme.Green
-import com.evrenhouse.trackscooter.ui.theme.Red
+import com.evrenhouse.trackscooter.ui.theme.LocalThemeIsDark
 import com.evrenhouse.trackscooter.ui.theme.Surface
 import com.evrenhouse.trackscooter.ui.theme.Surface2
 import com.evrenhouse.trackscooter.ui.theme.Surface3
@@ -77,33 +73,25 @@ import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
 import com.evrenhouse.trackscooter.ui.theme.Warning
-import com.evrenhouse.trackscooter.ui.theme.LocalThemeIsDark
-import com.evrenhouse.trackscooter.util.ScooterColors
 import com.evrenhouse.trackscooter.util.DateUtils
 import com.evrenhouse.trackscooter.util.Outlets
-import com.evrenhouse.trackscooter.util.StatusLabels
-import com.evrenhouse.trackscooter.util.TypeLabels
+import com.evrenhouse.trackscooter.util.ScooterColors
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-data class RentalSessionItem(
-    val no: Int,
-    val scooterId: String,
-    val type: String,
-    val startDt: java.time.LocalDateTime,
-    val endDt: java.time.LocalDateTime?,
-    val durationText: String,
-    val inProgress: Boolean
-)
+enum class ReportSubTab(val label: String, val icon: ImageVector) {
+    CLOSING("Closing", Icons.Filled.Checklist),
+    SCAN("Scan Absen", Icons.Filled.QrCodeScanner),
+}
 
 @Composable
 fun ReportScreen(
     viewModel: ScooterDataViewModel,
     onOpenDetail: ((String) -> Unit)? = null,
-    repository: ScooterRepository = repository()
+    repository: ScooterRepository = repository(),
 ) {
     val data by viewModel.state.collectAsState()
     val context = LocalContext.current
@@ -124,6 +112,9 @@ fun ReportScreen(
     var loadingAttendance by remember { mutableStateOf(false) }
     var attendanceFilter by rememberSaveable { mutableStateOf("all") } // "all" | "unattended" | "attended"
     var attendanceSearch by rememberSaveable { mutableStateOf("") }
+
+    val pagerState = rememberPagerState(initialPage = 0) { ReportSubTab.entries.size }
+    val currentSubTab by remember { derivedStateOf { ReportSubTab.entries[pagerState.currentPage] } }
 
     // Load attendance for selected date
     fun loadAttendanceData() {
@@ -182,77 +173,7 @@ fun ReportScreen(
         }
     }
 
-    // Section 1: Calculate Rental Sessions for selected date
-    val sessionItems by remember(data.activityLog, data.scooters, selectedDate, selectedOutlet) {
-        derivedStateOf {
-            val perUnit = mutableMapOf<String, MutableList<ActivityLogEntry>>()
-            data.activityLog.forEach { e ->
-                perUnit.getOrPut(e.scooterId) { mutableListOf() }.add(e)
-            }
-
-            val result = mutableListOf<RentalSessionItem>()
-            var counter = 1
-
-            perUnit.forEach { (scooterId, logs) ->
-                val bike = data.scooters.find { it.id == scooterId }
-                val bikeOutlet = bike?.currentOutlet ?: Outlets.getHomeOutletForType(bike?.type ?: "sd")
-                if (selectedOutlet != "all" && bikeOutlet != selectedOutlet) return@forEach
-
-                val sortedLogs = logs.mapNotNull {
-                    val dt = DateUtils.parse(it.timestamp)
-                    if (dt != null) it to dt else null
-                }.sortedBy { it.second }
-                var openCheckout: Pair<ActivityLogEntry, java.time.LocalDateTime>? = null
-                for (entry in sortedLogs) {
-                    val (log, dt) = entry
-
-                    if (log.action == "checkout") {
-                        openCheckout = log to dt
-                    } else if (log.action == "return" && openCheckout != null) {
-                        val (_, startDt) = openCheckout
-                        if (DateUtils.localDateKey(startDt.toLocalDate()) == selectedDate) {
-                            val diffSecs = java.time.Duration.between(startDt, dt).seconds
-                            result.add(
-                                RentalSessionItem(
-                                    no = counter++,
-                                    scooterId = scooterId,
-                                    type = bike?.type ?: "sd",
-                                    startDt = startDt,
-                                    endDt = dt,
-                                    durationText = DateUtils.formatDuration(diffSecs),
-                                    inProgress = false
-                                )
-                            )
-                        }
-                        openCheckout = null
-                    }
-                }
-
-                // Check active ongoing checkout today
-                if (openCheckout != null) {
-                    val (_, startDt) = openCheckout
-                    if (DateUtils.localDateKey(startDt.toLocalDate()) == selectedDate) {
-                        val nowDt = java.time.LocalDateTime.now(DateUtils.WIB)
-                        val diffSecs = java.time.Duration.between(startDt, nowDt).seconds
-                        result.add(
-                            RentalSessionItem(
-                                no = counter++,
-                                scooterId = scooterId,
-                                type = bike?.type ?: "sd",
-                                startDt = startDt,
-                                endDt = null,
-                                durationText = DateUtils.formatDuration(diffSecs),
-                                inProgress = true
-                            )
-                        )
-                    }
-                }
-            }
-            result.sortedByDescending { it.startDt }
-        }
-    }
-
-    // Section 2: Filtered Attendance Units
+    // Filtered Attendance Units
     val filteredAttendanceUnits by remember(expectedInOutlet, attendanceSearch, attendanceFilter, attendanceMap) {
         derivedStateOf {
             val baseUnits = if (attendanceSearch.isNotBlank()) data.scooters.filter { it.status != ScooterStatus.IN_USE } else expectedInOutlet
@@ -270,503 +191,504 @@ fun ReportScreen(
         }
     }
 
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        // ── Header & Filter Controls ──
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column {
-                    Text("Laporan", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Text("Rekapitulasi perputaran sesi sewa dan verifikasi fisik armada", color = TextMuted, fontSize = 12.sp)
-                }
+        // ── Header ──
+        Column {
+            Text("Laporan & Closing", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(
+                text = if (currentSubTab == ReportSubTab.CLOSING) "Checklist kehadiran fisik unit saat closing outlet"
+                else "Pindai QR code scooter untuk mencatat kehadiran",
+                color = TextMuted,
+                fontSize = 12.sp,
+            )
+        }
 
-                // Controls Row: Quick Dates + Calendar Picker
+        // ── 2 Sub Tab Selector (Closing & Scan Absen) ──
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Surface2, RoundedCornerShape(12.dp))
+                .border(1.dp, Border, RoundedCornerShape(12.dp))
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            ReportSubTab.entries.forEach { tab ->
+                val isSelected = currentSubTab == tab
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (selectedDate == todayStr) Accent else Surface)
-                                .border(1.dp, if (selectedDate == todayStr) Accent else Border, RoundedCornerShape(8.dp))
-                                .clickable { selectedDate = todayStr }
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
-                        ) {
-                            Text(
-                                "Hari Ini",
-                                color = if (selectedDate == todayStr) Color.White else TextMuted,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(if (isSelected) Accent else Color.Transparent)
+                        .clickable {
+                            scope.launch {
+                                pagerState.animateScrollToPage(tab.ordinal)
+                            }
                         }
-
+                        .padding(vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Icon(
+                        imageVector = tab.icon,
+                        contentDescription = null,
+                        tint = if (isSelected) Color.White else TextMuted,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = tab.label,
+                        color = if (isSelected) Color.White else TextMuted,
+                        fontSize = 13.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    )
+                    if (tab == ReportSubTab.CLOSING) {
+                        Spacer(Modifier.width(6.dp))
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (selectedDate == yesterdayStr) Accent else Surface)
-                                .border(1.dp, if (selectedDate == yesterdayStr) Accent else Border, RoundedCornerShape(8.dp))
-                                .clickable { selectedDate = yesterdayStr }
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                                .background(
+                                    if (isSelected) Color.White.copy(alpha = 0.25f)
+                                    else if (progressPercent == 100) Green.copy(alpha = 0.2f) else Accent.copy(alpha = 0.2f),
+                                    CircleShape,
+                                )
+                                .padding(horizontal = 6.dp, vertical = 1.dp),
                         ) {
                             Text(
-                                "Kemarin",
-                                color = if (selectedDate == yesterdayStr) Color.White else TextMuted,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
+                                text = "$attendedCount/${expectedInOutlet.size}",
+                                color = if (isSelected) Color.White else if (progressPercent == 100) Green else Accent,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
                             )
                         }
                     }
+                }
+            }
+        }
 
-                    // Calendar Button
-                    Row(
+        // ── Date Picker & Outlet Dropdown Header ──
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // Kemarin button
+                    Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Surface)
-                            .border(1.dp, Border, RoundedCornerShape(10.dp))
-                            .clickable {
-                                val cal = Calendar.getInstance()
-                                DatePickerDialog(
-                                    context,
-                                    { _, year, month, day ->
-                                        val picked = Calendar.getInstance().apply {
-                                            set(year, month, day)
-                                        }
-                                        selectedDate = dateFormat.format(picked.time)
-                                    },
-                                    cal.get(Calendar.YEAR),
-                                    cal.get(Calendar.MONTH),
-                                    cal.get(Calendar.DAY_OF_MONTH)
-                                ).show()
-                            }
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (selectedDate == yesterdayStr) Accent else Surface2)
+                            .border(1.dp, if (selectedDate == yesterdayStr) Accent else Border, RoundedCornerShape(8.dp))
+                            .clickable { selectedDate = yesterdayStr }
                             .padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Icon(Icons.Filled.CalendarMonth, null, tint = Accent, modifier = Modifier.size(14.dp))
-                        Text(selectedDate, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                        Text(
+                            text = "Kemarin",
+                            color = if (selectedDate == yesterdayStr) Color.White else TextPrimary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+
+                    // Hari Ini button
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (selectedDate == todayStr) Accent else Surface2)
+                            .border(1.dp, if (selectedDate == todayStr) Accent else Border, RoundedCornerShape(8.dp))
+                            .clickable { selectedDate = todayStr }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "Hari Ini",
+                            color = if (selectedDate == todayStr) Color.White else TextPrimary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
                     }
                 }
 
-                // Global Outlet Dropdown Filter
-                OutletDropdown(
-                    selectedOutletId = selectedOutlet,
-                    onOutletSelected = { viewModel.setSelectedOutlet(it) },
-                    labelPrefix = "Filter Outlet:"
+                // Calendar Picker Trigger
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Surface2)
+                        .border(1.dp, Border, RoundedCornerShape(8.dp))
+                        .clickable {
+                            val cal = Calendar.getInstance()
+                            DatePickerDialog(
+                                context,
+                                { _, y, m, d ->
+                                    val formatted = String.format(Locale.US, "%04d-%02d-%02d", y, m + 1, d)
+                                    selectedDate = formatted
+                                },
+                                cal.get(Calendar.YEAR),
+                                cal.get(Calendar.MONTH),
+                                cal.get(Calendar.DAY_OF_MONTH),
+                            ).show()
+                        }
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(Icons.Filled.CalendarMonth, null, tint = Accent, modifier = Modifier.size(14.dp))
+                    Text(selectedDate, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                }
+            }
+
+            // Global Outlet Dropdown Filter
+            OutletDropdown(
+                selectedOutletId = selectedOutlet,
+                onOutletSelected = { viewModel.setSelectedOutlet(it) },
+                labelPrefix = "Filter Outlet:",
+            )
+        }
+
+        // ── 4 KPI Status Cards ──
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                ReportStatCard(
+                    title = "Unit Ready",
+                    value = "${outletScooters.count { it.status == ScooterStatus.AVAILABLE }}",
+                    sub = "Siap Sewa",
+                    color = Green,
+                    modifier = Modifier.weight(1f),
+                )
+                ReportStatCard(
+                    title = "Unit Diluar",
+                    value = "${outletScooters.count { it.status == ScooterStatus.IN_USE }}",
+                    sub = "Sedang Sewa",
+                    color = Accent,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                ReportStatCard(
+                    title = "Unit Kendala",
+                    value = "${outletScooters.count { it.status == ScooterStatus.MAINTENANCE }}",
+                    sub = "Perbaikan",
+                    color = Warning,
+                    modifier = Modifier.weight(1f),
+                )
+                ReportStatCard(
+                    title = "Progres Absen",
+                    value = "$progressPercent%",
+                    sub = "$attendedCount/${expectedInOutlet.size} Unit",
+                    color = if (progressPercent == 100) Green else Accent,
+                    modifier = Modifier.weight(1f),
                 )
             }
         }
 
-        // ── 4 KPI Status Cards ──
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ReportStatCard(
-                        title = "Unit Ready",
-                        value = "${outletScooters.count { it.status == ScooterStatus.AVAILABLE }}",
-                        sub = "Siap Sewa",
-                        color = Green,
-                        modifier = Modifier.weight(1f)
-                    )
-                    ReportStatCard(
-                        title = "Unit Diluar",
-                        value = "${outletScooters.count { it.status == ScooterStatus.IN_USE }}",
-                        sub = "Sedang Sewa",
-                        color = Accent,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ReportStatCard(
-                        title = "Unit Kendala",
-                        value = "${outletScooters.count { it.status == ScooterStatus.MAINTENANCE }}",
-                        sub = "Perbaikan",
-                        color = Warning,
-                        modifier = Modifier.weight(1f)
-                    )
-                    ReportStatCard(
-                        title = "Progres Absen",
-                        value = "$progressPercent%",
-                        sub = "$attendedCount/${expectedInOutlet.size} Unit",
-                        color = if (progressPercent == 100) Green else Accent,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-        }
-
-        // ── Section 1: Rekapitulasi Sesi Sewa ──
-        item {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Surface)
-                    .border(1.dp, Border, RoundedCornerShape(16.dp))
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(0.dp, Color.Transparent)
-                        .padding(14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(Icons.Filled.Timer, null, tint = Accent, modifier = Modifier.size(16.dp))
-                        Text("Rekapitulasi Sesi Sewa", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    }
-                    Box(
-                        modifier = Modifier
-                            .background(Surface3, RoundedCornerShape(8.dp))
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                    ) {
-                        Text("${sessionItems.size} Sesi", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                if (sessionItems.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(Icons.Filled.ElectricScooter, null, tint = TextSubtle, modifier = Modifier.size(28.dp))
-                            Text("Tidak ada sesi sewa pada tanggal ini", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                        }
-                    }
-                } else {
+        // ── Swipeable Pager for Sub Tabs ──
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top,
+        ) { page ->
+            when (ReportSubTab.entries[page]) {
+                // ══════════════════════════════════════════════════════════
+                // SUB TAB 1: CLOSING (CHECKLIST KEHADIRAN OUTLET)
+                // ══════════════════════════════════════════════════════════
+                ReportSubTab.CLOSING -> {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Surface)
+                            .border(1.dp, Border, RoundedCornerShape(16.dp)),
                     ) {
-                        sessionItems.forEach { item ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(Surface2)
-                                    .border(1.dp, Border, RoundedCornerShape(10.dp))
-                                    .clickable { onOpenDetail?.invoke(item.scooterId) }
-                                    .padding(10.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    modifier = Modifier.weight(1f, fill = false),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    val isDark = LocalThemeIsDark.current
-                                    val nameColor = ScooterColors.getScooterNameColor(item.type, item.scooterId, isDark = isDark)
-                                    Text(
-                                        text = item.scooterId,
-                                        color = nameColor,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = FontFamily.Monospace,
-                                        maxLines = 1,
-                                    )
-                                    val timeStr = if (item.endDt != null) {
-                                        "${DateUtils.formatTime(item.startDt)} - ${DateUtils.formatTime(item.endDt)}"
-                                    } else {
-                                        DateUtils.formatTime(item.startDt)
-                                    }
-                                    Text(
-                                        text = timeStr,
-                                        color = TextMuted,
-                                        fontSize = 10.5.sp,
-                                        fontFamily = FontFamily.Monospace,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Text(
-                                        text = item.durationText,
-                                        color = TextPrimary,
-                                        fontSize = 11.5.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = FontFamily.Monospace,
-                                        maxLines = 1,
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .background(
-                                                if (item.inProgress) Warning.copy(alpha = 0.15f) else Green.copy(alpha = 0.15f),
-                                                RoundedCornerShape(6.dp)
-                                            )
-                                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                                    ) {
-                                        Text(
-                                            text = if (item.inProgress) "Berjalan" else "Selesai",
-                                            color = if (item.inProgress) Warning else Green,
-                                            fontSize = 9.5.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            maxLines = 1,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // ── Section 2: Checklist Kehadiran Fisik Outlet ──
-        item {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Surface)
-                    .border(1.dp, Border, RoundedCornerShape(16.dp))
-            ) {
-                // Title & Mass Actions
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
+                        // Title & Reset Action
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(Icons.Filled.Store, null, tint = Accent, modifier = Modifier.size(16.dp))
-                            Text("Checklist Kehadiran Outlet", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        }
-                        Text("$attendedCount / ${expectedInOutlet.size} Unit Hadir", color = TextMuted, fontSize = 11.sp)
-                    }
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Surface3)
-                                .border(1.dp, Border, RoundedCornerShape(8.dp))
-                                .clickable {
-                                    sweetAlert.showConfirm(
-                                        title = "Reset Absen?",
-                                        message = "Catatan kehadiran unit untuk tanggal $selectedDate akan dihapus.",
-                                        confirmText = "Ya, Reset",
-                                        cancelText = "Batal",
-                                        isDanger = true,
-                                        onConfirm = {
-                                            scope.launch {
-                                                runCatching {
-                                                    repository.resetDailyAttendance(
-                                                        date = selectedDate,
-                                                        outlet = if (selectedOutlet == "all") null else selectedOutlet
-                                                    )
-                                                }.onSuccess {
-                                                    sweetAlert.showSuccess(it.message ?: "Absen direset")
-                                                    loadAttendanceData()
-                                                }
-                                            }
-                                        }
-                                    )
-                                }
-                                .padding(horizontal = 8.dp, vertical = 6.dp),
-                            contentAlignment = Alignment.Center
+                                .fillMaxWidth()
+                                .padding(14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(Icons.Filled.RestartAlt, null, tint = TextMuted, modifier = Modifier.size(13.dp))
-                                Text("Reset", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                            }
-                        }
-                    }
-                }
-
-                // Filter & Search bar
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Surface2)
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = attendanceSearch,
-                        onValueChange = { attendanceSearch = it },
-                        placeholder = { Text("Cari ID unit...", color = TextSubtle, fontSize = 12.sp) },
-                        leadingIcon = { Icon(Icons.Filled.Search, null, tint = TextMuted, modifier = Modifier.size(15.dp)) },
-                        singleLine = true,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                        textStyle = androidx.compose.ui.text.TextStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp)
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        AttendanceFilterChip(
-                            label = "Semua (${expectedInOutlet.size})",
-                            selected = attendanceFilter == "all",
-                            onClick = { attendanceFilter = "all" },
-                            modifier = Modifier.weight(1f)
-                        )
-                        AttendanceFilterChip(
-                            label = "Belum ($unattendedCount)",
-                            selected = attendanceFilter == "unattended",
-                            onClick = { attendanceFilter = "unattended" },
-                            activeColor = Warning,
-                            modifier = Modifier.weight(1f)
-                        )
-                        AttendanceFilterChip(
-                            label = "Hadir ($attendedCount)",
-                            selected = attendanceFilter == "attended",
-                            onClick = { attendanceFilter = "attended" },
-                            activeColor = Green,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-
-                // Unit List
-                if (filteredAttendanceUnits.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("Tidak ada unit yang cocok", color = TextMuted, fontSize = 12.sp)
-                    }
-                } else {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        filteredAttendanceUnits.forEach { scooter ->
-                            val record = attendanceMap[scooter.id]
-                            val isAttended = record != null
-
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(if (isAttended) Green.copy(alpha = 0.05f) else Surface2)
-                                    .border(1.dp, if (isAttended) Green.copy(alpha = 0.3f) else Border, RoundedCornerShape(12.dp))
-                                    .clickable {
-                                        scope.launch {
-                                            runCatching {
-                                                repository.recordDailyAttendance(
-                                                    scooterId = scooter.id,
-                                                    date = selectedDate,
-                                                    outlet = if (selectedOutlet == "all") null else selectedOutlet
-                                                )
-                                            }.onSuccess {
-                                                sweetAlert.showSuccess(it.message ?: "Unit ${scooter.id} diabsen")
-                                                loadAttendanceData()
-                                                viewModel.refresh()
-                                            }.onFailure {
-                                                sweetAlert.showError(it.toUserMessage())
-                                            }
-                                        }
-                                    }
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
+                            Column {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(32.dp)
-                                            .background(
-                                                if (isAttended) Green.copy(alpha = 0.15f) else Surface3,
-                                                RoundedCornerShape(8.dp)
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = if (isAttended) Icons.Filled.CheckCircle else Icons.Filled.Store,
-                                            contentDescription = null,
-                                            tint = if (isAttended) Green else TextMuted,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-
-                                    Column {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                        ) {
-                                            val isDark = LocalThemeIsDark.current
-                                            val nameColor = ScooterColors.getScooterNameColor(scooter.type, scooter.id, scooter.currentOutlet, isDark)
-                                            Text(
-                                                text = scooter.id,
-                                                color = nameColor,
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                fontFamily = FontFamily.Monospace
-                                            )
-                                        }
-                                        Text(
-                                            text = if (isAttended && record?.scannedAt != null) {
-                                                val scanDt = DateUtils.parse(record.scannedAt)
-                                                if (scanDt != null) "Diabsen: ${DateUtils.formatTime(scanDt)}" else "Sudah diabsen"
-                                            } else "Belum diabsen hadir",
-                                            color = TextMuted,
-                                            fontSize = 11.sp
-                                        )
-                                    }
+                                    Icon(Icons.Filled.Store, null, tint = Accent, modifier = Modifier.size(16.dp))
+                                    Text("Checklist Kehadiran Outlet", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                                 }
+                                Text("$attendedCount / ${expectedInOutlet.size} Unit Hadir", color = TextMuted, fontSize = 11.sp)
+                            }
 
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Box(
                                     modifier = Modifier
-                                        .background(
-                                            if (isAttended) Green.copy(alpha = 0.15f) else Warning.copy(alpha = 0.15f),
-                                            RoundedCornerShape(6.dp)
-                                        )
-                                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Surface3)
+                                        .border(1.dp, Border, RoundedCornerShape(8.dp))
+                                        .clickable {
+                                            sweetAlert.showConfirm(
+                                                title = "Reset Absen?",
+                                                message = "Catatan kehadiran unit untuk tanggal $selectedDate akan dihapus.",
+                                                confirmText = "Ya, Reset",
+                                                cancelText = "Batal",
+                                                isDanger = true,
+                                                onConfirm = {
+                                                    scope.launch {
+                                                        runCatching {
+                                                            repository.resetDailyAttendance(
+                                                                date = selectedDate,
+                                                                outlet = if (selectedOutlet == "all") null else selectedOutlet,
+                                                            )
+                                                        }.onSuccess {
+                                                            sweetAlert.showSuccess(it.message ?: "Absen direset")
+                                                            loadAttendanceData()
+                                                        }
+                                                    }
+                                                },
+                                            )
+                                        }
+                                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                                    contentAlignment = Alignment.Center,
                                 ) {
-                                    Text(
-                                        text = if (isAttended) "Hadir" else "Belum",
-                                        color = if (isAttended) Green else Warning,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        Icon(Icons.Filled.RestartAlt, null, tint = TextMuted, modifier = Modifier.size(13.dp))
+                                        Text("Reset", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                    }
                                 }
+                            }
+                        }
+
+                        // Filter & Search bar
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Surface2)
+                                .padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            OutlinedTextField(
+                                value = attendanceSearch,
+                                onValueChange = { attendanceSearch = it.uppercase() },
+                                placeholder = { Text("Cari ID unit...", color = TextSubtle, fontSize = 12.sp) },
+                                leadingIcon = { Icon(Icons.Filled.Search, null, tint = TextMuted, modifier = Modifier.size(15.dp)) },
+                                singleLine = true,
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                                textStyle = androidx.compose.ui.text.TextStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp),
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                AttendanceFilterChip(
+                                    label = "Semua (${expectedInOutlet.size})",
+                                    selected = attendanceFilter == "all",
+                                    onClick = { attendanceFilter = "all" },
+                                    modifier = Modifier.weight(1f),
+                                )
+                                AttendanceFilterChip(
+                                    label = "Belum ($unattendedCount)",
+                                    selected = attendanceFilter == "unattended",
+                                    onClick = { attendanceFilter = "unattended" },
+                                    activeColor = Warning,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                AttendanceFilterChip(
+                                    label = "Hadir ($attendedCount)",
+                                    selected = attendanceFilter == "attended",
+                                    onClick = { attendanceFilter = "attended" },
+                                    activeColor = Green,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+
+                        // Unit List
+                        if (filteredAttendanceUnits.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text("Tidak ada unit yang cocok", color = TextMuted, fontSize = 12.sp)
+                            }
+                        } else {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                filteredAttendanceUnits.forEach { scooter ->
+                                    val record = attendanceMap[scooter.id]
+                                    val isAttended = record != null
+
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(if (isAttended) Green.copy(alpha = 0.05f) else Surface2)
+                                            .border(1.dp, if (isAttended) Green.copy(alpha = 0.3f) else Border, RoundedCornerShape(12.dp))
+                                            .clickable {
+                                                scope.launch {
+                                                    runCatching {
+                                                        repository.recordDailyAttendance(
+                                                            scooterId = scooter.id,
+                                                            date = selectedDate,
+                                                            outlet = if (selectedOutlet == "all") null else selectedOutlet,
+                                                        )
+                                                    }.onSuccess {
+                                                        sweetAlert.showSuccess(it.message ?: "Unit ${scooter.id} diabsen")
+                                                        loadAttendanceData()
+                                                        viewModel.refresh()
+                                                    }.onFailure {
+                                                        sweetAlert.showError(it.toUserMessage())
+                                                    }
+                                                }
+                                            }
+                                            .padding(12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(32.dp)
+                                                    .background(
+                                                        if (isAttended) Green.copy(alpha = 0.15f) else Surface3,
+                                                        RoundedCornerShape(8.dp),
+                                                    ),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                Icon(
+                                                    imageVector = if (isAttended) Icons.Filled.CheckCircle else Icons.Filled.Store,
+                                                    contentDescription = null,
+                                                    tint = if (isAttended) Green else TextMuted,
+                                                    modifier = Modifier.size(16.dp),
+                                                )
+                                            }
+
+                                            Column {
+                                                val isDark = LocalThemeIsDark.current
+                                                val nameColor = ScooterColors.getScooterNameColor(scooter.type, scooter.id, scooter.currentOutlet, isDark)
+                                                Text(
+                                                    text = scooter.id,
+                                                    color = nameColor,
+                                                    fontSize = 14.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontFamily = FontFamily.Monospace,
+                                                )
+                                                Text(
+                                                    text = if (isAttended && record?.scannedAt != null) {
+                                                        val scanDt = DateUtils.parse(record.scannedAt)
+                                                        if (scanDt != null) "Diabsen: ${DateUtils.formatTime(scanDt)}" else "Sudah diabsen"
+                                                    } else "Belum diabsen hadir",
+                                                    color = TextMuted,
+                                                    fontSize = 11.sp,
+                                                )
+                                            }
+                                        }
+
+                                        Box(
+                                            modifier = Modifier
+                                                .background(
+                                                    if (isAttended) Green.copy(alpha = 0.15f) else Warning.copy(alpha = 0.15f),
+                                                    RoundedCornerShape(6.dp),
+                                                )
+                                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                                        ) {
+                                            Text(
+                                                text = if (isAttended) "Hadir" else "Belum",
+                                                color = if (isAttended) Green else Warning,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ══════════════════════════════════════════════════════════
+                // SUB TAB 2: SCAN ABSEN (KAMERA SCANNER ABSENSI)
+                // ══════════════════════════════════════════════════════════
+                ReportSubTab.SCAN -> {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        var isScanningAttendance by remember { mutableStateOf(false) }
+
+                        CameraScanner(
+                            isProcessing = isScanningAttendance,
+                            onScan = { rawCode ->
+                                val scannedId = rawCode.trim().uppercase()
+                                if (!isScanningAttendance && scannedId.isNotBlank()) {
+                                    isScanningAttendance = true
+                                    scope.launch {
+                                        runCatching {
+                                            repository.recordDailyAttendance(
+                                                scooterId = scannedId,
+                                                date = selectedDate,
+                                                outlet = if (selectedOutlet == "all") null else selectedOutlet,
+                                            )
+                                        }.onSuccess { res ->
+                                            sweetAlert.showSuccess(res.message ?: "Unit $scannedId berhasil diabsen!")
+                                            loadAttendanceData()
+                                            viewModel.refresh()
+                                        }.onFailure { err ->
+                                            sweetAlert.showError(err.toUserMessage())
+                                        }
+                                        isScanningAttendance = false
+                                    }
+                                }
+                            },
+                            onError = { sweetAlert.showError(it) },
+                        )
+
+                        // Info box below scanner
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Surface)
+                                .border(1.dp, Border, RoundedCornerShape(12.dp))
+                                .padding(16.dp),
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(
+                                    text = "Scan QR untuk Absen Closing",
+                                    color = TextPrimary,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Text(
+                                    text = "Arahkan kamera ke QR code scooter. Kehadiran unit untuk tanggal $selectedDate (${if (selectedOutlet == "all") "Semua Outlet" else Outlets.labelOf(selectedOutlet)}) akan otomatis tercatat.",
+                                    color = TextMuted,
+                                    fontSize = 11.5.sp,
+                                )
                             }
                         }
                     }
@@ -774,9 +696,7 @@ fun ReportScreen(
             }
         }
 
-        item {
-            Spacer(Modifier.height(32.dp))
-        }
+        Spacer(Modifier.height(32.dp))
     }
 }
 
@@ -786,25 +706,19 @@ private fun ReportStatCard(
     value: String,
     sub: String,
     color: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(Surface)
-            .border(1.dp, Border, RoundedCornerShape(14.dp))
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+            .border(1.dp, Border, RoundedCornerShape(12.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(title, color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(value, color = color, fontSize = 20.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace)
-            Text(sub, color = TextMuted, fontSize = 11.sp)
-        }
+        Text(title, color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+        Text(value, color = color, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+        Text(sub, color = TextMuted, fontSize = 11.sp)
     }
 }
 
@@ -814,22 +728,22 @@ private fun AttendanceFilterChip(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    activeColor: Color = Accent
+    activeColor: Color = Accent,
 ) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(if (selected) activeColor else Surface)
+            .background(if (selected) activeColor else Surface3)
             .border(1.dp, if (selected) activeColor else Border, RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
-        contentAlignment = Alignment.Center
+            .padding(vertical = 8.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
             color = if (selected) Color.White else TextMuted,
             fontSize = 11.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
         )
     }
 }

@@ -8,7 +8,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-val LocalThemeIsDark = compositionLocalOf { true }
+val LocalThemeIsDark = compositionLocalOf { false }
 val LocalThemeToggle = compositionLocalOf<() -> Unit> { {} }
 
 private val DarkColors = darkColorScheme(

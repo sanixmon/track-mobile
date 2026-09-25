@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
@@ -125,40 +126,77 @@ fun ScooterList(
                 textStyle = MaterialTheme.typography.bodySmall,
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SimpleDropdown(
-                    label = if (filterStatus == "all") "Semua Status" else StatusLabels.of(filterStatus),
-                    options = listOf(
-                        "all" to "Semua Status",
-                        "available" to "Unit Ready",
-                        "in-use" to "Unit Diluar",
-                        "maintenance" to "Unit Kendala",
-                    ),
-                    selected = filterStatus,
-                    onSelect = onFilterStatus,
-                    modifier = Modifier.weight(1f),
+            var showFilterModal by remember { mutableStateOf(false) }
+            val activeFilterCount = (if (filterStatus != "all") 1 else 0) +
+                (if (filterType != "all") 1 else 0) +
+                (if (sortBy != "id-asc") 1 else 0)
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Active filter summary text
+                Text(
+                    text = buildString {
+                        if (filterStatus != "all") append(StatusLabels.of(filterStatus))
+                        if (filterType != "all") {
+                            if (isNotEmpty()) append(" · ")
+                            append(TypeLabels.of(filterType))
+                        }
+                        if (sortBy != "id-asc") {
+                            if (isNotEmpty()) append(" · ")
+                            append(sortLabel(sortBy).replace("Urutkan: ", ""))
+                        }
+                        if (isEmpty()) append("Semua status & jenis")
+                    },
+                    color = TextSubtle,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).padding(end = 8.dp)
                 )
-                SimpleDropdown(
-                    label = if (filterType == "all") "Semua Jenis" else TypeLabels.of(filterType),
-                    options = listOf("all" to "Semua Jenis") + TypeLabels.ALL.map { (k, v) -> k to v },
-                    selected = filterType,
-                    onSelect = onFilterType,
-                    modifier = Modifier.weight(1f),
+
+                // Single Filter & Urutan Button (opens modal)
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(if (activeFilterCount > 0) Accent.copy(alpha = 0.15f) else Surface2)
+                        .border(1.dp, if (activeFilterCount > 0) Accent else Border, RoundedCornerShape(9.dp))
+                        .clickable { showFilterModal = true }
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Tune,
+                        contentDescription = "Filter",
+                        tint = if (activeFilterCount > 0) Accent else TextPrimary,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = if (activeFilterCount > 0) "Filter ($activeFilterCount)" else "Filter & Urutkan",
+                        color = if (activeFilterCount > 0) Accent else TextPrimary,
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            if (showFilterModal) {
+                ManageFilterDialog(
+                    currentStatus = filterStatus,
+                    currentType = filterType,
+                    currentSort = sortBy,
+                    onApply = { newStatus, newType, newSort ->
+                        onFilterStatus(newStatus)
+                        onFilterType(newType)
+                        onSortBy(newSort)
+                        showFilterModal = false
+                    },
+                    onDismiss = { showFilterModal = false }
                 )
             }
-            SimpleDropdown(
-                label = sortLabel(sortBy),
-                options = listOf(
-                    "id-asc" to "Urutkan: ID (A-Z)",
-                    "id-desc" to "Urutkan: ID (Z-A)",
-                    "today-checkout" to "Urutkan: Keluar Hari Ini (Terbanyak)",
-                    "status" to "Urutkan: Status",
-                    "type" to "Urutkan: Jenis",
-                ),
-                selected = sortBy,
-                onSelect = onSortBy,
-                modifier = Modifier.fillMaxWidth(),
-            )
         }
 
         if (scooters.isEmpty()) {
@@ -826,6 +864,211 @@ fun StatusPillButton(
                         expanded = false
                     },
                 )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ManageFilterDialog(
+    currentStatus: String,
+    currentType: String,
+    currentSort: String,
+    onApply: (status: String, type: String, sort: String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var tempStatus by remember { mutableStateOf(currentStatus) }
+    var tempType by remember { mutableStateOf(currentType) }
+    var tempSort by remember { mutableStateOf(currentSort) }
+
+    BasicAlertDialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Surface)
+                .border(1.dp, Border, RoundedCornerShape(16.dp))
+                .verticalScroll(rememberScrollState())
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(Icons.Filled.Tune, contentDescription = null, tint = Accent, modifier = Modifier.size(18.dp))
+                    Text("Filter & Urutkan Unit", color = TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                }
+                IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Filled.Close, contentDescription = "Tutup", tint = TextMuted, modifier = Modifier.size(18.dp))
+                }
+            }
+
+            // Section 1: Status
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("STATUS UNIT", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                val statusOptions = listOf(
+                    "all" to "Semua",
+                    ScooterStatus.AVAILABLE to "Ready",
+                    ScooterStatus.IN_USE to "Diluar",
+                    ScooterStatus.MAINTENANCE to "Kendala",
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    statusOptions.forEach { (key, label) ->
+                        val selected = tempStatus == key
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (selected) Accent else Surface2)
+                                .border(1.dp, if (selected) Accent else Border, RoundedCornerShape(8.dp))
+                                .clickable { tempStatus = key }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = label,
+                                color = if (selected) Color.White else TextPrimary,
+                                fontSize = 11.sp,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Section 2: Tipe / Jenis Scooter
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("JENIS / TIPE SCOOTER", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                val typeOptions = listOf("all" to "Semua Jenis") + TypeLabels.ALL.map { (k, v) -> k to v }
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    typeOptions.chunked(2).forEach { rowOptions ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            rowOptions.forEach { (key, label) ->
+                                val selected = tempType == key
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (selected) Accent else Surface2)
+                                        .border(1.dp, if (selected) Accent else Border, RoundedCornerShape(8.dp))
+                                        .clickable { tempType = key }
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    contentAlignment = Alignment.CenterStart,
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    ) {
+                                        if (key != "all") {
+                                            TypeBadge(key)
+                                        }
+                                        Text(
+                                            text = label,
+                                            color = if (selected) Color.White else TextPrimary,
+                                            fontSize = 11.sp,
+                                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                }
+                            }
+                            if (rowOptions.size == 1) {
+                                Spacer(Modifier.weight(1f))
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Section 3: Urutkan Berdasarkan
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("URUTKAN BERDASARKAN", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                val sortOptions = listOf(
+                    "id-asc" to "ID Unit (A - Z)",
+                    "id-desc" to "ID Unit (Z - A)",
+                    "today-checkout" to "Keluar Hari Ini (Terbanyak)",
+                    "status" to "Status Unit",
+                    "type" to "Jenis Scooter",
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    sortOptions.forEach { (key, label) ->
+                        val selected = tempSort == key
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (selected) Accent.copy(alpha = 0.12f) else Surface2)
+                                .border(1.dp, if (selected) Accent else Border, RoundedCornerShape(8.dp))
+                                .clickable { tempSort = key }
+                                .padding(horizontal = 12.dp, vertical = 9.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = label,
+                                color = if (selected) Accent else TextPrimary,
+                                fontSize = 12.sp,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                            )
+                            if (selected) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .background(Accent, CircleShape),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Footer Actions
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        tempStatus = "all"
+                        tempType = "all"
+                        tempSort = "id-asc"
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextMuted),
+                ) {
+                    Text("Reset", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                }
+
+                Button(
+                    onClick = {
+                        onApply(tempStatus, tempType, tempSort)
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Accent),
+                ) {
+                    Text("Terapkan", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
