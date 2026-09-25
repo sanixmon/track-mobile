@@ -258,7 +258,6 @@ fun ScanScreen(
             ) {
                 OutlinedAction(
                     text = "Upload QR dari Galeri",
-                    icon = Icons.Filled.Image,
                     onClick = {
                         galleryLauncher.launch(
                             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
