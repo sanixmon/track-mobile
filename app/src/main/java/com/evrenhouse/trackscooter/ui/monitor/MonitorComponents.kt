@@ -50,7 +50,6 @@ import androidx.compose.ui.unit.sp
 import com.evrenhouse.trackscooter.data.ActivityLogEntry
 import com.evrenhouse.trackscooter.data.Scooter
 import com.evrenhouse.trackscooter.data.ScooterStatus
-import com.evrenhouse.trackscooter.ui.common.TypeBadge
 import com.evrenhouse.trackscooter.ui.theme.Accent
 import com.evrenhouse.trackscooter.ui.theme.Border
 import com.evrenhouse.trackscooter.ui.theme.Green
@@ -291,23 +290,15 @@ fun LiveSessionCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Row(
+            Text(
+                text = scooter.id,
+                color = nameColor,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Black,
+                fontFamily = FontFamily.Monospace,
+                maxLines = 1,
                 modifier = Modifier.weight(1f, fill = false),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                val isDark = LocalThemeIsDark.current
-                val nameColor = ScooterColors.getScooterNameColor(scooter.type, scooter.id, scooter.currentOutlet, isDark)
-                Text(
-                    text = scooter.id,
-                    color = nameColor,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace,
-                    maxLines = 1,
-                )
-                TypeBadge(scooter.type, id = scooter.id, outlet = scooter.currentOutlet)
-            }
+            )
 
             // Badge Disewa (Amber with glowing dot)
             Row(
@@ -727,7 +718,6 @@ fun ActivityFeedPanel(
                                         val isDark = LocalThemeIsDark.current
                                         val nameColor = ScooterColors.getScooterNameColor(item.scooterType, item.scooterId, isDark = isDark)
                                         Text(item.scooterId, color = nameColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                                        TypeBadge(item.scooterType, id = item.scooterId)
                                     }
                                     Text(
                                         text = if (isCheckout) "Keluar sewa" else "Selesai / Kembali",

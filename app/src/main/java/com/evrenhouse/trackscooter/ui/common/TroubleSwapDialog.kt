@@ -231,9 +231,6 @@ fun TroubleSwapDialog(
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = FontFamily.Monospace
                                 )
-                                if (selectedBike != null) {
-                                    TypeBadge(selectedBike.type, id = selectedBike.id, outlet = selectedBike.currentOutlet)
-                                }
                             }
                             Icon(Icons.Filled.ArrowDropDown, null, tint = TextMuted)
                         }
@@ -259,7 +256,6 @@ fun TroubleSwapDialog(
                                             ) {
                                                 val rColor = ScooterColors.getScooterNameColor(r.type, r.id, r.currentOutlet, isDark)
                                                 Text(r.id, color = rColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                                                TypeBadge(r.type, id = r.id, outlet = r.currentOutlet)
                                             }
                                             Text(TypeLabels.of(r.type), color = TextMuted, fontSize = 11.sp)
                                         }

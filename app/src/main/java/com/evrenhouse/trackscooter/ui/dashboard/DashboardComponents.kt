@@ -24,6 +24,9 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Construction
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -293,7 +296,6 @@ fun RecentLogTableCard(
                         val isDark = LocalThemeIsDark.current
                         val nameColor = ScooterColors.getScooterNameColor(session.type, session.scooterId, isDark = isDark)
                         Text(session.scooterId, color = nameColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, maxLines = 1)
-                        TypeBadge(session.type)
                         val timeRange = if (session.endDt != null) {
                             "${DateUtils.formatTime(session.startDt)} - ${DateUtils.formatTime(session.endDt)}"
                         } else {
@@ -353,148 +355,260 @@ fun RecentLogTableCard(
 // ── Type summary: 2 Bento Cards (Scooter Dewasa & Scooter Jumbo) ──
 @Composable
 fun TypeSummaryCard(scooters: List<Scooter>, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        val categories = listOf(
-            "Scooter Dewasa" to listOf("sd", "sm", "sb"),
-            "Scooter Jumbo" to listOf("sj", "sjm", "sjb")
-        )
+    var isExpanded by rememberSaveable { mutableStateOf(false) }
 
-        for ((catTitle, catTypes) in categories) {
-            val relevantTypes = catTypes.filter { type ->
-                scooters.any { it.type == type }
+    val categories = listOf(
+        "Scooter Dewasa" to listOf("sd", "sm", "sb"),
+        "Scooter Jumbo" to listOf("sj", "sjm", "sjb")
+    )
+
+    val totalArmada = remember(scooters) {
+        scooters.count { it.type in listOf("sd", "sm", "sb", "sj", "sjm", "sjb") }
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Surface)
+            .border(1.dp, Border, RoundedCornerShape(14.dp))
+    ) {
+        // ── Pembungkus Header (More / Collapse Toggle) ──
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { isExpanded = !isExpanded }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "KATEGORI SCOOTER",
+                        color = TextSubtle,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp
+                    )
+                    Box(
+                        modifier = Modifier
+                            .background(Surface3, RoundedCornerShape(6.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "$totalArmada unit",
+                            color = TextMuted,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = "Dewasa (SD, SM, SB) & Jumbo (SJ, SJM, SJB)",
+                    color = TextMuted,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
 
-            val catTotal = scooters.count { it.type in catTypes }
-            val catReady = scooters.count { it.type in catTypes && it.status == "available" }
-            val catInUse = scooters.count { it.type in catTypes && it.status == "in-use" }
-            val catKendala = scooters.count { it.type in catTypes && it.status == "maintenance" }
+            // Tombol More / Collapse
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (isExpanded) Surface3 else Accent.copy(alpha = 0.12f))
+                    .border(1.dp, if (isExpanded) Border else Accent.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = if (isExpanded) "Collapse" else "More",
+                    color = if (isExpanded) TextMuted else Accent,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Icon(
+                    imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                    contentDescription = if (isExpanded) "Collapse" else "More",
+                    tint = if (isExpanded) TextMuted else Accent,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+
+        // ── Isi Terbungkus (Expanded Content) ──
+        if (isExpanded) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(Border)
+            )
 
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Surface, RoundedCornerShape(14.dp))
-                    .border(1.dp, Border, RoundedCornerShape(14.dp)),
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Card Header
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Surface3.copy(alpha = 0.5f), RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                for ((catTitle, catTypes) in categories) {
+                    val relevantTypes = catTypes.filter { type ->
+                        scooters.any { it.type == type }
+                    }
+
+                    val catTotal = scooters.count { it.type in catTypes }
+                    val catReady = scooters.count { it.type in catTypes && it.status == "available" }
+                    val catInUse = scooters.count { it.type in catTypes && it.status == "in-use" }
+                    val catKendala = scooters.count { it.type in catTypes && it.status == "maintenance" }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Surface2, RoundedCornerShape(12.dp))
+                            .border(1.dp, Border, RoundedCornerShape(12.dp))
                     ) {
-                        Text(
-                            text = catTitle,
-                            color = TextPrimary,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Box(
-                            modifier = Modifier
-                                .background(Surface, RoundedCornerShape(8.dp))
-                                .border(1.dp, Border, RoundedCornerShape(8.dp))
-                                .padding(horizontal = 8.dp, vertical = 3.dp)
-                        ) {
-                            Text(
-                                text = "$catTotal unit",
-                                color = TextPrimary,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
-                    }
-
-                    Spacer(Modifier.height(8.dp))
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("$catReady ready", color = Green, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                        Text("·", color = TextSubtle)
-                        Text("$catInUse disewa", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                        if (catKendala > 0) {
-                            Text("·", color = TextSubtle)
-                            Text("$catKendala kendala", color = Warning, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-                }
-
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .background(Border)
-                )
-
-                // Sub-types rows
-                if (relevantTypes.isEmpty()) {
-                    Text(
-                        text = "Tidak ada unit di kategori ini.",
-                        color = TextMuted,
-                        fontSize = 11.sp,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                } else {
-                    for ((idx, type) in relevantTypes.withIndex()) {
-                        val group = scooters.filter { it.type == type }
-                        val available = group.count { it.status == "available" }
-                        val inUse = group.count { it.status == "in-use" }
-                        val kendala = group.count { it.status == "maintenance" }
-
+                        // Card Header
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                                .background(Surface3.copy(alpha = 0.5f), RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                                .padding(horizontal = 14.dp, vertical = 10.dp)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.weight(1f, fill = false),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                Text(
+                                    text = catTitle,
+                                    color = TextPrimary,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .background(Surface, RoundedCornerShape(8.dp))
+                                        .border(1.dp, Border, RoundedCornerShape(8.dp))
+                                        .padding(horizontal = 8.dp, vertical = 2.dp)
                                 ) {
-                                    TypeBadge(type)
                                     Text(
-                                        text = TypeLabels.of(type),
+                                        text = "$catTotal unit",
                                         color = TextPrimary,
-                                        fontSize = 12.sp,
+                                        fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                        fontFamily = FontFamily.Monospace
                                     )
                                 }
-                                Text("${group.size} unit", color = TextSubtle, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
                             }
-                            Spacer(Modifier.height(4.dp))
+
+                            Spacer(Modifier.height(6.dp))
+
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("$available ready", color = Green, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                Text("$catReady ready", color = Green, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                                 Text("·", color = TextSubtle)
-                                Text("$inUse disewa", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                                if (kendala > 0) {
+                                Text("$catInUse disewa", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                if (catKendala > 0) {
                                     Text("·", color = TextSubtle)
-                                    Text("$kendala kendala", color = Warning, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                    Text("$catKendala kendala", color = Warning, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                                 }
                             }
                         }
-                        if (idx < relevantTypes.size - 1) {
-                            Box(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .height(1.dp)
-                                    .background(Border)
+
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(Border)
+                        )
+
+                        // Sub-types rows
+                        if (relevantTypes.isEmpty()) {
+                            Text(
+                                text = "Tidak ada unit di kategori ini.",
+                                color = TextMuted,
+                                fontSize = 11.sp,
+                                modifier = Modifier.padding(14.dp)
                             )
-                        }
-                    }
+                        } else {
+                            for ((idx, type) in relevantTypes.withIndex()) {
+                                val group = scooters.filter { it.type == type }
+                                val available = group.count { it.status == "available" }
+                                val inUse = group.count { it.status == "in-use" }
+                                val kendala = group.count { it.status == "maintenance" }
+
+                                 Column(
+                                     modifier = Modifier
+                                         .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                                 ) {
+                                     Row(
+                                         modifier = Modifier.fillMaxWidth(),
+                                         verticalAlignment = Alignment.CenterVertically,
+                                         horizontalArrangement = Arrangement.SpaceBetween
+                                     ) {
+                                         Row(
+                                             modifier = Modifier.weight(1f, fill = false),
+                                             verticalAlignment = Alignment.CenterVertically,
+                                             horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                         ) {
+                                             TypeBadge(type)
+                                             Text(
+                                                 text = TypeLabels.of(type),
+                                                 color = TextPrimary,
+                                                 fontSize = 12.sp,
+                                                 fontWeight = FontWeight.Bold,
+                                                 maxLines = 1,
+                                                 overflow = TextOverflow.Ellipsis
+                                             )
+                                         }
+                                         Text("${group.size} unit", color = TextSubtle, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                                     }
+                                    Spacer(Modifier.height(3.dp))
+                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                         Text("$available ready", color = Green, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                         Text("·", color = TextSubtle)
+                                         Text("$inUse disewa", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                         if (kendala > 0) {
+                                             Text("·", color = TextSubtle)
+                                             Text("$kendala kendala", color = Warning, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                         }
+                                     }
+                                 }
+                                 if (idx < relevantTypes.size - 1) {
+                                     Box(
+                                         Modifier
+                                             .fillMaxWidth()
+                                             .height(1.dp)
+                                             .background(Border)
+                                     )
+                                 }
+                             }
+                         }
+                     }
+                 }
+
+                // Footer Collapse Button
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { isExpanded = false }
+                        .padding(vertical = 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Tutup Kategori (Collapse)",
+                        color = Accent,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
         }

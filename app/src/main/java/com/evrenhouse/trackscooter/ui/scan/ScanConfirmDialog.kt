@@ -42,7 +42,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.evrenhouse.trackscooter.data.Scooter
 import com.evrenhouse.trackscooter.data.ScooterStatus
-import com.evrenhouse.trackscooter.ui.common.TypeBadge
 import com.evrenhouse.trackscooter.ui.theme.Accent
 import com.evrenhouse.trackscooter.ui.theme.Border
 import com.evrenhouse.trackscooter.ui.theme.Green
@@ -206,19 +205,13 @@ fun ScanConfirmDialog(
                 ) {
                     val isDark = LocalThemeIsDark.current
                     val nameColor = ScooterColors.getScooterNameColor(scooter.type, scooter.id, scooter.currentOutlet, isDark)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = scooter.id,
-                            color = nameColor,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Black,
-                            fontFamily = FontFamily.Monospace
-                        )
-                        TypeBadge(type = scooter.type, id = scooter.id, outlet = scooter.currentOutlet)
-                    }
+                    Text(
+                        text = scooter.id,
+                        color = nameColor,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace
+                    )
 
                     Box(
                         modifier = Modifier

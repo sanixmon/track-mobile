@@ -65,7 +65,6 @@ import com.evrenhouse.trackscooter.data.toUserMessage
 import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
 import com.evrenhouse.trackscooter.ui.common.OutletDropdown
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
-import com.evrenhouse.trackscooter.ui.common.TypeBadge
 import com.evrenhouse.trackscooter.ui.common.repository
 import com.evrenhouse.trackscooter.ui.theme.Accent
 import com.evrenhouse.trackscooter.ui.theme.Border
@@ -493,7 +492,6 @@ fun ReportScreen(
                                         fontFamily = FontFamily.Monospace,
                                         maxLines = 1,
                                     )
-                                    TypeBadge(type = item.type, id = item.scooterId)
                                     val timeStr = if (item.endDt != null) {
                                         "${DateUtils.formatTime(item.startDt)} - ${DateUtils.formatTime(item.endDt)}"
                                     } else {
@@ -742,7 +740,6 @@ fun ReportScreen(
                                                 fontWeight = FontWeight.Bold,
                                                 fontFamily = FontFamily.Monospace
                                             )
-                                            TypeBadge(type = scooter.type, id = scooter.id, outlet = scooter.currentOutlet)
                                         }
                                         Text(
                                             text = if (isAttended && record?.scannedAt != null) {

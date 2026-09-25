@@ -65,7 +65,6 @@ import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
 import com.evrenhouse.trackscooter.ui.common.OutletDropdown
 import com.evrenhouse.trackscooter.ui.common.OutlinedAction
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
-import com.evrenhouse.trackscooter.ui.common.TypeBadge
 import com.evrenhouse.trackscooter.ui.common.repository
 import com.evrenhouse.trackscooter.ui.theme.Accent
 import com.evrenhouse.trackscooter.ui.theme.Border
@@ -405,19 +404,13 @@ fun ScanScreen(
                                 .padding(horizontal = 12.dp, vertical = 9.dp),
                         ) {
                             Column {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                ) {
-                                    Text(
-                                        text = s.id,
-                                        color = nameColor,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = FontFamily.Monospace,
-                                    )
-                                    TypeBadge(type = s.type)
-                                }
+                                Text(
+                                    text = s.id,
+                                    color = nameColor,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                )
                                 Spacer(Modifier.height(3.dp))
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,

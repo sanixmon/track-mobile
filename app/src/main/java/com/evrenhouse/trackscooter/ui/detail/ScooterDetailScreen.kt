@@ -69,7 +69,6 @@ import com.evrenhouse.trackscooter.ui.common.LiveTimer
 import com.evrenhouse.trackscooter.ui.common.LoadingState
 import com.evrenhouse.trackscooter.ui.common.StatusChip
 import com.evrenhouse.trackscooter.ui.common.TroubleSwapDialog
-import com.evrenhouse.trackscooter.ui.common.TypeBadge
 import com.evrenhouse.trackscooter.ui.common.repository
 import com.evrenhouse.trackscooter.ui.theme.Accent
 import com.evrenhouse.trackscooter.ui.theme.Border
@@ -192,22 +191,14 @@ fun ScooterDetailScreen(
                 val idText = scooter?.id ?: scooterId
                 val nameColor = ScooterColors.getScooterNameColor(scooter?.type, idText, scooter?.currentOutlet, isDark)
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text(
-                            text = idText,
-                            color = nameColor,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace,
-                            maxLines = 1,
-                        )
-                        if (scooter != null) {
-                            TypeBadge(scooter.type, id = scooter.id, outlet = scooter.currentOutlet)
-                        }
-                    }
+                    Text(
+                        text = idText,
+                        color = nameColor,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 1,
+                    )
                     if (scooter != null) {
                         val currentOutletId = scooter.currentOutlet ?: Outlets.getHomeOutletForType(scooter.type)
                         val outletColor = ScooterColors.getOutletColor(currentOutletId)
