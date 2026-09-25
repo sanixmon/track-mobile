@@ -10,8 +10,7 @@ Client Android native (Kotlin) untuk **TrackScooter** — sistem manajemen inven
 - **Kelola Unit** — tambah unit via modal dialog (ID auto/manual dengan dynamic prefix, deteksi duplikasi instan, penugasan outlet otomatis), ubah status unit, unduh QR code, export data kondisi unit, dan backup database.
 - **Live Monitor** — pemantauan real-time unit yang sedang berjalan di luar (timer live, indikator jeda istirahat, tombol tukar unit) dan feed log aktivitas hari ini.
 - **Detail Unit** — kondisi fisik perangkat (Spakbor, Lampu, Baterai, Jenis Error, Rem, Ban), panel maintenance aktif, dan riwayat perbaikan serta aktivitas unit.
-
-> **Catatan export:** file Excel (.xlsx) di web digantikan format **CSV** di Android (dapat dibuka di Excel). File tersimpan di folder Downloads perangkat.
+- **Pembaruan Otomatis (Auto-Update)** — deteksi rilis APK versi terbaru via endpoint backend (`/api/app-version`), pengalihan (*redirect*) instan ke tautan unduhan, dialog modal rilis interaktif dengan catatan perubahan (*changelog*), dan tombol pengecekan manual di menu *Kelola*.
 
 ## Teknologi
 
@@ -27,8 +26,8 @@ Aplikasi menggunakan standar Semantic Versioning yang dikontrol secara terpusat 
 ```properties
 VERSION_MAJOR=2
 VERSION_MINOR=7
-VERSION_PATCH=0
-VERSION_BUILD=19
+VERSION_PATCH=1
+VERSION_BUILD=20
 ```
 
 - **PATCH (`VERSION_PATCH`)**: Naikkan untuk bugfix, styling, tweak UI, atau perbaikan kecil lainnya (misal `2.7.0` -> `2.7.1`).
@@ -48,6 +47,26 @@ Build lokal:
 
 Hasil di `app/build/outputs/apk/`.
 
+## Sistem Auto-Update & Sinkronisasi Versi
+
+Aplikasi secara otomatis memeriksa ketersediaan pembaruan saat pertama kali dibuka:
+
+1. **Endpoint Backend**: `GET /api/app-version` (atau `/api/version`) pada base URL API mengembalikan metadata versi terbaru dalam format JSON:
+   ```json
+   {
+     "versionCode": 20,
+     "versionName": "2.7.1",
+     "downloadUrl": "https://github.com/sanixmon/track-mobile/releases/latest",
+     "minVersionCode": 19,
+     "forceUpdate": false,
+     "title": "Pembaruan Tersedia",
+     "changelog": "Versi 2.7.1: Pembaruan otomatis & pengalihan tautan unduh versi terbaru."
+   }
+   ```
+2. **Pengalihan Langsung (*Instant Redirect*)**: Jika `versionCode` atau `versionName` remote lebih tinggi dari versi yang terpasang, aplikasi langsung membuka tautan unduh di browser perangkat secara otomatis (`Intent.ACTION_VIEW`).
+3. **Dialog Rilis**: Menampilkan modal pembaruan dengan perbandingan versi (`v2.7.0 ➔ v2.7.1`), catatan rilis, dan tombol unduh manual untuk mencegah loop pembukaan browser jika pengguna kembali ke aplikasi.
+4. **Pengecekan Manual**: Pengguna dapat memeriksa pembaruan kapan saja melalui menu dropdown **Aksi Data > Cek Pembaruan** pada tab **Kelola**.
+5. **Kontrol Backend**: Admin server dapat mengubah versi target dan URL download secara instan lewat file `version.json` di server tanpa perlu me-restart proses backend.
 ## Konfigurasi API
 
 Base URL API default: `https://qr.evrenhouse.online` (nginx -> Express API di loopback).
@@ -71,9 +90,9 @@ app/src/main/java/com/evrenhouse/trackscooter/
 │   ├── report/      # Laporan (rekap sesi + checklist kehadiran outlet)
 │   ├── manage/      # Kelola unit + AddScooterDialog
 │   ├── detail/      # Detail unit + kondisi perangkat
-│   ├── common/      # Komponen bersama + shared ViewModel + OutletDropdown
+│   ├── common/      # Komponen bersama, AppUpdateDialog, shared ViewModel + OutletDropdown
 │   └── theme/       # Dark theme (senada web)
-└── util/          # DateUtils (WIB), QR, exporter CSV/ZIP, Outlets
+└── util/          # DateUtils (WIB), VersionUtils, QR, exporter CSV/XLSX, Outlets
 ```
 
 ## Catatan
