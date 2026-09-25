@@ -34,7 +34,6 @@ import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
 import com.evrenhouse.trackscooter.ui.common.SweetAlertProvider
 import com.evrenhouse.trackscooter.ui.common.repository
 import com.evrenhouse.trackscooter.ui.dashboard.DashboardScreen
-import com.evrenhouse.trackscooter.ui.detail.ScooterDetailDialog
 import com.evrenhouse.trackscooter.ui.detail.ScooterDetailScreen
 import com.evrenhouse.trackscooter.ui.manage.ManageScreen
 import com.evrenhouse.trackscooter.ui.monitor.MonitorScreen
@@ -55,7 +54,6 @@ fun AppNavHost() {
         val navController = rememberNavController()
         val backStackEntry by navController.currentBackStackEntryAsState()
         val currentDestination = backStackEntry?.destination
-        var selectedDetailId by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf<String?>(null) }
         // One shared data source across Dashboard / Monitor / Manage (single 30s poll)
         val dataViewModel: ScooterDataViewModel = viewModel(factory = AppViewModelFactory(repository()))
         val context = LocalContext.current
@@ -114,14 +112,14 @@ fun AppNavHost() {
                 composable(Routes.DASHBOARD) {
                     DashboardScreen(
                         viewModel = dataViewModel,
-                        onOpenDetail = { id -> selectedDetailId = id },
+                        onOpenDetail = { id -> navController.navigate(Routes.detail(id)) },
                         onGoScan = { navController.navigate(Routes.SCAN) },
                     )
                 }
                 composable(Routes.MONITOR) {
                     MonitorScreen(
                         viewModel = dataViewModel,
-                        onOpenDetail = { id -> selectedDetailId = id },
+                        onOpenDetail = { id -> navController.navigate(Routes.detail(id)) },
                     )
                 }
                 composable(Routes.SCAN) {
@@ -130,13 +128,13 @@ fun AppNavHost() {
                 composable(Routes.REPORT) {
                     ReportScreen(
                         viewModel = dataViewModel,
-                        onOpenDetail = { id -> selectedDetailId = id },
+                        onOpenDetail = { id -> navController.navigate(Routes.detail(id)) },
                     )
                 }
                 composable(Routes.MANAGE) {
                     ManageScreen(
                         viewModel = dataViewModel,
-                        onOpenDetail = { id -> selectedDetailId = id },
+                        onOpenDetail = { id -> navController.navigate(Routes.detail(id)) },
                     )
                 }
                 composable(Routes.DETAIL) { entry ->
@@ -146,12 +144,6 @@ fun AppNavHost() {
             }
         }
     }
-        selectedDetailId?.let { id ->
-            ScooterDetailDialog(
-                scooterId = id,
-                onDismiss = { selectedDetailId = null }
-            )
-        }
         appUpdate?.let { update ->
             if (update.isUpdateAvailable) {
                 AppUpdateDialog(

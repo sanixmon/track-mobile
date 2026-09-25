@@ -1,9 +1,5 @@
 package com.evrenhouse.trackscooter.ui.scan
 
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Image
@@ -60,6 +57,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.evrenhouse.trackscooter.data.ActivityLogEntry
+import com.evrenhouse.trackscooter.util.DateUtils
+import com.evrenhouse.trackscooter.util.TypeLabels
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.evrenhouse.trackscooter.data.Scooter
@@ -81,10 +81,6 @@ import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
 import com.evrenhouse.trackscooter.util.Outlets
 import com.evrenhouse.trackscooter.util.ScooterColors
-import com.google.android.gms.tasks.Tasks
-import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.common.InputImage
-import java.util.concurrent.Executors
 
 enum class ScanSubTab(val label: String, val icon: ImageVector) {
     SCAN("Scan", Icons.Filled.QrCodeScanner),
@@ -108,7 +104,6 @@ fun ScanScreen(
     val pagerState = rememberPagerState(initialPage = 0) { ScanSubTab.entries.size }
     val currentSubTab by remember { derivedStateOf { ScanSubTab.entries[pagerState.currentPage] } }
     var searchQuery by rememberSaveable { mutableStateOf("") }
-    var decodingImage by remember { mutableStateOf(false) }
     // Ready scooters (ScooterStatus.AVAILABLE) filtered by global outlet
     val outletFilteredReadyScooters by remember(dataState.scooters, globalOutlet) {
         derivedStateOf {
@@ -138,18 +133,6 @@ fun ScanScreen(
         }
     }
 
-    val galleryLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            decodingImage = true
-            decodeImageUri(context, uri) { id ->
-                decodingImage = false
-                id?.let { viewModel.onScanned(it) }
-                    ?: sweetAlert.showError("QR tidak ditemukan pada gambar.")
-            }
-        }
-    }
 
     // Alert events
     LaunchedEffect(state.toast) {
@@ -252,26 +235,10 @@ fun ScanScreen(
                             onError = { sweetAlert.showError(it) },
                         )
 
-                        if (decodingImage) {
-                            Text("Mendekode QR dari gambar...", color = TextMuted, fontSize = 12.sp)
-                        }
-
-                        // Quick alternative: Gallery upload
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            OutlinedAction(
-                                text = "Upload QR dari Galeri",
-                                onClick = {
-                                    galleryLauncher.launch(
-                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                    )
-                                },
-                                color = TextMuted,
-                            )
-                        }
+                        ScanRecentLogCard(
+                            activityLog = dataState.activityLog,
+                            onSelect = { viewModel.onScanned(it) },
+                        )
                     }
                 }
 
@@ -469,28 +436,136 @@ fun ScanScreen(
             scooter = scooter,
             breakText = state.pendingBreakText,
             submitting = state.busy,
-            onConfirm = { viewModel.confirmScan() },
+            onConfirm = {
+                viewModel.confirmScan()
+                dataViewModel.refresh(silent = true)
+            },
             onDismiss = { viewModel.dismissConfirmation() },
         )
     }
 }
 
-/** Decode a QR from a picked image via ML Kit, then invoke callback with the id. */
-private fun decodeImageUri(
-    context: android.content.Context,
-    uri: Uri,
-    onResult: (String?) -> Unit,
+@Composable
+fun ScanRecentLogCard(
+    activityLog: List<ActivityLogEntry>,
+    onSelect: ((String) -> Unit)? = null,
+    modifier: Modifier = Modifier,
 ) {
-    val executor = Executors.newSingleThreadExecutor()
-    val scanner = BarcodeScanning.getClient()
-    executor.execute {
-        runCatching {
-            val image = InputImage.fromFilePath(context, uri)
-            val result = Tasks.await(scanner.process(image))
-            result.firstOrNull { !it.rawValue.isNullOrBlank() }?.rawValue
-        }.onSuccess { onResult(it) }
-            .onFailure { onResult(null) }
-        scanner.close()
-        executor.shutdown()
+    var showAll by remember { mutableStateOf(false) }
+
+    val recentLogs = remember(activityLog) {
+        activityLog.filter { it.action == "checkout" || it.action == "return" }
+            .sortedByDescending { it.timestamp }
+    }
+
+    val displayedLogs = if (showAll) recentLogs else recentLogs.take(2)
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Surface)
+            .border(1.dp, Border, RoundedCornerShape(14.dp)),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(Icons.Filled.History, contentDescription = null, tint = Accent, modifier = Modifier.size(16.dp))
+                Text("LOG RECENT SEWA & SELESAI", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            }
+            if (recentLogs.size > 2) {
+                Text(
+                    text = if (showAll) "Tutup" else "Lihat semua (${recentLogs.size})",
+                    color = Accent,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable { showAll = !showAll },
+                )
+            }
+        }
+
+        if (recentLogs.isEmpty()) {
+            Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                Text("Belum ada riwayat aktivitas sewa.", color = TextMuted, fontSize = 12.sp)
+            }
+        } else {
+            displayedLogs.forEachIndexed { index, log ->
+                if (index > 0) {
+                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Border))
+                }
+                val isCheckout = log.action == "checkout"
+                val timeStr = remember(log.timestamp) {
+                    val dt = DateUtils.parse(log.timestamp)
+                    if (dt != null) DateUtils.formatTime(dt) else log.timestamp
+                }
+                val isDark = LocalThemeIsDark.current
+                val nameColor = ScooterColors.getScooterNameColor(log.scooterType, log.scooterId, null, isDark)
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .let { if (onSelect != null) it.clickable { onSelect(log.scooterId) } else it }
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        // Badge Sewa / Selesai
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    if (isCheckout) Accent.copy(alpha = 0.15f) else Green.copy(alpha = 0.15f),
+                                    RoundedCornerShape(6.dp),
+                                )
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                        ) {
+                            Text(
+                                text = if (isCheckout) "Sewa" else "Selesai",
+                                color = if (isCheckout) Accent else Green,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+
+                        // ID & Jenis
+                        Column {
+                            Text(
+                                text = log.scooterId,
+                                color = nameColor,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                            )
+                            if (log.scooterType.isNotBlank()) {
+                                Text(
+                                    text = TypeLabels.of(log.scooterType),
+                                    color = TextMuted,
+                                    fontSize = 10.5.sp,
+                                 )
+                            }
+                        }
+                    }
+
+                    // Timestamp
+                    Text(
+                        text = timeStr,
+                        color = TextMuted,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                }
+            }
+        }
     }
 }

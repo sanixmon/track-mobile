@@ -1,5 +1,6 @@
 package com.evrenhouse.trackscooter.ui.detail
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -105,6 +106,7 @@ fun ScooterDetailScreen(
         factory = AppViewModelFactory(repository())
     ),
 ) {
+    BackHandler(onBack = onBack)
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
     val sweetAlert = LocalSweetAlert.current
@@ -550,31 +552,6 @@ fun ScooterDetailScreen(
             },
             onDismiss = { showHistorySheet = false }
         )
-    }
-}
-
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-@Composable
-fun ScooterDetailDialog(
-    scooterId: String,
-    onDismiss: () -> Unit,
-) {
-    androidx.compose.material3.BasicAlertDialog(
-        onDismissRequest = onDismiss
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.82f)
-                .clip(RoundedCornerShape(16.dp))
-                .background(Surface)
-                .border(1.dp, Border, RoundedCornerShape(16.dp))
-        ) {
-            ScooterDetailScreen(
-                scooterId = scooterId,
-                onBack = onDismiss
-            )
-        }
     }
 }
 

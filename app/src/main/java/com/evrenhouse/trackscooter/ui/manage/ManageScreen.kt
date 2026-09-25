@@ -41,6 +41,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.IconButton
 import com.evrenhouse.trackscooter.util.toPngBytes
 import androidx.compose.material3.MaterialTheme
@@ -155,44 +156,47 @@ fun ManageScreen(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        // Header
-        Text("Kelola", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-
-        var dataMenuExpanded by remember { mutableStateOf(false) }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Button(
-                onClick = { showAddDialog = true },
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Accent),
-            ) {
-                Icon(Icons.Filled.Add, null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Tambah Unit", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            }
+            // Header
+            Text("Kelola", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
-            // Compact Data Actions Dropdown
-            Box {
-                OutlinedButton(
-                    onClick = { dataMenuExpanded = !dataMenuExpanded },
-                    shape = RoundedCornerShape(12.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Surface,
-                        contentColor = TextPrimary,
-                    ),
-                ) {
+            var dataMenuExpanded by remember { mutableStateOf(false) }
+
+            // Sejajarkan Filter Outlet dan Aksi Data
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutletDropdown(
+                    selectedOutletId = activeOutlet,
+                    onOutletSelected = { viewModel.setSelectedOutlet(it) },
+                    getOutletCount = { outletId ->
+                        if (outletId == "all") data.scooters.size
+                        else data.scooters.count { (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == outletId }
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+
+                // Compact Data Actions Dropdown
+                Box {
+                    OutlinedButton(
+                        onClick = { dataMenuExpanded = !dataMenuExpanded },
+                        shape = RoundedCornerShape(10.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Surface2,
+                            contentColor = TextPrimary,
+                        ),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 9.dp),
+                    ) {
                     if (busyAction) {
                         CircularProgressIndicator(color = Accent, modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(8.dp))
@@ -316,16 +320,6 @@ fun ManageScreen(
             }
         }
 
-        // Outlet Dropdown Filter
-        OutletDropdown(
-            selectedOutletId = activeOutlet,
-            onOutletSelected = { viewModel.setSelectedOutlet(it) },
-            getOutletCount = { outletId ->
-                if (outletId == "all") data.scooters.size
-                else data.scooters.count { (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == outletId }
-            }
-        )
-
         when {
             data.error != null && data.scooters.isEmpty() -> {
                 ErrorState(message = data.error ?: "", onRetry = { viewModel.refresh() })
@@ -403,7 +397,30 @@ fun ManageScreen(
                 color = TextSubtle,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
-            )
+                )
+            }
+
+            Spacer(Modifier.height(80.dp))
+        }
+
+        // Floating Action Button Tambah Unit di pojok kanan bawah
+        FloatingActionButton(
+            onClick = { showAddDialog = true },
+            containerColor = Accent,
+            contentColor = Color.White,
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 76.dp, end = 20.dp),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = "Tambah Unit", modifier = Modifier.size(20.dp))
+                Text("Tambah Unit", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
         }
     }
 

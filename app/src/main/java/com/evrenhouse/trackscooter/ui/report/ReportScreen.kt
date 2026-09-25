@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Store
@@ -590,34 +591,38 @@ fun ReportScreen(
             // SUB TAB 2: SCAN ABSEN (KAMERA SCANNER ABSENSI SAJA)
             // ══════════════════════════════════════════════════════════
             ReportSubTab.SCAN -> {
-                var isScanningAttendance by remember { mutableStateOf(false) }
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    var isScanningAttendance by remember { mutableStateOf(false) }
 
-                CameraScanner(
-                    isProcessing = isScanningAttendance,
-                    onScan = { rawCode ->
-                        val scannedId = rawCode.trim().uppercase()
-                        if (!isScanningAttendance && scannedId.isNotBlank()) {
-                            isScanningAttendance = true
-                            scope.launch {
-                                runCatching {
-                                    repository.recordDailyAttendance(
-                                        scooterId = scannedId,
-                                        date = selectedDate,
-                                        outlet = if (selectedOutlet == "all") null else selectedOutlet,
-                                    )
-                                }.onSuccess { res ->
-                                    sweetAlert.showSuccess(res.message ?: "Unit $scannedId berhasil diabsen!")
-                                    loadAttendanceData()
-                                    viewModel.refresh()
-                                }.onFailure { err ->
-                                    sweetAlert.showError(err.toUserMessage())
+                    CameraScanner(
+                        isProcessing = isScanningAttendance,
+                        onScan = { rawCode ->
+                            val scannedId = rawCode.trim().uppercase()
+                            if (!isScanningAttendance && scannedId.isNotBlank()) {
+                                isScanningAttendance = true
+                                scope.launch {
+                                    runCatching {
+                                        repository.recordDailyAttendance(
+                                            scooterId = scannedId,
+                                            date = selectedDate,
+                                            outlet = if (selectedOutlet == "all") null else selectedOutlet,
+                                        )
+                                    }.onSuccess { res ->
+                                        sweetAlert.showSuccess(res.message ?: "Unit $scannedId berhasil diabsen!")
+                                        loadAttendanceData()
+                                        viewModel.refresh()
+                                    }.onFailure { err ->
+                                        sweetAlert.showError(err.toUserMessage())
+                                    }
+                                    isScanningAttendance = false
                                 }
-                                isScanningAttendance = false
                             }
-                        }
-                    },
-                    onError = { sweetAlert.showError(it) },
-                )
+                        },
+                        onError = { sweetAlert.showError(it) },
+                    )
+
+                    ScanAttendanceRecentLogCard(records = attendanceRecords)
+                }
             }
         }
     }
@@ -671,5 +676,109 @@ private fun AttendanceFilterChip(
             fontSize = 11.sp,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
         )
+    }
+}
+
+@Composable
+fun ScanAttendanceRecentLogCard(
+    records: List<AttendanceRecord>,
+    modifier: Modifier = Modifier,
+) {
+    var showAll by remember { mutableStateOf(false) }
+
+    val recentRecords = remember(records) {
+        records.sortedByDescending { it.scannedAt }
+    }
+
+    val displayedRecords = if (showAll) recentRecords else recentRecords.take(2)
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Surface)
+            .border(1.dp, Border, RoundedCornerShape(14.dp)),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(Icons.Filled.History, contentDescription = null, tint = Green, modifier = Modifier.size(16.dp))
+                Text("LOG RECENT ABSEN", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            }
+            if (recentRecords.size > 2) {
+                Text(
+                    text = if (showAll) "Tutup" else "Lihat semua (${recentRecords.size})",
+                    color = Accent,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable { showAll = !showAll },
+                )
+            }
+        }
+
+        if (recentRecords.isEmpty()) {
+            Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                Text("Belum ada unit yang diabsen.", color = TextMuted, fontSize = 12.sp)
+            }
+        } else {
+            displayedRecords.forEachIndexed { index, record ->
+                if (index > 0) {
+                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Border))
+                }
+                val timeStr = remember(record.scannedAt) {
+                    val dt = DateUtils.parse(record.scannedAt)
+                    if (dt != null) DateUtils.formatTime(dt) else record.scannedAt
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .background(Green.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                        ) {
+                            Text(
+                                text = "Hadir",
+                                color = Green,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+
+                        Text(
+                            text = record.scooterId,
+                            color = TextPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                        )
+                    }
+
+                    Text(
+                        text = timeStr,
+                        color = TextMuted,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                }
+            }
+        }
     }
 }

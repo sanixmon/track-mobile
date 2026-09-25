@@ -49,7 +49,6 @@ import com.evrenhouse.trackscooter.ui.common.LoadingState
 import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
 import com.evrenhouse.trackscooter.ui.common.TroubleSwapDialog
-import com.evrenhouse.trackscooter.ui.detail.ScooterDetailDialog
 import com.evrenhouse.trackscooter.ui.theme.Border
 import com.evrenhouse.trackscooter.ui.theme.Surface
 import com.evrenhouse.trackscooter.ui.theme.Surface2
@@ -74,7 +73,6 @@ fun MonitorScreen(
     val pagerState = rememberPagerState(initialPage = 0) { MonitorTab.entries.size }
     val currentTab by remember { derivedStateOf { MonitorTab.entries[pagerState.currentPage] } }
     var troubleScooter by remember { mutableStateOf<Scooter?>(null) }
-    var detailScooterId by remember { mutableStateOf<String?>(null) }
     var sortOrder by remember { mutableStateOf("newest") } // "newest" | "oldest"
 
     // 5-second ticker keeps rental duration updated (1:1 with web)
@@ -250,10 +248,7 @@ fun MonitorScreen(
                                             LiveSessionCard(
                                                 scooter = scooter,
                                                 nowMillis = nowMillis,
-                                                onClick = {
-                                                    detailScooterId = scooter.id
-                                                    onOpenDetail?.invoke(scooter.id)
-                                                },
+                                                onClick = { onOpenDetail?.invoke(scooter.id) },
                                                 onTroubleSwap = { troubleScooter = it },
                                             )
                                         }
@@ -274,10 +269,7 @@ fun MonitorScreen(
                                         ActivityFeedPanel(
                                             activityLog = outletFilteredActivityLog,
                                             scooters = outletFilteredScooters,
-                                            onOpenDetail = { id ->
-                                                detailScooterId = id
-                                                onOpenDetail?.invoke(id)
-                                            }
+                                            onOpenDetail = { id -> onOpenDetail?.invoke(id) }
                                         )
                                     }
                                 }
@@ -315,11 +307,4 @@ fun MonitorScreen(
         )
     }
 
-    // ── Scooter Detail Dialog ──
-    detailScooterId?.let { id ->
-        ScooterDetailDialog(
-            scooterId = id,
-            onDismiss = { detailScooterId = null }
-        )
-    }
 }
