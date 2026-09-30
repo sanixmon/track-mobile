@@ -251,6 +251,5 @@ class ScooterRepository(
         const val FALLBACK_DOWNLOAD_URL =
             "https://github.com/sanixmon/track-releases/releases/latest/download/track-scooter.apk"
     }
-    }
 }
 
