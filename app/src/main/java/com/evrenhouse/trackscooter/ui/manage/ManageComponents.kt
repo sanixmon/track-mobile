@@ -447,6 +447,13 @@ fun StatusChangeDialog(
     newStatus: String,
     onDismiss: () -> Unit,
     onConfirm: (location: String, locationDetail: String?, issue: String, note: String?) -> Unit,
+    /**
+     * Judul kustom untuk memisahkan mode:
+     * - null = "Mulai Maintenance" (entry operasional baru via ubah status)
+     * - "Edit Kendala ..." = koreksi data lapangan yang sudah berjalan
+     *   (mirip web showMaintenanceDialog title Mulai vs Edit).
+     */
+    dialogTitle: String? = null,
 ) {
     var location by remember(scooter) { mutableStateOf(scooter.activeMaintenance?.location ?: "outlet") }
     var locationDetail by remember(scooter) { mutableStateOf(scooter.activeMaintenance?.locationDetail ?: "") }
@@ -454,7 +461,7 @@ fun StatusChangeDialog(
     var note by remember(scooter) { mutableStateOf(scooter.activeMaintenance?.note ?: "") }
     var errorMessage by remember(scooter, newStatus) { mutableStateOf<String?>(null) }
 
-    val title = when (newStatus) {
+    val title = dialogTitle ?: when (newStatus) {
         ScooterStatus.MAINTENANCE -> "Mulai Maintenance"
         else -> "Ubah Status"
     }

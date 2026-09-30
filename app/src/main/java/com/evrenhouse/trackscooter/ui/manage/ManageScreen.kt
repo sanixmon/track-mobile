@@ -381,7 +381,15 @@ fun ManageScreen(
                     },
                     onTroubleSwap = { troubleScooter = it },
                     onEditScooter = { editingScooter = it },
-                    onEditMaintenance = { editingScooter = it },
+                    // Ranah OPERASIONAL: koreksi data lapangan via dialog entri,
+                    // bukan dialog admin (EditScooterDialog = ranah MANAJEMEN).
+                    onEditMaintenance = {
+                        statusDialog = StatusDialogData(
+                            it,
+                            ScooterStatus.MAINTENANCE,
+                            "Edit Kendala Unit ${it.id}",
+                        )
+                    },
                 )
             }
         }
@@ -426,11 +434,12 @@ fun ManageScreen(
         }
     }
 
-    // Status change dialog
+    // Status change dialog (OPERASIONAL) vs Edit Scooter dialog (MANAJEMEN) di bawah.
     statusDialog?.let { d ->
         StatusChangeDialog(
             scooter = d.scooter,
             newStatus = d.newStatus,
+            dialogTitle = d.title,
             onDismiss = { statusDialog = null },
             onConfirm = { location, locationDetail, issue, note ->
                 scope.launch {
@@ -450,7 +459,11 @@ fun ManageScreen(
                     statusDialog = null
                     if (ok) {
                         viewModel.refresh()
-                        sweetAlert.showSuccess("Status ${d.scooter.id} diperbarui")
+                        if (d.title != null) {
+                            sweetAlert.showSuccess("Catatan kendala unit ${d.scooter.id} berhasil diperbarui")
+                        } else {
+                            sweetAlert.showSuccess("Status ${d.scooter.id} diperbarui")
+                        }
                     } else {
                         sweetAlert.showError("Gagal mengubah status.")
                     }
@@ -540,6 +553,6 @@ fun ManageScreen(
     }
 }
 
-data class StatusDialogData(val scooter: Scooter, val newStatus: String)
+data class StatusDialogData(val scooter: Scooter, val newStatus: String, val title: String? = null)
 
 

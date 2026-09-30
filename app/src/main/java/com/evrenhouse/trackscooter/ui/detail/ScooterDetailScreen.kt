@@ -537,6 +537,7 @@ fun ScooterDetailScreen(
         StatusChangeDialog(
             scooter = state.scooter!!,
             newStatus = ScooterStatus.MAINTENANCE,
+            dialogTitle = "Edit Kendala Unit ${state.scooter!!.id}",
             onDismiss = { showEditMaintenance = false },
             onConfirm = { location, locationDetail, issue, note ->
                 val detailToSend = locationDetail ?: ""
