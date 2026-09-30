@@ -35,7 +35,10 @@ sealed interface LocalDataUpdate {
  * failures into friendly Indonesian messages, mirroring the web app's
  * storage.js behaviour.
  */
-class ScooterRepository(private val api: ApiService = ApiClient.service) {
+class ScooterRepository(
+    private val api: ApiService = ApiClient.service,
+    private val githubApi: GitHubApiService = ApiClient.githubService,
+) {
 
     private val _localUpdates = MutableSharedFlow<LocalDataUpdate>(extraBufferCapacity = 16)
     val localUpdates: SharedFlow<LocalDataUpdate> = _localUpdates.asSharedFlow()
@@ -191,6 +194,7 @@ class ScooterRepository(private val api: ApiService = ApiClient.service) {
     suspend fun checkAppUpdate(): AppUpdateInfo = withContext(Dispatchers.IO) {
         val currentCode = BuildConfig.VERSION_CODE
         val currentName = BuildConfig.VERSION_NAME
+        // 1. Server utama (lengkap: minVersion, force, changelog).
         runCatching {
             val res = api.getAppVersion()
             val targetCode = res.resolvedVersionCode
@@ -204,9 +208,7 @@ class ScooterRepository(private val api: ApiService = ApiClient.service) {
                 minVersionCode = res.resolvedMinVersionCode,
                 forceFlag = res.resolvedForceUpdate,
             )
-            val downloadUrl = res.resolvedDownloadUrl.ifBlank {
-                "https://github.com/sanixmon/track-releases/releases/latest/download/track-scooter.apk"
-            }
+            val downloadUrl = res.resolvedDownloadUrl.ifBlank { FALLBACK_DOWNLOAD_URL }
             AppUpdateInfo(
                 isUpdateAvailable = isUpdateAvailable,
                 latestVersionName = targetName.ifBlank { "v$targetCode" },
@@ -218,15 +220,37 @@ class ScooterRepository(private val api: ApiService = ApiClient.service) {
                 title = res.title,
                 changelog = res.changelog,
             )
-        }.getOrElse { e ->
-            Log.w("ScooterRepository", "Failed to check app update", e)
+        }.onSuccess { return@withContext it }
+            .onFailure { Log.w("ScooterRepository", "Primary update check failed, trying GitHub", it) }
+        // 2. Fallback repo rilis khusus (tanpa minVersion/force/changelog).
+        runCatching {
+            val rel = githubApi.getLatestRelease()
+            val remoteName = VersionUtils.parseReleaseTag(rel.tagName)
+            val apkUrl = rel.assets.firstOrNull { it.name == "track-scooter.apk" }?.downloadUrl
             AppUpdateInfo(
-                isUpdateAvailable = false,
+                isUpdateAvailable = VersionUtils.isVersionHigher(remoteName, currentName),
+                latestVersionName = remoteName.ifBlank { rel.tagName },
+                latestVersionCode = 0,
                 currentVersionName = currentName,
                 currentVersionCode = currentCode,
-                errorMessage = e.message,
+                downloadUrl = apkUrl.ifBlank { FALLBACK_DOWNLOAD_URL },
+                forceUpdate = false,
             )
-        }
+        }.onSuccess { return@withContext it }
+            .onFailure { Log.w("ScooterRepository", "GitHub update check failed", it) }
+        // 3. Dua-duanya gagal.
+        AppUpdateInfo(
+            isUpdateAvailable = false,
+            currentVersionName = currentName,
+            currentVersionCode = currentCode,
+            errorMessage = "Gagal memeriksa pembaruan dari server dan GitHub.",
+        )
+    }
+
+    companion object {
+        const val FALLBACK_DOWNLOAD_URL =
+            "https://github.com/sanixmon/track-releases/releases/latest/download/track-scooter.apk"
+    }
     }
 }
 

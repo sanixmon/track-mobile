@@ -18,9 +18,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Monitor
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -38,6 +40,7 @@ import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
 import com.evrenhouse.trackscooter.ui.common.SweetAlertProvider
 import com.evrenhouse.trackscooter.ui.common.repository
 import com.evrenhouse.trackscooter.TrackScooterApp
+import com.evrenhouse.trackscooter.util.ModePrefs
 import com.evrenhouse.trackscooter.util.UpdatePrefs
 import com.evrenhouse.trackscooter.ui.dashboard.DashboardScreen
 import com.evrenhouse.trackscooter.ui.detail.ScooterDetailScreen
@@ -46,12 +49,20 @@ import com.evrenhouse.trackscooter.ui.monitor.MonitorScreen
 import com.evrenhouse.trackscooter.ui.report.ReportScreen
 import com.evrenhouse.trackscooter.ui.scan.ScanScreen
 
-private val bottomItems = listOf(
+// Ranah ala web: Operasional (Scan sebagai beranda, tanpa aksi admin)
+// vs Manajemen (Kelola). Item terakhir tiap bar adalah aksi pindah ranah.
+private val operasionalItems = listOf(
     BottomNavItem(Routes.DASHBOARD, "Dashboard", Icons.Filled.Dashboard),
     BottomNavItem(Routes.MONITOR, "Monitor", Icons.Filled.Monitor),
     BottomNavItem(Routes.SCAN, "Scan", Icons.Filled.QrCodeScanner),
     BottomNavItem(Routes.REPORT, "Laporan", Icons.Filled.Assignment),
+    BottomNavItem(Routes.MODE_MANAJEMEN, "Kelola", Icons.Filled.Tune),
+)
+
+private val manajemenItems = listOf(
     BottomNavItem(Routes.MANAGE, "Kelola", Icons.Filled.Inventory2),
+    BottomNavItem(Routes.DASHBOARD, "Dashboard", Icons.Filled.Dashboard),
+    BottomNavItem(Routes.MODE_OPERASIONAL, "Operasional", Icons.Filled.Home),
 )
 
 @Composable
@@ -64,6 +75,8 @@ fun AppNavHost() {
         val dataViewModel: ScooterDataViewModel = viewModel(factory = AppViewModelFactory(repository()))
         val context = LocalContext.current
         val appUpdate by dataViewModel.appUpdate.collectAsState()
+        val appMode by dataViewModel.appMode.collectAsState()
+        val bottomItems = if (appMode == ModePrefs.MANAJEMEN) manajemenItems else operasionalItems
         var hasAutoRedirected by rememberSaveable { mutableStateOf(false) }
 
         // Cek update tiap app dibuka dari background: cek di init tidak jalan
@@ -105,9 +118,20 @@ fun AppNavHost() {
             }
         }
 
-        // Hide bottom bar on the detail screen (full-screen modal-like page)
+        // Hide bottom bar on the detail screen (full-screen modal-like page).
+        // Sentinel pindah ranah (__mode_*) tidak pernah cocok destinasi.
         val showBottomBar = bottomItems.any { item ->
             currentDestination?.hierarchy?.any { it.route == item.route } == true
+        }
+
+        fun navigateTab(route: String) {
+            navController.navigate(route) {
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = true
+                }
+                launchSingleTop = true
+                restoreState = true
+            }
         }
 
         Scaffold(
@@ -118,12 +142,16 @@ fun AppNavHost() {
                     items = bottomItems,
                     currentDestination = currentDestination,
                     onNavigate = { item ->
-                        navController.navigate(item.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+                        when (item.route) {
+                            Routes.MODE_MANAJEMEN -> {
+                                dataViewModel.setAppMode(ModePrefs.MANAJEMEN)
+                                navigateTab(Routes.MANAGE)
                             }
-                            launchSingleTop = true
-                            restoreState = true
+                            Routes.MODE_OPERASIONAL -> {
+                                dataViewModel.setAppMode(ModePrefs.OPERASIONAL)
+                                navigateTab(Routes.SCAN)
+                            }
+                            else -> navigateTab(item.route)
                         }
                     },
                 )
@@ -137,7 +165,7 @@ fun AppNavHost() {
         ) {
             NavHost(
                 navController = navController,
-                startDestination = Routes.DASHBOARD,
+                startDestination = Routes.SCAN,
             ) {
                 composable(Routes.DASHBOARD) {
                     DashboardScreen(

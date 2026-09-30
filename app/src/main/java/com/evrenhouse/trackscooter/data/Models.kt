@@ -295,3 +295,16 @@ data class AppUpdateInfo(
     val errorMessage: String? = null,
 )
 
+@Serializable
+data class GitHubReleaseAsset(
+    @SerialName("name") val name: String = "",
+    @SerialName("browser_download_url") val downloadUrl: String = "",
+)
+
+/** Respons GET /repos/sanixmon/track-releases/releases/latest. */
+@Serializable
+data class GitHubReleaseResponse(
+    @SerialName("tag_name") val tagName: String = "",
+    @SerialName("assets") val assets: List<GitHubReleaseAsset> = emptyList(),
+)
+

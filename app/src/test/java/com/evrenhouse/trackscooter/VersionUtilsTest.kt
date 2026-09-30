@@ -11,6 +11,15 @@ import org.junit.Test
 class VersionUtilsTest {
 
     @Test
+    fun parseReleaseTagStripsVPrefix() {
+        assertEquals("2.7.11", VersionUtils.parseReleaseTag("v2.7.11"))
+        assertEquals("2.7.11", VersionUtils.parseReleaseTag("V2.7.11"))
+        assertEquals("2.7.11", VersionUtils.parseReleaseTag("2.7.11"))
+        assertEquals("", VersionUtils.parseReleaseTag(null))
+        assertEquals("", VersionUtils.parseReleaseTag("  "))
+    }
+
+    @Test
     fun higherPatchReturnsTrue() {
         assertTrue(VersionUtils.isVersionHigher("2.7.1", "2.7.0"))
     }

@@ -50,4 +50,14 @@ object ApiClient {
             .build()
             .create(ApiService::class.java)
     }
+
+    /** Client repo rilis khusus (fallback cek update bila API utama gagal). */
+    val githubService: GitHubApiService by lazy {
+        Retrofit.Builder()
+            .baseUrl("https://api.github.com/")
+            .client(okHttp)
+            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+            .build()
+            .create(GitHubApiService::class.java)
+    }
 }

@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.launch
 import com.evrenhouse.trackscooter.TrackScooterApp
+import com.evrenhouse.trackscooter.util.ModePrefs
 import com.evrenhouse.trackscooter.util.OutletPrefs
 import com.evrenhouse.trackscooter.util.UpdatePolicy
 import com.evrenhouse.trackscooter.util.UpdatePrefs
@@ -58,6 +59,17 @@ class ScooterDataViewModel(
     fun setSelectedOutlet(outletId: String) {
         _selectedOutlet.value = outletId
         runCatching { OutletPrefs.setSelectedOutlet(TrackScooterApp.instance, outletId) }
+    }
+
+    private val _appMode = MutableStateFlow(
+        runCatching { ModePrefs.getAppMode(TrackScooterApp.instance) }.getOrDefault(ModePrefs.OPERASIONAL)
+    )
+    val appMode: StateFlow<String> = _appMode.asStateFlow()
+
+    fun setAppMode(mode: String) {
+        val clean = if (mode == ModePrefs.MANAJEMEN) ModePrefs.MANAJEMEN else ModePrefs.OPERASIONAL
+        _appMode.value = clean
+        runCatching { ModePrefs.setAppMode(TrackScooterApp.instance, clean) }
     }
 
     private val _appUpdate = MutableStateFlow<AppUpdateInfo?>(null)

@@ -2,6 +2,11 @@ package com.evrenhouse.trackscooter.util
 
 object VersionUtils {
 
+    /** "v2.7.11" (tag GitHub) -> "2.7.11". Kosong bila tag tak valid. */
+    fun parseReleaseTag(tag: String?): String {
+        if (tag.isNullOrBlank()) return ""
+        return tag.trim().removePrefix("v").removePrefix("V")
+    }
     /**
      * Compares two semantic version strings (e.g. "2.7.1" vs "2.7.0", or "v2.8" vs "v2.7.0").
      * Returns true if [remote] is strictly higher than [current].
