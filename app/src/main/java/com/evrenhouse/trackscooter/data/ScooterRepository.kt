@@ -233,7 +233,7 @@ class ScooterRepository(
                 latestVersionCode = 0,
                 currentVersionName = currentName,
                 currentVersionCode = currentCode,
-                downloadUrl = apkUrl.ifBlank { FALLBACK_DOWNLOAD_URL },
+                downloadUrl = apkUrl?.takeIf { it.isNotBlank() } ?: FALLBACK_DOWNLOAD_URL,
                 forceUpdate = false,
             )
         }.onSuccess { return@withContext it }
