@@ -6,6 +6,7 @@ object Routes {
     const val SCAN = "scan"
     const val REPORT = "report"
     const val MANAGE = "manage"
+    const val MANAGE_DASHBOARD = "manage_dashboard"
     const val DETAIL = "detail/{scooterId}"
 
     /** Sentinel aksi pindah ranah (bukan destinasi nav): ditangani di AppNavHost. */

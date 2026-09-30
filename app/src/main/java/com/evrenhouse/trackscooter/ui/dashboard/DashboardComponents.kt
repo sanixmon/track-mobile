@@ -19,10 +19,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Construction
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -36,6 +38,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,7 +53,11 @@ import androidx.compose.ui.unit.sp
 import com.evrenhouse.trackscooter.data.ActivityLogEntry
 import com.evrenhouse.trackscooter.data.MaintenanceRecord
 import com.evrenhouse.trackscooter.data.Scooter
+import com.evrenhouse.trackscooter.data.toUserMessage
 import com.evrenhouse.trackscooter.ui.common.LiveTimer
+import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
+import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
+import com.evrenhouse.trackscooter.ui.common.StatCard
 import com.evrenhouse.trackscooter.ui.common.StatusChip
 import com.evrenhouse.trackscooter.ui.common.TypeBadge
 import com.evrenhouse.trackscooter.ui.theme.Accent
@@ -71,6 +78,7 @@ import com.evrenhouse.trackscooter.util.DateUtils
 import com.evrenhouse.trackscooter.util.DeviceConditionHelper
 import com.evrenhouse.trackscooter.util.Outlets
 import com.evrenhouse.trackscooter.util.TypeLabels
+import kotlinx.coroutines.launch
 
 @Composable
 fun OutletSummaryCards(
@@ -777,4 +785,111 @@ fun FilterDropdown(
             }
         }
     }
+}
+
+/**
+ * 4 kartu statistik armada (dipakai Dashboard operasional + Dashboard Manajemen).
+ * Diekstrak dari DashboardScreen agar dua ranah tidak menduplikasi hitungan.
+ */
+@Composable
+fun FleetStatCards(scooters: List<Scooter>, modifier: Modifier = Modifier) {
+    val ready = scooters.count { it.status == ScooterStatus.AVAILABLE }
+    val maintLuar = scooters.count { it.status == ScooterStatus.MAINTENANCE && it.activeMaintenance?.location == "luar" }
+    val maintOutlet = scooters.count { it.status == ScooterStatus.MAINTENANCE && it.activeMaintenance?.location != "luar" }
+    val total = ready + maintLuar + maintOutlet
+
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            StatCard(
+                label = "Unit Ready",
+                sub = "Siap disewakan",
+                value = ready,
+                icon = { tint -> Icon(Icons.Filled.CheckCircle, null, Modifier.size(17.dp), tint = tint) },
+                valueColor = Green,
+                iconBg = Green.copy(alpha = 0.12f),
+                iconColor = Green,
+                modifier = Modifier.weight(1f),
+            )
+            StatCard(
+                label = "Maint. Luar Outlet",
+                sub = "Perbaikan luar",
+                value = maintLuar,
+                icon = { tint -> Icon(Icons.Filled.Construction, null, Modifier.size(17.dp), tint = tint) },
+                valueColor = Warning,
+                iconBg = Warning.copy(alpha = 0.12f),
+                iconColor = Warning,
+                modifier = Modifier.weight(1f),
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            StatCard(
+                label = "Maint. di Outlet",
+                sub = "Perbaikan outlet",
+                value = maintOutlet,
+                icon = { tint -> Icon(Icons.Filled.Build, null, Modifier.size(17.dp), tint = tint) },
+                valueColor = Red,
+                iconBg = Red.copy(alpha = 0.12f),
+                iconColor = Red,
+                modifier = Modifier.weight(1f),
+            )
+            StatCard(
+                label = "Unit Total",
+                sub = "Total armada outlet",
+                value = total,
+                icon = { tint -> Icon(Icons.Filled.Layers, null, Modifier.size(17.dp), tint = tint) },
+                valueColor = Color(0xFFA855F7),
+                iconBg = Color(0xFFA855F7).copy(alpha = 0.12f),
+                iconColor = Color(0xFFA855F7),
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+/**
+ * Tabel maintenance + alur selesaikan (dipakai dua dashboard).
+ * Diekstrak dari DashboardScreen agar perilaku Selesaikan identik.
+ */
+@Composable
+fun MaintenanceSection(
+    viewModel: ScooterDataViewModel,
+    records: List<MaintenanceRecord>,
+    modifier: Modifier = Modifier,
+) {
+    var completingId by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val sweetAlert = LocalSweetAlert.current
+
+    MaintenanceTable(
+        records = records,
+        completingId = completingId,
+        onComplete = { rec ->
+            sweetAlert.showConfirm(
+                title = "Selesaikan Maintenance?",
+                message = "Tandai perbaikan unit ${rec.scooterId} selesai? Unit akan kembali tersedia.",
+                confirmText = "Ya, Selesai",
+                cancelText = "Batal",
+                onConfirm = {
+                    scope.launch {
+                        completingId = rec.id
+                        runCatching { viewModel.completeMaintenance(rec.id) }
+                            .onSuccess {
+                                viewModel.refresh()
+                                sweetAlert.showSuccess("Maintenance unit ${rec.scooterId} selesai")
+                            }
+                            .onFailure { err -> sweetAlert.showError(err.toUserMessage()) }
+                        completingId = null
+                    }
+                },
+            )
+        },
+        modifier = modifier,
+    )
 }

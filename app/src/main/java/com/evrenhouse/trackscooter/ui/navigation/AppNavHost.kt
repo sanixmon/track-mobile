@@ -2,6 +2,12 @@ package com.evrenhouse.trackscooter.ui.navigation
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -44,6 +50,7 @@ import com.evrenhouse.trackscooter.util.ModePrefs
 import com.evrenhouse.trackscooter.util.UpdatePrefs
 import com.evrenhouse.trackscooter.ui.dashboard.DashboardScreen
 import com.evrenhouse.trackscooter.ui.detail.ScooterDetailScreen
+import com.evrenhouse.trackscooter.ui.manage.ManageDashboardScreen
 import com.evrenhouse.trackscooter.ui.manage.ManageScreen
 import com.evrenhouse.trackscooter.ui.monitor.MonitorScreen
 import com.evrenhouse.trackscooter.ui.report.ReportScreen
@@ -61,7 +68,7 @@ private val operasionalItems = listOf(
 
 private val manajemenItems = listOf(
     BottomNavItem(Routes.MANAGE, "Kelola", Icons.Filled.Inventory2),
-    BottomNavItem(Routes.DASHBOARD, "Dashboard", Icons.Filled.Dashboard),
+    BottomNavItem(Routes.MANAGE_DASHBOARD, "Dashboard", Icons.Filled.Dashboard),
     BottomNavItem(Routes.MODE_OPERASIONAL, "Operasional", Icons.Filled.Home),
 )
 
@@ -138,23 +145,30 @@ fun AppNavHost() {
             containerColor = androidx.compose.ui.graphics.Color.Transparent,
         bottomBar = {
             if (showBottomBar) {
-                FloatingBottomBar(
-                    items = bottomItems,
-                    currentDestination = currentDestination,
-                    onNavigate = { item ->
-                        when (item.route) {
-                            Routes.MODE_MANAJEMEN -> {
-                                dataViewModel.setAppMode(ModePrefs.MANAJEMEN)
-                                navigateTab(Routes.MANAGE)
+                // Transisi smooth saat daftar tab berganti antar mode.
+                Crossfade(
+                    targetState = appMode,
+                    animationSpec = tween(250),
+                    label = "nav_mode",
+                ) {
+                    FloatingBottomBar(
+                        items = bottomItems,
+                        currentDestination = currentDestination,
+                        onNavigate = { item ->
+                            when (item.route) {
+                                Routes.MODE_MANAJEMEN -> {
+                                    dataViewModel.setAppMode(ModePrefs.MANAJEMEN)
+                                    navigateTab(Routes.MANAGE)
+                                }
+                                Routes.MODE_OPERASIONAL -> {
+                                    dataViewModel.setAppMode(ModePrefs.OPERASIONAL)
+                                    navigateTab(Routes.SCAN)
+                                }
+                                else -> navigateTab(item.route)
                             }
-                            Routes.MODE_OPERASIONAL -> {
-                                dataViewModel.setAppMode(ModePrefs.OPERASIONAL)
-                                navigateTab(Routes.SCAN)
-                            }
-                            else -> navigateTab(item.route)
-                        }
-                    },
-                )
+                        },
+                    )
+                }
             }
         },
     ) { innerPadding ->
@@ -163,9 +177,34 @@ fun AppNavHost() {
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
+            // Transisi geser + fade antar layar (termasuk pindah ranah).
             NavHost(
                 navController = navController,
                 startDestination = Routes.SCAN,
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { it / 4 },
+                        animationSpec = tween(220),
+                    ) + fadeIn(animationSpec = tween(220))
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { -it / 4 },
+                        animationSpec = tween(220),
+                    ) + fadeOut(animationSpec = tween(220))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { -it / 4 },
+                        animationSpec = tween(220),
+                    ) + fadeIn(animationSpec = tween(220))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { it / 4 },
+                        animationSpec = tween(220),
+                    ) + fadeOut(animationSpec = tween(220))
+                },
             ) {
                 composable(Routes.DASHBOARD) {
                     DashboardScreen(
@@ -194,6 +233,9 @@ fun AppNavHost() {
                         viewModel = dataViewModel,
                         onOpenDetail = { id -> navController.navigate(Routes.detail(id)) },
                     )
+                }
+                composable(Routes.MANAGE_DASHBOARD) {
+                    ManageDashboardScreen(viewModel = dataViewModel)
                 }
                 composable(Routes.DETAIL) { entry ->
                     val id = entry.arguments?.getString("scooterId") ?: ""
