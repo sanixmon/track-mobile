@@ -87,6 +87,30 @@ class VersionUtilsTest {
     }
 
     @Test
+    fun activeMaintenanceDeserializesCamelCaseTimestamps() {
+        val json = Json { ignoreUnknownKeys = true }
+        val raw = """
+            {
+              "id": "SB-59",
+              "type": "sb",
+              "status": "maintenance",
+              "current_outlet": "utara",
+              "maintenance_note": "dinamo",
+              "active_maintenance": {
+                "id": "mnt-1",
+                "location": "luar",
+                "locationDetail": "bengkel maju",
+                "issue": "dinamo",
+                "status": "repair",
+                "startedAt": "2026-09-25T23:08:34.194Z"
+              }
+            }
+        """.trimIndent()
+        val scooter = json.decodeFromString<Scooter>(raw)
+        assertEquals("2026-09-25T23:08:34.194Z", scooter.activeMaintenance?.startedAt)
+    }
+
+    @Test
     fun activeMaintenanceDeserializesCamelCaseLocationDetail() {
         // Server mengirim dua varian (fleet.service.js): location_detail + locationDetail.
         val json = Json { ignoreUnknownKeys = true }

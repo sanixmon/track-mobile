@@ -54,6 +54,8 @@ data class ActiveMaintenance(
     @SerialName("issue") val issue: String? = null,
     @SerialName("note") val note: String? = null,
     @SerialName("status") val status: String,
+    @OptIn(ExperimentalSerializationApi::class)
+    @JsonNames("startedAt")
     @SerialName("started_at") val startedAt: String,
 )
 
@@ -94,7 +96,11 @@ data class MaintenanceRecord(
     @SerialName("issue") val issue: String? = null,
     @SerialName("note") val note: String? = null,
     @SerialName("status") val status: String, // "repair" | "done"
+    @OptIn(ExperimentalSerializationApi::class)
+    @JsonNames("startedAt")
     @SerialName("started_at") val startedAt: String,
+    @OptIn(ExperimentalSerializationApi::class)
+    @JsonNames("resolvedAt")
     @SerialName("resolved_at") val resolvedAt: String? = null,
 )
 

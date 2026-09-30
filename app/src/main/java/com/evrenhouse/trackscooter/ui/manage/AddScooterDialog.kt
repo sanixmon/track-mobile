@@ -89,10 +89,18 @@ fun AddScooterDialog(
             val sameTypeNumbers = scooters
                 .filter { it.type.equals(type, ignoreCase = true) }
                 .mapNotNull {
-                    val raw = it.id.replace(prefix, "")
-                    raw.toIntOrNull()
+                    val raw = it.id.replace(prefix, "", ignoreCase = true)
+                    raw.toIntOrNull()?.takeIf { n -> n > 0 }
                 }
             if (sameTypeNumbers.isNotEmpty()) sameTypeNumbers.max() + 1 else 1
+        }
+    }
+
+    // Nomor 0/tidak valid (paritas temuan web): server akan membuat SD-0,
+    // jadi tolak di client seperti duplikat.
+    val isInvalidNumber by remember(numberInput) {
+        derivedStateOf {
+            numberInput.isNotBlank() && (numberInput.trim().toIntOrNull() ?: -1) <= 0
         }
     }
 
@@ -314,6 +322,19 @@ fun AddScooterDialog(
                                 fontSize = 11.sp
                             )
                         }
+                    } else if (isInvalidNumber) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.padding(top = 2.dp)
+                        ) {
+                            Icon(Icons.Filled.ErrorOutline, null, tint = Red, modifier = Modifier.size(12.dp))
+                            Text(
+                                text = "Nomor unit harus lebih dari 0",
+                                color = Red,
+                                fontSize = 11.sp
+                            )
+                        }
                     } else {
                         Text(
                             text = "Kosongkan untuk nomor berikutnya ($prefix$nextNumber)",
@@ -409,7 +430,7 @@ fun AddScooterDialog(
                             onSubmit(finalId, type, outlet, true)
                             numberInput = ""
                         },
-                        enabled = !submitting && !isDuplicate,
+                        enabled = !submitting && !isDuplicate && !isInvalidNumber,
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.weight(1.4f),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Accent),
@@ -424,7 +445,7 @@ fun AddScooterDialog(
                         val finalId = if (numberInput.isNotBlank()) "$prefix${numberInput.trim()}" else "$prefix$nextNumber"
                         onSubmit(finalId, type, outlet, false)
                     },
-                    enabled = !submitting && !isDuplicate,
+                    enabled = !submitting && !isDuplicate && !isInvalidNumber,
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = Accent)

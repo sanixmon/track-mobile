@@ -98,8 +98,16 @@ fun TroubleSwapDialog(
         )
     }
 
-    var selectedReplacementId by remember(sortedReplacements) {
+    var selectedReplacementId by remember {
         mutableStateOf(sortedReplacements.firstOrNull()?.id ?: "")
+    }
+
+    // Pilihan efektif (paritas web): pertahankan pilihan user bila masih valid
+    // saat daftar refresh, sonst jatuh kembali ke kandidat pertama.
+    // remember(sortedReplacements) lama me-reset pilihan user tiap refresh.
+    val effectiveReplacementId = remember(selectedReplacementId, sortedReplacements) {
+        if (sortedReplacements.any { it.id == selectedReplacementId }) selectedReplacementId
+        else sortedReplacements.firstOrNull()?.id ?: ""
     }
 
     var selectedIssue by remember { mutableStateOf<String?>(PRESET_ISSUES[0]) }
@@ -118,9 +126,9 @@ fun TroubleSwapDialog(
         }
     }
 
-    val canSubmit by remember(selectedReplacementId, note, submitting) {
+    val canSubmit by remember(selectedReplacementId, sortedReplacements, note, submitting) {
         derivedStateOf {
-            selectedReplacementId.isNotBlank() && note.isNotBlank() && !submitting
+            effectiveReplacementId.isNotBlank() && note.isNotBlank() && !submitting
         }
     }
 
@@ -218,14 +226,14 @@ fun TroubleSwapDialog(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            val selectedBike = sortedReplacements.find { it.id == selectedReplacementId }
+                            val selectedBike = sortedReplacements.find { it.id == effectiveReplacementId }
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 val selColor = if (selectedBike != null) ScooterColors.getScooterNameColor(selectedBike.type, selectedBike.id, selectedBike.currentOutlet, isDark) else TextPrimary
                                 Text(
-                                    selectedReplacementId.ifBlank { "Pilih unit..." },
+                                    effectiveReplacementId.ifBlank { "Pilih unit..." },
                                     color = selColor,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
@@ -411,7 +419,7 @@ fun TroubleSwapDialog(
                             customIssue.ifBlank { "Lainnya" }
                         } else selectedIssue
 
-                        onConfirm(selectedReplacementId, note.trim(), issueText, markBroken)
+                        onConfirm(effectiveReplacementId, note.trim(), issueText, markBroken)
                     },
                     enabled = canSubmit,
                     shape = RoundedCornerShape(10.dp),
