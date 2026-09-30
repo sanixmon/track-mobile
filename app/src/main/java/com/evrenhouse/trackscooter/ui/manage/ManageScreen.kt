@@ -305,7 +305,7 @@ fun ManageScreen(
                         leadingIcon = { Icon(Icons.Filled.SystemUpdate, null, tint = Accent, modifier = Modifier.size(16.dp)) },
                         onClick = {
                             dataMenuExpanded = false
-                            viewModel.checkForAppUpdate { info ->
+                            viewModel.checkForAppUpdate(forceRecheck = true) { info ->
                                 if (!info.isUpdateAvailable) {
                                     if (info.errorMessage != null) {
                                         sweetAlert.showError("Gagal memeriksa pembaruan: ${info.errorMessage}")

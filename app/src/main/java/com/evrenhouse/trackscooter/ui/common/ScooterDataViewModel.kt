@@ -66,7 +66,13 @@ class ScooterDataViewModel(
     private val _isCheckingUpdate = MutableStateFlow(false)
     val isCheckingUpdate: StateFlow<Boolean> = _isCheckingUpdate.asStateFlow()
 
-    fun checkForAppUpdate(onResult: ((AppUpdateInfo) -> Unit)? = null) {
+    fun checkForAppUpdate(forceRecheck: Boolean = false, onResult: ((AppUpdateInfo) -> Unit)? = null) {
+        // Throttle: resume beruntun tidak perlu cek ulang terus.
+        val now = System.currentTimeMillis()
+        if (!forceRecheck && now - lastUpdateCheckAt < UpdatePolicy.RESUME_THROTTLE_MS) {
+            return
+        }
+        lastUpdateCheckAt = now
         viewModelScope.launch {
             _isCheckingUpdate.value = true
             val info = repository.checkAppUpdate()
@@ -77,6 +83,8 @@ class ScooterDataViewModel(
             onResult?.invoke(info)
         }
     }
+
+    private var lastUpdateCheckAt: Long = 0L
 
     /**
      * User yang menekan "Nanti Saja" tetap diingatkan lagi: sekali sehari

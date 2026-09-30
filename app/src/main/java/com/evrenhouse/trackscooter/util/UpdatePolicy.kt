@@ -11,6 +11,13 @@ object UpdatePolicy {
     /** Cek ulang update ke server tiap 6 jam (polling data utama tetap 30 detik). */
     const val RECHECK_INTERVAL_MS = 6L * 60L * 60L * 1000L
 
+    /**
+     * Batas minimum antar cek saat app di-resume. Tanpa ini, cek di init
+     * saja tidak pernah jalan ulang bila proses hidup berhari-hari
+     * (user buka dari recents) — kasus "app lama tidak dapat notif".
+     */
+    const val RESUME_THROTTLE_MS = 15L * 60L * 1000L
+
     /** Setelah dismiss, ingatkan lagi maksimal sekali sehari sampai user update. */
     const val REMIND_INTERVAL_MS = 24L * 60L * 60L * 1000L
 

@@ -2,11 +2,15 @@ package com.evrenhouse.trackscooter.ui.navigation
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.evrenhouse.trackscooter.ui.common.AppUpdateDialog
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -61,6 +65,20 @@ fun AppNavHost() {
         val context = LocalContext.current
         val appUpdate by dataViewModel.appUpdate.collectAsState()
         var hasAutoRedirected by rememberSaveable { mutableStateOf(false) }
+
+        // Cek update tiap app dibuka dari background: cek di init tidak jalan
+        // ulang bila proses hidup terus (kasus "app lama tidak dapat notif").
+        // Throttle 15 menit di dalam checkForAppUpdate.
+        val lifecycleOwner = LocalLifecycleOwner.current
+        DisposableEffect(lifecycleOwner) {
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    dataViewModel.checkForAppUpdate()
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        }
 
         LaunchedEffect(appUpdate) {
             val update = appUpdate
