@@ -1,5 +1,6 @@
 package com.evrenhouse.trackscooter.data
 import com.evrenhouse.trackscooter.BuildConfig
+import com.evrenhouse.trackscooter.util.UpdatePolicy
 import com.evrenhouse.trackscooter.util.VersionUtils
 
 import android.util.Log
@@ -197,6 +198,12 @@ class ScooterRepository(private val api: ApiService = ApiClient.service) {
             val isCodeHigher = targetCode > currentCode
             val isNameHigher = targetCode == 0 && VersionUtils.isVersionHigher(targetName, currentName)
             val isUpdateAvailable = isCodeHigher || isNameHigher
+            // minVersionCode selama ini diabaikan: user jauh tertinggal tidak pernah dipaksa update.
+            val forceUpdate = UpdatePolicy.isForceUpdate(
+                currentCode = currentCode,
+                minVersionCode = res.resolvedMinVersionCode,
+                forceFlag = res.resolvedForceUpdate,
+            )
             val downloadUrl = res.resolvedDownloadUrl.ifBlank {
                 "https://github.com/sanixmon/track-releases/releases/latest/download/track-scooter.apk"
             }
@@ -207,7 +214,7 @@ class ScooterRepository(private val api: ApiService = ApiClient.service) {
                 currentVersionName = currentName,
                 currentVersionCode = currentCode,
                 downloadUrl = downloadUrl,
-                forceUpdate = res.resolvedForceUpdate,
+                forceUpdate = forceUpdate,
                 title = res.title,
                 changelog = res.changelog,
             )

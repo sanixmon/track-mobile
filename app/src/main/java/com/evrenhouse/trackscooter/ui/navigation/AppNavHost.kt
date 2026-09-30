@@ -33,6 +33,8 @@ import com.evrenhouse.trackscooter.ui.common.AppViewModelFactory
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
 import com.evrenhouse.trackscooter.ui.common.SweetAlertProvider
 import com.evrenhouse.trackscooter.ui.common.repository
+import com.evrenhouse.trackscooter.TrackScooterApp
+import com.evrenhouse.trackscooter.util.UpdatePrefs
 import com.evrenhouse.trackscooter.ui.dashboard.DashboardScreen
 import com.evrenhouse.trackscooter.ui.detail.ScooterDetailScreen
 import com.evrenhouse.trackscooter.ui.manage.ManageScreen
@@ -64,13 +66,23 @@ fun AppNavHost() {
             val update = appUpdate
             if (update != null && update.isUpdateAvailable && !hasAutoRedirected) {
                 hasAutoRedirected = true
-                val url = update.downloadUrl.takeIf { it.isNotBlank() }
-                    ?: "https://github.com/sanixmon/track-releases/releases/latest/download/track-scooter.apk"
-                runCatching {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                // Redirect otomatis sekali per versi update (persist antar restart),
+                // agar user versi lama pasti diarahkan ke unduhan minimal satu kali.
+                val alreadyRedirected = runCatching {
+                    UpdatePrefs.getRedirectedVersionCode(TrackScooterApp.instance) >= update.latestVersionCode
+                }.getOrDefault(false)
+                if (!alreadyRedirected) {
+                    runCatching {
+                        UpdatePrefs.setRedirected(TrackScooterApp.instance, update.latestVersionCode)
                     }
-                    context.startActivity(intent)
+                    val url = update.downloadUrl.takeIf { it.isNotBlank() }
+                        ?: "https://github.com/sanixmon/track-releases/releases/latest/download/track-scooter.apk"
+                    runCatching {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    }
                 }
             }
         }

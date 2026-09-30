@@ -157,7 +157,8 @@ class ScooterDetailViewModel(
             val req = UpdateScooterRequest(
                 status = newStatus,
                 location = location,
-                locationDetail = locationDetail,
+                // "" agar terkirim dan server clear saat outlet (explicitNulls=false omit null).
+                locationDetail = if (newStatus == ScooterStatus.MAINTENANCE) (locationDetail ?: "") else locationDetail,
                 issue = issue,
                 note = note,
                 maintenanceNote = if (newStatus == ScooterStatus.MAINTENANCE) (issue ?: note) else null,

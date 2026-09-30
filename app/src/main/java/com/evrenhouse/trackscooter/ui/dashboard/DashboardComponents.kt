@@ -653,7 +653,7 @@ private fun MaintenanceRow(rec: MaintenanceRecord, onComplete: (MaintenanceRecor
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Icon(Icons.Filled.LocationOn, contentDescription = null, tint = TextSubtle, modifier = Modifier.size(11.dp))
                 Text(
-                    text = if (rec.location == "outlet") "Di Outlet" else if (!rec.locationDetail.isNullOrBlank()) "Luar · ${rec.locationDetail}" else "Keluar / Luar",
+                    text = if (rec.location == "outlet") "Di Outlet" else if (!rec.locationDetail.isNullOrBlank()) "Luar · ${rec.locationDetail}" else "Luar Outlet",
                     color = TextMuted,
                     fontSize = 11.sp,
                 )

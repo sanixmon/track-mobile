@@ -381,6 +381,7 @@ fun ManageScreen(
                     },
                     onTroubleSwap = { troubleScooter = it },
                     onEditScooter = { editingScooter = it },
+                    onEditMaintenance = { editingScooter = it },
                 )
             }
         }
@@ -437,7 +438,8 @@ fun ManageScreen(
                         ScooterStatus.MAINTENANCE -> UpdateScooterRequest(
                             status = ScooterStatus.MAINTENANCE,
                             location = location,
-                            locationDetail = locationDetail,
+                            // "" agar terkirim (explicitNulls=false omit null) dan server clear saat outlet.
+                            locationDetail = locationDetail ?: "",
                             issue = issue,
                             note = note,
                             maintenanceNote = issue,
@@ -469,7 +471,8 @@ fun ManageScreen(
                         currentOutlet = currentOutlet,
                         maintenanceNote = if (status == ScooterStatus.MAINTENANCE) (issue ?: note) else null,
                         location = if (status == ScooterStatus.MAINTENANCE) location else null,
-                        locationDetail = if (status == ScooterStatus.MAINTENANCE && location == "luar") locationDetail else null,
+                        // "" agar terkirim dan server clear saat outlet (explicitNulls=false omit null).
+                        locationDetail = if (status == ScooterStatus.MAINTENANCE) (locationDetail ?: "") else null,
                         issue = if (status == ScooterStatus.MAINTENANCE) issue else null,
                         note = note,
                     )

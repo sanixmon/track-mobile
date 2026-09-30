@@ -126,6 +126,7 @@ fun ScooterDetailScreen(
     var statusMenuOpen by remember { mutableStateOf(false) }
     var statusChangeTarget by remember { mutableStateOf<String?>(null) }
     var showHistorySheet by remember { mutableStateOf(false) }
+    var showEditMaintenance by remember { mutableStateOf(false) }
 
     fun currentSnapshot(): String = (condition + ("monitorDetail" to monitorDetail)).toString()
 
@@ -355,7 +356,7 @@ fun ScooterDetailScreen(
                     },
                 )
 
-                // Active maintenance
+                // Active maintenance (mirrors web ScooterDetailModal)
                 scooter.activeMaintenance?.let { am ->
                     Row(
                         modifier = Modifier
@@ -369,7 +370,7 @@ fun ScooterDetailScreen(
                         Icon(Icons.Filled.WarningAmber, contentDescription = null, tint = Warning, modifier = Modifier.size(18.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Perbaikan Berjalan", color = Warning, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            val locLabel = if (am.location == "outlet") "Di Outlet" else if (!am.locationDetail.isNullOrBlank()) "Luar · ${am.locationDetail}" else "Keluar / Di Luar"
+                            val locLabel = if (am.location == "outlet") "Di Outlet" else if (!am.locationDetail.isNullOrBlank()) "Luar · ${am.locationDetail}" else "Luar Outlet"
                             Text(
                                 "$locLabel${if (!am.issue.isNullOrBlank()) " · ${am.issue}" else ""}",
                                 color = TextMuted,
@@ -379,30 +380,44 @@ fun ScooterDetailScreen(
                                 Text(am.note, color = TextMuted, fontSize = 11.sp, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
                             }
                         }
-                        Button(
-                            onClick = {
-                                sweetAlert.showConfirm(
-                                    title = "Selesaikan Maintenance?",
-                                    message = "Tandai perbaikan unit $scooterId selesai? Unit akan kembali tersedia.",
-                                    confirmText = "Ya, Selesai",
-                                    cancelText = "Batal",
-                                    onConfirm = {
-                                        state.scooter?.activeMaintenance?.id?.let { viewModel.completeMaintenance(it) }
-                                    },
-                                )
-                            },
-                            enabled = !state.completing,
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Warning),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        Column(
+                            horizontalAlignment = Alignment.End,
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
-                            if (state.completing) {
-                                CircularProgressIndicator(modifier = Modifier.size(12.dp), color = Color.White, strokeWidth = 2.dp)
-                            } else {
-                                Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(12.dp))
+                            OutlinedButton(
+                                onClick = { showEditMaintenance = true },
+                                shape = RoundedCornerShape(8.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Warning.copy(alpha = 0.5f)),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Warning),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            ) {
+                                Text("Edit", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                             }
-                            Spacer(Modifier.width(4.dp))
-                            Text("Selesai", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Button(
+                                onClick = {
+                                    sweetAlert.showConfirm(
+                                        title = "Selesaikan Maintenance?",
+                                        message = "Tandai perbaikan unit $scooterId selesai? Unit akan kembali tersedia.",
+                                        confirmText = "Ya, Selesai",
+                                        cancelText = "Batal",
+                                        onConfirm = {
+                                            state.scooter?.activeMaintenance?.id?.let { viewModel.completeMaintenance(it) }
+                                        },
+                                    )
+                                },
+                                enabled = !state.completing,
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Warning),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                            ) {
+                                if (state.completing) {
+                                    CircularProgressIndicator(modifier = Modifier.size(12.dp), color = Color.White, strokeWidth = 2.dp)
+                                } else {
+                                    Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(12.dp))
+                                }
+                                Spacer(Modifier.width(4.dp))
+                                Text("Selesai", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
@@ -509,11 +524,26 @@ fun ScooterDetailScreen(
                 newStatus = targetStatus,
                 onDismiss = { statusChangeTarget = null },
                 onConfirm = { location, locationDetail, issue, note ->
-                    viewModel.updateStatus(targetStatus, location, locationDetail, issue, note)
+                    // "" agar terkirim dan server clear saat outlet (explicitNulls=false omit null).
+                    val detailToSend = if (targetStatus == ScooterStatus.MAINTENANCE) (locationDetail ?: "") else locationDetail
+                    viewModel.updateStatus(targetStatus, location, detailToSend, issue, note)
                     statusChangeTarget = null
                 }
             )
         }
+    }
+
+    if (showEditMaintenance && state.scooter != null) {
+        StatusChangeDialog(
+            scooter = state.scooter!!,
+            newStatus = ScooterStatus.MAINTENANCE,
+            onDismiss = { showEditMaintenance = false },
+            onConfirm = { location, locationDetail, issue, note ->
+                val detailToSend = locationDetail ?: ""
+                viewModel.updateStatus(ScooterStatus.MAINTENANCE, location, detailToSend, issue, note)
+                showEditMaintenance = false
+            }
+        )
     }
 
     if (showHistorySheet && state.scooter != null) {

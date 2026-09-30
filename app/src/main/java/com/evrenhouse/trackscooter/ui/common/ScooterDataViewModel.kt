@@ -23,6 +23,8 @@ import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.launch
 import com.evrenhouse.trackscooter.TrackScooterApp
 import com.evrenhouse.trackscooter.util.OutletPrefs
+import com.evrenhouse.trackscooter.util.UpdatePolicy
+import com.evrenhouse.trackscooter.util.UpdatePrefs
 import java.time.Instant
 
 data class ScooterDataUiState(
@@ -69,20 +71,50 @@ class ScooterDataViewModel(
             _isCheckingUpdate.value = true
             val info = repository.checkAppUpdate()
             _isCheckingUpdate.value = false
-            if (info.isUpdateAvailable) {
+            if (info.isUpdateAvailable && shouldRemindUpdate(info)) {
                 _appUpdate.value = info
             }
             onResult?.invoke(info)
         }
     }
 
+    /**
+     * User yang menekan "Nanti Saja" tetap diingatkan lagi: sekali sehari
+     * atau segera jika ada versi lebih baru. Force update selalu tampil.
+     */
+    private fun shouldRemindUpdate(info: AppUpdateInfo): Boolean {
+        if (info.forceUpdate) return true
+        return runCatching {
+            val ctx = TrackScooterApp.instance
+            UpdatePolicy.shouldShowUpdate(
+                forceUpdate = false,
+                latestCode = info.latestVersionCode,
+                dismissedCode = UpdatePrefs.getDismissedVersionCode(ctx),
+                dismissedAt = UpdatePrefs.getDismissedAt(ctx),
+                nowMillis = System.currentTimeMillis(),
+            )
+        }.getOrDefault(true)
+    }
+
     fun dismissUpdateDialog() {
+        val current = _appUpdate.value
+        // Force update tidak bisa di-dismiss permanen; dialognya pun non-dismissible.
+        if (current != null && !current.forceUpdate) {
+            runCatching {
+                UpdatePrefs.setDismissed(
+                    TrackScooterApp.instance,
+                    current.latestVersionCode,
+                    System.currentTimeMillis(),
+                )
+            }
+        }
         _appUpdate.value = null
     }
 
     private var pollingJob: Job? = null
     private var streamJob: Job? = null
     private var localUpdatesJob: Job? = null
+    private var updateCheckJob: Job? = null
 
     init {
         refresh()
@@ -90,6 +122,7 @@ class ScooterDataViewModel(
         observeStream()
         startPolling()
         checkForAppUpdate()
+        startUpdateRecheck()
     }
 
     /** Complete a repair record then refresh. Throws on failure. */
@@ -220,10 +253,28 @@ class ScooterDataViewModel(
         }
     }
 
+    /**
+     * Cek update berkala agar user versi lama yang sempat offline/gagal
+     * saat cek pertama, atau yang men-dismiss, tetap dapat notif.
+     */
+    private fun startUpdateRecheck() {
+        updateCheckJob?.cancel()
+        updateCheckJob = viewModelScope.launch {
+            while (true) {
+                delay(UpdatePolicy.RECHECK_INTERVAL_MS)
+                // Jangan timpa dialog yang sedang tampil.
+                if (_appUpdate.value == null) {
+                    checkForAppUpdate()
+                }
+            }
+        }
+    }
+
     override fun onCleared() {
         localUpdatesJob?.cancel()
         streamJob?.cancel()
         pollingJob?.cancel()
+        updateCheckJob?.cancel()
         super.onCleared()
     }
 }

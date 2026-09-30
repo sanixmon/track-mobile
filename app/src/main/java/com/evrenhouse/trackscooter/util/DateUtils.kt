@@ -18,6 +18,7 @@ object DateUtils {
     private val timeHms = DateTimeFormatter.ofPattern("HH:mm:ss", Locale("id", "ID"))
     private val dateKeyFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     private val dayMonthYear = DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale("id", "ID"))
+    private val dayMonthTime = DateTimeFormatter.ofPattern("dd MMM, HH:mm", Locale("id", "ID"))
     private val weekdayFull = DateTimeFormatter.ofPattern("EEEE, dd MMMM yyyy", Locale("id", "ID"))
     private val shortPill = DateTimeFormatter.ofPattern("EEE dd/MM", Locale("id", "ID"))
 
@@ -37,6 +38,12 @@ object DateUtils {
     fun formatFull(ts: String?): String {
         val dt = parse(ts) ?: return "-"
         return dayMonthYearTime.format(dt)
+    }
+
+    /** Web parity: "dd MMM, HH:mm" untuk baris timestamp maintenance (ManageComponents web). */
+    fun formatDayMonthTime(ts: String?): String {
+        val dt = parse(ts) ?: return "Dalam perbaikan"
+        return dayMonthTime.format(dt)
     }
 
     fun formatFullSec(ts: String?): String {

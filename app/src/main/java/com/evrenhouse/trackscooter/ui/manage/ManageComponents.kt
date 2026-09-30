@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AlertDialog
@@ -77,6 +78,7 @@ import com.evrenhouse.trackscooter.ui.theme.TextSubtle
 import com.evrenhouse.trackscooter.ui.theme.Warning
 import com.evrenhouse.trackscooter.ui.theme.LocalThemeIsDark
 import com.evrenhouse.trackscooter.util.ScooterColors
+import com.evrenhouse.trackscooter.util.DateUtils
 import com.evrenhouse.trackscooter.util.StatusLabels
 import com.evrenhouse.trackscooter.util.StatusOrder
 import com.evrenhouse.trackscooter.util.TypeLabels
@@ -101,6 +103,7 @@ fun ScooterList(
     onDownloadQr: (Scooter) -> Unit,
     onTroubleSwap: ((Scooter) -> Unit)? = null,
     onEditScooter: ((Scooter) -> Unit)? = null,
+    onEditMaintenance: ((Scooter) -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier
@@ -212,6 +215,7 @@ fun ScooterList(
                     onDownloadQr = { onDownloadQr(scooter) },
                     onTroubleSwap = onTroubleSwap,
                     onEditScooter = { onEditScooter?.invoke(scooter) },
+                    onEditMaintenance = onEditMaintenance,
                 )
                 Box(
                     Modifier
@@ -234,6 +238,7 @@ fun ScooterRow(
     onDownloadQr: () -> Unit,
     onTroubleSwap: ((Scooter) -> Unit)? = null,
     onEditScooter: (() -> Unit)? = null,
+    onEditMaintenance: ((Scooter) -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier
@@ -343,39 +348,93 @@ fun ScooterRow(
             val isLuar = am?.location == "luar"
             val locDetail = am?.locationDetail?.takeIf { it.isNotBlank() }
             val issueText = am?.issue?.takeIf { it.isNotBlank() } ?: scooter.maintenanceNote
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            val timestampText = DateUtils.formatDayMonthTime(am?.startedAt ?: scooter.lastUpdated)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                Box(
-                    modifier = Modifier
-                        .background(
-                            if (isLuar) Red.copy(alpha = 0.12f) else Warning.copy(alpha = 0.12f),
-                            RoundedCornerShape(6.dp),
-                        )
-                        .border(
-                            1.dp,
-                            if (isLuar) Red.copy(alpha = 0.35f) else Warning.copy(alpha = 0.35f),
-                            RoundedCornerShape(6.dp),
-                        )
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
+                    Icon(Icons.Filled.Schedule, contentDescription = null, tint = Warning, modifier = Modifier.size(11.dp))
                     Text(
-                        text = if (isLuar) "Luar: ${locDetail ?: "Luar Outlet"}" else "Di Outlet",
-                        color = if (isLuar) Red else Warning,
+                        text = timestampText,
+                        color = Warning,
                         fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                     )
                 }
-                if (!issueText.isNullOrBlank()) {
-                    Text(
-                        text = issueText,
-                        color = TextMuted,
-                        fontSize = 11.sp,
-                        fontStyle = FontStyle.Italic,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                if (isLuar) Red.copy(alpha = 0.12f) else Surface2,
+                                RoundedCornerShape(6.dp),
+                            )
+                            .border(
+                                1.dp,
+                                if (isLuar) Red.copy(alpha = 0.35f) else Border,
+                                RoundedCornerShape(6.dp),
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp),
+                        ) {
+                            Icon(
+                                Icons.Filled.LocationOn,
+                                contentDescription = null,
+                                tint = if (isLuar) Red else TextMuted,
+                                modifier = Modifier.size(10.dp),
+                            )
+                            Text(
+                                text = if (isLuar) {
+                                    if (locDetail != null) "Luar Outlet: $locDetail" else "Luar Outlet"
+                                } else {
+                                    "Di Outlet"
+                                },
+                                color = if (isLuar) Red else TextMuted,
+                                fontSize = 10.sp,
+                                fontWeight = if (isLuar) FontWeight.SemiBold else FontWeight.Medium,
+                            )
+                        }
+                    }
+                    if (!issueText.isNullOrBlank()) {
+                        Text(
+                            text = "Catatan: $issueText",
+                            color = TextMuted,
+                            fontSize = 11.sp,
+                            fontStyle = FontStyle.Italic,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                    }
+                }
+                val editAction = onEditMaintenance ?: onEditScooter?.let { edit -> { _: Scooter -> edit() } }
+                if (editAction != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier
+                            .border(1.dp, Border, RoundedCornerShape(6.dp))
+                            .background(Surface2.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
+                            .clickable { editAction(scooter) }
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Icon(Icons.Filled.Edit, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(10.dp))
+                        Text(
+                            text = "Edit Catatan",
+                            color = TextPrimary,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
                 }
             }
         }
@@ -393,7 +452,7 @@ fun StatusChangeDialog(
     var locationDetail by remember(scooter) { mutableStateOf(scooter.activeMaintenance?.locationDetail ?: "") }
     var issue by remember(scooter) { mutableStateOf(scooter.activeMaintenance?.issue ?: scooter.maintenanceNote ?: "") }
     var note by remember(scooter) { mutableStateOf(scooter.activeMaintenance?.note ?: "") }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var errorMessage by remember(scooter, newStatus) { mutableStateOf<String?>(null) }
 
     val title = when (newStatus) {
         ScooterStatus.MAINTENANCE -> "Mulai Maintenance"
@@ -411,8 +470,8 @@ fun StatusChangeDialog(
                 if (newStatus == ScooterStatus.MAINTENANCE) {
                     Text("Catat lokasi dan kendala untuk unit ${scooter.id} agar tim perbaikan dapat bertindak.", fontSize = 13.sp)
                     SimpleDropdown(
-                        label = if (location == "outlet") "Di Outlet" else "Keluar / Luar",
-                        options = listOf("outlet" to "Di Outlet", "luar" to "Keluar / Luar"),
+                        label = if (location == "outlet") "Di Outlet" else "Keluar / Di Luar",
+                        options = listOf("outlet" to "Di Outlet", "luar" to "Keluar / Di Luar"),
                         selected = location,
                         onSelect = {
                             location = it
@@ -478,7 +537,16 @@ fun StatusChangeDialog(
                         return@TextButton
                     }
                 }
-                onConfirm(location, locationDetail.trim().ifBlank { null }, issue.trim(), note.trim().ifBlank { null })
+                // Kirim "" (bukan null) saat outlet agar server clear location_detail.
+                // ApiClient explicitNulls=false meng-omit null sehingga ghost detail tidak ke-clear.
+                val detailToSend = if (newStatus == ScooterStatus.MAINTENANCE && location == "luar") {
+                    locationDetail.trim()
+                } else if (newStatus == ScooterStatus.MAINTENANCE) {
+                    ""
+                } else {
+                    null
+                }
+                onConfirm(location, detailToSend, issue.trim(), note.trim().ifBlank { null })
             }) {
                 Text("Simpan", color = Accent, fontWeight = FontWeight.Bold, fontSize = 12.sp)
             }
@@ -500,13 +568,13 @@ fun EditScooterDialog(
     val initialOutlet = remember(scooter.currentOutlet, scooter.type) {
         scooter.currentOutlet ?: Outlets.getHomeOutletForType(scooter.type)
     }
-    var selectedOutlet by remember { mutableStateOf(initialOutlet) }
-    var selectedStatus by remember { mutableStateOf(scooter.status) }
+    var selectedOutlet by remember(scooter.id, initialOutlet) { mutableStateOf(initialOutlet) }
+    var selectedStatus by remember(scooter.id) { mutableStateOf(scooter.status) }
     var location by remember(scooter) { mutableStateOf(scooter.activeMaintenance?.location ?: "outlet") }
     var locationDetail by remember(scooter) { mutableStateOf(scooter.activeMaintenance?.locationDetail ?: "") }
     var issue by remember(scooter) { mutableStateOf(scooter.activeMaintenance?.issue ?: scooter.maintenanceNote ?: "") }
     var note by remember(scooter) { mutableStateOf(scooter.activeMaintenance?.note ?: "") }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var errorMessage by remember(scooter.id) { mutableStateOf<String?>(null) }
 
     var outletDropdownOpen by remember { mutableStateOf(false) }
     var statusDropdownOpen by remember { mutableStateOf(false) }
@@ -674,8 +742,8 @@ fun EditScooterDialog(
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("LOKASI PERBAIKAN", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
                     SimpleDropdown(
-                        label = if (location == "outlet") "Di Outlet" else "Keluar / Luar",
-                        options = listOf("outlet" to "Di Outlet", "luar" to "Keluar / Luar"),
+                        label = if (location == "outlet") "Di Outlet" else "Keluar / Di Luar",
+                        options = listOf("outlet" to "Di Outlet", "luar" to "Keluar / Di Luar"),
                         selected = location,
                         onSelect = {
                             location = it
@@ -768,7 +836,9 @@ fun EditScooterDialog(
                                 errorMessage = "Nama tempat maintenance wajib diisi jika di luar outlet"
                                 return@Button
                             }
-                            onConfirm(selectedOutlet, selectedStatus, location, locationDetail.trim().ifBlank { null }, issue.trim(), note.trim().ifBlank { null })
+                            // "" untuk outlet agar server clear (explicitNulls=false omit null).
+                            val detailToSend = if (location == "luar") locationDetail.trim() else ""
+                            onConfirm(selectedOutlet, selectedStatus, location, detailToSend, issue.trim(), note.trim().ifBlank { null })
                         } else {
                             onConfirm(selectedOutlet, selectedStatus, null, null, null, note.trim().ifBlank { null })
                         }

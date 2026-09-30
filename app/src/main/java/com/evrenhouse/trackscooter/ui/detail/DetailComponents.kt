@@ -244,10 +244,11 @@ fun HistorySection(
                     }
                     maintenance.forEach { m ->
                         val isDone = m.status == "done"
+                        val locLabel = if (m.location == "outlet") "Di Outlet" else if (!m.locationDetail.isNullOrBlank()) "Luar · ${m.locationDetail}" else "Luar Outlet"
                         HistoryRow(
                             icon = { Icon(Icons.Filled.Construction, contentDescription = null, tint = if (isDone) Green else Warning, modifier = Modifier.size(13.dp)) },
                             title = "Maintenance · ${m.issue ?: "Perbaikan"}",
-                            subtitle = "${if (m.location == "outlet") "Di Outlet" else "Keluar / Di Luar"} · ${DateUtils.formatFull(m.startedAt)}" +
+                            subtitle = "$locLabel · ${DateUtils.formatFull(m.startedAt)}" +
                                 (if (isDone && m.resolvedAt != null) " → Selesai ${DateUtils.formatFull(m.resolvedAt)}" else ""),
                             iconColor = if (isDone) Green else Warning,
                             badge = if (isDone) "Selesai" to Green else "Repair" to Warning,

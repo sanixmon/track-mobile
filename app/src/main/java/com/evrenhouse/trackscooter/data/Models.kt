@@ -1,7 +1,9 @@
 package com.evrenhouse.trackscooter.data
 
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonNames
 
 // ── Domain constants (mirror of web src/constants.js) ──────
 object ScooterStatus {
@@ -46,6 +48,8 @@ data class DeviceCondition(
 data class ActiveMaintenance(
     @SerialName("id") val id: String,
     @SerialName("location") val location: String,
+    @OptIn(ExperimentalSerializationApi::class)
+    @JsonNames("locationDetail")
     @SerialName("location_detail") val locationDetail: String? = null,
     @SerialName("issue") val issue: String? = null,
     @SerialName("note") val note: String? = null,
@@ -84,6 +88,8 @@ data class MaintenanceRecord(
     @SerialName("scooter_id") val scooterId: String,
     @SerialName("scooter_type") val scooterType: String? = null,
     @SerialName("location") val location: String,
+    @OptIn(ExperimentalSerializationApi::class)
+    @JsonNames("locationDetail")
     @SerialName("location_detail") val locationDetail: String? = null,
     @SerialName("issue") val issue: String? = null,
     @SerialName("note") val note: String? = null,
@@ -266,6 +272,7 @@ data class AppVersionResponse(
     val resolvedVersionCode: Int get() = versionCode ?: versionCodeSnake ?: 0
     val resolvedVersionName: String get() = versionName ?: versionNameSnake ?: ""
     val resolvedDownloadUrl: String get() = downloadUrl ?: downloadUrlSnake ?: ""
+    val resolvedMinVersionCode: Int get() = minVersionCode ?: minVersionCodeSnake ?: 0
     val resolvedForceUpdate: Boolean get() = forceUpdate ?: forceUpdateSnake ?: false
 }
 
