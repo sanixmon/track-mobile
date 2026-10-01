@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -41,7 +43,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.IconButton
 import com.evrenhouse.trackscooter.util.toPngBytes
 import androidx.compose.material3.MaterialTheme
@@ -68,6 +70,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
+import com.evrenhouse.trackscooter.ui.theme.TrackScooterTheme
+import com.evrenhouse.trackscooter.ui.theme.Bg
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.evrenhouse.trackscooter.data.Scooter
@@ -171,281 +176,301 @@ fun ManageScreen(
         }
     }
 
+    val lazyListState = rememberLazyListState()
+    val isFabExpanded by remember { derivedStateOf { lazyListState.firstVisibleItemIndex == 0 } }
+    var dataMenuExpanded by remember { mutableStateOf(false) }
+
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+        LazyColumn(
+            state = lazyListState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 140.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            // Header
-            Text("Kelola", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-
-            var dataMenuExpanded by remember { mutableStateOf(false) }
-
-            // Sejajarkan Filter Outlet dan Aksi Data
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                OutletDropdown(
-                    selectedOutletId = activeOutlet,
-                    onOutletSelected = { viewModel.setSelectedOutlet(it) },
-                    getOutletCount = { outletId ->
-                        if (outletId == "all") data.scooters.size
-                        else data.scooters.count { (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == outletId }
-                    },
-                    modifier = Modifier.weight(1f),
-                )
-
-                // Compact Data Actions Dropdown
-                Box {
-                    OutlinedButton(
-                        onClick = { dataMenuExpanded = !dataMenuExpanded },
-                        shape = RoundedCornerShape(10.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = Surface2,
-                            contentColor = TextPrimary,
-                        ),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 9.dp),
+            // Header: Judul (jumlah unit hanya tampil sekali) & Outlet Dropdown + Aksi Data
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                    if (busyAction) {
-                        CircularProgressIndicator(color = Accent, modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Memproses...", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    } else {
-                        Icon(Icons.Filled.Download, contentDescription = null, tint = Accent, modifier = Modifier.size(15.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Aksi Data", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.width(4.dp))
-                        Icon(Icons.Filled.ArrowDropDown, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Text("Kelola", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = "· ${data.scooters.size} Unit",
+                                color = TextSubtle,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        OutletDropdown(
+                            selectedOutletId = activeOutlet,
+                            onOutletSelected = { viewModel.setSelectedOutlet(it) },
+                            getOutletCount = { outletId ->
+                                if (outletId == "all") data.scooters.size
+                                else data.scooters.count { (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == outletId }
+                            },
+                            modifier = Modifier.weight(1f),
+                        )
+
+                        // Compact Data Actions Dropdown
+                        Box {
+                            OutlinedButton(
+                                onClick = { dataMenuExpanded = !dataMenuExpanded },
+                                shape = RoundedCornerShape(10.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = Surface2,
+                                    contentColor = TextPrimary,
+                                ),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 9.dp),
+                            ) {
+                                if (busyAction) {
+                                    CircularProgressIndicator(color = Accent, modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Memproses...", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                } else {
+                                    Icon(Icons.Filled.Download, contentDescription = "Menu Aksi Data", tint = Accent, modifier = Modifier.size(15.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Aksi Data", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                    Spacer(Modifier.width(4.dp))
+                                    Icon(Icons.Filled.ArrowDropDown, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
+                                }
+                            }
+
+                            DropdownMenu(
+                                expanded = dataMenuExpanded,
+                                onDismissRequest = { dataMenuExpanded = false },
+                                modifier = Modifier
+                                    .background(Surface, RoundedCornerShape(12.dp))
+                                    .border(1.dp, Border, RoundedCornerShape(12.dp)),
+                            ) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text("Export Kondisi Unit", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                                            Text("Unduh laporan kondisi (.xlsx)", fontSize = 10.sp, color = TextMuted)
+                                        }
+                                    },
+                                    leadingIcon = { Icon(Icons.Filled.GridView, null, tint = Accent, modifier = Modifier.size(16.dp)) },
+                                    onClick = {
+                                        dataMenuExpanded = false
+                                        scope.launch {
+                                            busyAction = true
+                                            runCatching {
+                                                val bytes = Exporter.buildConditionsXlsx(data.scooters)
+                                                val filename = "Kondisi-Scooter-${todayKey}.xlsx"
+                                                Exporter.saveBytesToDownloads(context, filename, bytes, MIME_XLSX)
+                                            }
+                                                .onSuccess { sweetAlert.showSuccess("File XLSX berhasil diunduh ($it)") }
+                                                .onFailure { sweetAlert.showError(it.toUserMessage()) }
+                                            busyAction = false
+                                        }
+                                    },
+                                    enabled = data.scooters.isNotEmpty() && !busyAction,
+                                )
+
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text("Unduh Semua QR", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                                            Text("Arsip semua kode QR (.zip)", fontSize = 10.sp, color = TextMuted)
+                                        }
+                                    },
+                                    leadingIcon = { Icon(Icons.Filled.FolderZip, null, tint = Accent, modifier = Modifier.size(16.dp)) },
+                                    onClick = {
+                                        dataMenuExpanded = false
+                                        scope.launch {
+                                            busyAction = true
+                                            runCatching {
+                                                val items = data.scooters.map {
+                                                    Triple(it.id, it.type, it.currentOutlet ?: Outlets.getHomeOutletForType(it.type))
+                                                }
+                                                QrZip.zipAllQrs(context, items)
+                                            }
+                                                .onSuccess { sweetAlert.showSuccess("Semua QR Code diunduh ($it)") }
+                                                .onFailure { sweetAlert.showError(it.toUserMessage()) }
+                                            busyAction = false
+                                        }
+                                    },
+                                    enabled = data.scooters.isNotEmpty() && !busyAction,
+                                )
+
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text("Backup Basis Data", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                                            Text("Cadangan database (.db)", fontSize = 10.sp, color = TextMuted)
+                                        }
+                                    },
+                                    leadingIcon = { Icon(Icons.Filled.CloudDownload, null, tint = Accent, modifier = Modifier.size(16.dp)) },
+                                    onClick = {
+                                        dataMenuExpanded = false
+                                        scope.launch {
+                                            busyAction = true
+                                            runCatching {
+                                                val bytes = manageViewModel.downloadBackupBytes()
+                                                    ?: throw IllegalStateException("Gagal mengunduh backup.")
+                                                val filename = "trackscooter_backup_${todayKey}.db"
+                                                Exporter.saveBytesToDownloads(context, filename, bytes, "application/octet-stream")
+                                            }
+                                                .onSuccess { sweetAlert.showSuccess("Backup DB Berhasil") }
+                                                .onFailure { sweetAlert.showError(it.toUserMessage()) }
+                                            busyAction = false
+                                        }
+                                    },
+                                    enabled = !busyAction,
+                                )
+
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text("Cek Pembaruan", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                                            Text("Versi v${BuildConfig.VERSION_NAME}", fontSize = 10.sp, color = TextMuted)
+                                        }
+                                    },
+                                    leadingIcon = { Icon(Icons.Filled.SystemUpdate, null, tint = Accent, modifier = Modifier.size(16.dp)) },
+                                    onClick = {
+                                        dataMenuExpanded = false
+                                        viewModel.checkForAppUpdate(forceRecheck = true) { info ->
+                                            if (!info.isUpdateAvailable) {
+                                                if (info.errorMessage != null) {
+                                                    sweetAlert.showError("Gagal memeriksa pembaruan: ${info.errorMessage}")
+                                                } else {
+                                                    sweetAlert.showSuccess("Aplikasi sudah versi terbaru (v${info.currentVersionName})")
+                                                }
+                                            }
+                                        }
+                                    },
+                                    enabled = !busyAction,
+                                )
+                            }
+                        }
                     }
                 }
+            }
 
-                DropdownMenu(
-                    expanded = dataMenuExpanded,
-                    onDismissRequest = { dataMenuExpanded = false },
+            when {
+                data.error != null && data.scooters.isEmpty() -> {
+                    item {
+                        ErrorState(message = data.error ?: "", onRetry = { viewModel.refresh() })
+                    }
+                }
+                data.loading && data.scooters.isEmpty() -> {
+                    item {
+                        ManageSkeleton()
+                    }
+                }
+                else -> {
+                    item {
+                        ScooterList(
+                            scooters = filtered,
+                            search = search,
+                            onSearch = { search = it },
+                            filterStatus = filterStatus,
+                            onFilterStatus = { filterStatus = it },
+                            filterType = filterType,
+                            onFilterType = { filterType = it },
+                            sortBy = sortBy,
+                            onSortBy = { sortBy = it },
+                            getTodayCount = getTodayCheckoutCount,
+                            onOpenDetail = onOpenDetail,
+                            onStatusChange = { scooter, newStatus ->
+                                statusDialog = StatusDialogData(scooter, newStatus)
+                            },
+                            onDelete = { scooter ->
+                                sweetAlert.showConfirm(
+                                    title = "Hapus Unit Scooter?",
+                                    message = "Apakah Anda yakin ingin menghapus scooter ${scooter.id}? Tindakan ini tidak dapat dibatalkan.",
+                                    confirmText = "Ya, Hapus Unit",
+                                    cancelText = "Batal",
+                                    isDanger = true,
+                                    onConfirm = {
+                                        scope.launch {
+                                            val ok = manageViewModel.deleteScooter(scooter.id)
+                                            if (ok) {
+                                                viewModel.refresh()
+                                                sweetAlert.showSuccess("Unit ${scooter.id} dihapus")
+                                            } else {
+                                                sweetAlert.showError("Gagal menghapus unit.")
+                                            }
+                                        }
+                                    },
+                                )
+                            },
+                            onDownloadQr = { scooter ->
+                                scope.launch {
+                                    runCatching {
+                                        val outlet = scooter.currentOutlet ?: Outlets.getHomeOutletForType(scooter.type)
+                                        val bmp = QrUtils.generate(scooter.id, outlet, 400)
+                                        val png = bmp.toPngBytes()
+                                        val filename = "QR-${scooter.id}-${scooter.type.uppercase()}.png"
+                                        Exporter.saveBytesToDownloads(context, filename, png, "image/png")
+                                    }
+                                        .onSuccess { sweetAlert.showSuccess("QR ${scooter.id} diunduh") }
+                                        .onFailure { sweetAlert.showError(it.toUserMessage()) }
+                                }
+                            },
+                            activeOutlet = activeOutlet,
+                            onTroubleSwap = { troubleScooter = it },
+                            onEditScooter = { editingScooter = it },
+                            onEditMaintenance = {
+                                statusDialog = StatusDialogData(
+                                    it,
+                                    ScooterStatus.MAINTENANCE,
+                                    "Edit Kendala Unit ${it.id}",
+                                )
+                            },
+                        )
+                    }
+                }
+            }
+
+            // App Version Info Footer
+            item {
+                Column(
                     modifier = Modifier
-                        .background(Surface, RoundedCornerShape(12.dp))
-                        .border(1.dp, Border, RoundedCornerShape(12.dp)),
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
-                    DropdownMenuItem(
-                        text = {
-                            Column {
-                                Text("Export Kondisi Unit", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                                Text("Unduh laporan kondisi (.xlsx)", fontSize = 10.sp, color = TextMuted)
-                            }
-                        },
-                        leadingIcon = { Icon(Icons.Filled.GridView, null, tint = Accent, modifier = Modifier.size(16.dp)) },
-                        onClick = {
-                            dataMenuExpanded = false
-                            scope.launch {
-                                busyAction = true
-                                runCatching {
-                                    val bytes = Exporter.buildConditionsXlsx(data.scooters)
-                                    val filename = "Kondisi-Scooter-${todayKey}.xlsx"
-                                    Exporter.saveBytesToDownloads(context, filename, bytes, MIME_XLSX)
-                                }
-                                    .onSuccess { sweetAlert.showSuccess("File XLSX berhasil diunduh ($it)") }
-                                    .onFailure { sweetAlert.showError(it.toUserMessage()) }
-                                busyAction = false
-                            }
-                        },
-                        enabled = data.scooters.isNotEmpty() && !busyAction,
-                    )
-
-                    DropdownMenuItem(
-                        text = {
-                            Column {
-                                Text("Unduh Semua QR", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                                Text("Arsip semua kode QR (.zip)", fontSize = 10.sp, color = TextMuted)
-                            }
-                        },
-                        leadingIcon = { Icon(Icons.Filled.FolderZip, null, tint = Accent, modifier = Modifier.size(16.dp)) },
-                        onClick = {
-                            dataMenuExpanded = false
-                            scope.launch {
-                                busyAction = true
-                                runCatching {
-                                    val items = data.scooters.map {
-                                        Triple(it.id, it.type, it.currentOutlet ?: Outlets.getHomeOutletForType(it.type))
-                                    }
-                                    QrZip.zipAllQrs(context, items)
-                                }
-                                    .onSuccess { sweetAlert.showSuccess("Semua QR Code diunduh ($it)") }
-                                    .onFailure { sweetAlert.showError(it.toUserMessage()) }
-                                busyAction = false
-                            }
-                        },
-                        enabled = data.scooters.isNotEmpty() && !busyAction,
-                    )
-
-                    DropdownMenuItem(
-                        text = {
-                            Column {
-                                Text("Backup Basis Data", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                                Text("Cadangan database (.db)", fontSize = 10.sp, color = TextMuted)
-                            }
-                        },
-                        leadingIcon = { Icon(Icons.Filled.CloudDownload, null, tint = Accent, modifier = Modifier.size(16.dp)) },
-                        onClick = {
-                            dataMenuExpanded = false
-                            scope.launch {
-                                busyAction = true
-                                runCatching {
-                                    val bytes = manageViewModel.downloadBackupBytes()
-                                        ?: throw IllegalStateException("Gagal mengunduh backup.")
-                                    val filename = "trackscooter_backup_${todayKey}.db"
-                                    Exporter.saveBytesToDownloads(context, filename, bytes, "application/octet-stream")
-                                }
-                                    .onSuccess { sweetAlert.showSuccess("Backup DB Berhasil") }
-                                    .onFailure { sweetAlert.showError(it.toUserMessage()) }
-                                busyAction = false
-                            }
-                        },
-                        enabled = !busyAction,
-                    )
-
-                    DropdownMenuItem(
-                        text = {
-                            Column {
-                                Text("Cek Pembaruan", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                                Text("Versi v${BuildConfig.VERSION_NAME}", fontSize = 10.sp, color = TextMuted)
-                            }
-                        },
-                        leadingIcon = { Icon(Icons.Filled.SystemUpdate, null, tint = Accent, modifier = Modifier.size(16.dp)) },
-                        onClick = {
-                            dataMenuExpanded = false
-                            viewModel.checkForAppUpdate(forceRecheck = true) { info ->
-                                if (!info.isUpdateAvailable) {
-                                    if (info.errorMessage != null) {
-                                        sweetAlert.showError("Gagal memeriksa pembaruan: ${info.errorMessage}")
-                                    } else {
-                                        sweetAlert.showSuccess("Aplikasi sudah versi terbaru (v${info.currentVersionName})")
-                                    }
-                                }
-                            }
-                        },
-                        enabled = !busyAction,
+                    Text(
+                        text = "TrackScooter Mobile v${BuildConfig.VERSION_NAME} (Build ${BuildConfig.VERSION_CODE})",
+                        color = TextSubtle,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
                     )
                 }
             }
-        }
-
-        when {
-            data.error != null && data.scooters.isEmpty() -> {
-                ErrorState(message = data.error ?: "", onRetry = { viewModel.refresh() })
-            }
-            data.loading && data.scooters.isEmpty() -> {
-                ManageSkeleton()
-            }
-            else -> {
-
-                // List
-                ScooterList(
-                    scooters = filtered,
-                    search = search,
-                    onSearch = { search = it },
-                    filterStatus = filterStatus,
-                    onFilterStatus = { filterStatus = it },
-                    filterType = filterType,
-                    onFilterType = { filterType = it },
-                    sortBy = sortBy,
-                    onSortBy = { sortBy = it },
-                    getTodayCount = getTodayCheckoutCount,
-                    onOpenDetail = onOpenDetail,
-                    onStatusChange = { scooter, newStatus ->
-                        statusDialog = StatusDialogData(scooter, newStatus)
-                    },
-                    onDelete = { scooter ->
-                        sweetAlert.showConfirm(
-                            title = "Hapus Unit Scooter?",
-                            message = "Apakah Anda yakin ingin menghapus scooter ${scooter.id}? Tindakan ini tidak dapat dibatalkan.",
-                            confirmText = "Ya, Hapus Unit",
-                            cancelText = "Batal",
-                            isDanger = true,
-                            onConfirm = {
-                                scope.launch {
-                                    val ok = manageViewModel.deleteScooter(scooter.id)
-                                    if (ok) {
-                                        viewModel.refresh()
-                                        sweetAlert.showSuccess("Unit ${scooter.id} dihapus")
-                                    } else {
-                                        sweetAlert.showError("Gagal menghapus unit.")
-                                    }
-                                }
-                            },
-                        )
-                    },
-                    onDownloadQr = { scooter ->
-                        scope.launch {
-                            runCatching {
-                                val outlet = scooter.currentOutlet ?: Outlets.getHomeOutletForType(scooter.type)
-                                val bmp = QrUtils.generate(scooter.id, outlet, 400)
-                                val png = bmp.toPngBytes()
-                                val filename = "QR-${scooter.id}-${scooter.type.uppercase()}.png"
-                                Exporter.saveBytesToDownloads(context, filename, png, "image/png")
-                            }
-                                .onSuccess { sweetAlert.showSuccess("QR ${scooter.id} diunduh") }
-                                .onFailure { sweetAlert.showError(it.toUserMessage()) }
-                        }
-                    },
-                    onTroubleSwap = { troubleScooter = it },
-                    onEditScooter = { editingScooter = it },
-                    // Ranah OPERASIONAL: koreksi data lapangan via dialog entri,
-                    // bukan dialog admin (EditScooterDialog = ranah MANAJEMEN).
-                    onEditMaintenance = {
-                        statusDialog = StatusDialogData(
-                            it,
-                            ScooterStatus.MAINTENANCE,
-                            "Edit Kendala Unit ${it.id}",
-                        )
-                    },
-                )
-            }
-        }
-
-        // App Version Info Footer
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(
-                text = "TrackScooter Mobile v${BuildConfig.VERSION_NAME} (Build ${BuildConfig.VERSION_CODE})",
-                color = TextSubtle,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                )
-            }
-
-            Spacer(Modifier.height(80.dp))
         }
 
         // Floating Action Button Tambah Unit di pojok kanan bawah
-        FloatingActionButton(
+        // Extended Floating Action Button Tambah Unit di pojok kanan bawah
+        // Otomatis collapse jadi ikon bulat saat list scroll turun
+        ExtendedFloatingActionButton(
             onClick = { showAddDialog = true },
+            expanded = isFabExpanded,
+            icon = { Icon(Icons.Filled.Add, contentDescription = "Tambah Unit Baru", modifier = Modifier.size(20.dp)) },
+            text = { Text("Tambah Unit", fontSize = 13.sp, fontWeight = FontWeight.Bold) },
             containerColor = Accent,
             contentColor = Color.White,
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(bottom = 76.dp, end = 20.dp),
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = "Tambah Unit", modifier = Modifier.size(20.dp))
-                Text("Tambah Unit", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            }
-        }
+                .padding(bottom = 76.dp, end = 16.dp),
+        )
     }
 
     // Status change dialog (OPERASIONAL) vs Edit Scooter dialog (MANAJEMEN) di bawah.
@@ -569,4 +594,70 @@ fun ManageScreen(
 
 data class StatusDialogData(val scooter: Scooter, val newStatus: String, val title: String? = null)
 
+
+// ── Previews ──────────────────────────────────────────────────────────
+
+@Preview(name = "Manage Content - Light", showBackground = true)
+@Composable
+private fun ManageContentLightPreview() {
+    val sampleScooters = listOf(
+        Scooter("SB-01", "sb", ScooterStatus.AVAILABLE, currentOutlet = "utara-motor", lastUpdated = "2026-10-01T10:00:00Z"),
+        Scooter("SB-02", "sb", ScooterStatus.IN_USE, currentOutlet = "utara-motor", lastUpdated = "2026-10-01T09:30:00Z"),
+        Scooter("FZ-05", "fz", ScooterStatus.MAINTENANCE, currentOutlet = "utara-motor", lastUpdated = "2026-10-01T08:15:00Z", maintenanceNote = "Rem belakang berdecit"),
+        Scooter("EX-10", "ex", ScooterStatus.AVAILABLE, currentOutlet = "utara-motor", lastUpdated = "2026-10-01T07:45:00Z"),
+        Scooter("SD-03", "sd", ScooterStatus.AVAILABLE, currentOutlet = "utara-motor", lastUpdated = "2026-10-01T07:00:00Z"),
+    )
+    TrackScooterTheme(isDark = false) {
+        Box(modifier = Modifier.fillMaxSize().background(Bg)) {
+            ScooterList(
+                scooters = sampleScooters,
+                search = "",
+                onSearch = {},
+                filterStatus = "all",
+                onFilterStatus = {},
+                filterType = "all",
+                onFilterType = {},
+                sortBy = "id-asc",
+                onSortBy = {},
+                getTodayCount = { 2 },
+                onOpenDetail = {},
+                onStatusChange = { _, _ -> },
+                onDelete = {},
+                onDownloadQr = {},
+            )
+        }
+    }
+}
+
+@Preview(name = "Manage Content - Dark", showBackground = true)
+@Composable
+private fun ManageContentDarkPreview() {
+    val sampleScooters = listOf(
+        Scooter("SB-01", "sb", ScooterStatus.AVAILABLE, currentOutlet = "utara-motor", lastUpdated = "2026-10-01T10:00:00Z"),
+        Scooter("SB-02", "sb", ScooterStatus.IN_USE, currentOutlet = "utara-motor", lastUpdated = "2026-10-01T09:30:00Z"),
+        Scooter("FZ-05", "fz", ScooterStatus.MAINTENANCE, currentOutlet = "utara-motor", lastUpdated = "2026-10-01T08:15:00Z", maintenanceNote = "Baterai drop saat tanjakan"),
+        Scooter("EX-10", "ex", ScooterStatus.AVAILABLE, currentOutlet = "utara-motor", lastUpdated = "2026-10-01T07:45:00Z"),
+        Scooter("SD-03", "sd", ScooterStatus.AVAILABLE, currentOutlet = "utara-motor", lastUpdated = "2026-10-01T07:00:00Z"),
+    )
+    TrackScooterTheme(isDark = true) {
+        Box(modifier = Modifier.fillMaxSize().background(Bg)) {
+            ScooterList(
+                scooters = sampleScooters,
+                search = "",
+                onSearch = {},
+                filterStatus = "all",
+                onFilterStatus = {},
+                filterType = "all",
+                onFilterType = {},
+                sortBy = "id-asc",
+                onSortBy = {},
+                getTodayCount = { 2 },
+                onOpenDetail = {},
+                onStatusChange = { _, _ -> },
+                onDelete = {},
+                onDownloadQr = {},
+            )
+        }
+    }
+}
 

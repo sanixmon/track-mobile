@@ -55,6 +55,17 @@ object DateUtils {
         return dayMonthTime.format(dt)
     }
 
+    /** Format timestamp dengan konteks tahun: tambah tahun jika berbeda dari tahun berjalan */
+    fun formatContextualTime(ts: String?): String {
+        val dt = parse(ts) ?: return "-"
+        val currentYear = today().year
+        return if (dt.year == currentYear) {
+            dayMonthTime.format(dt)
+        } else {
+            dayMonthYearTime.format(dt)
+        }
+    }
+
     fun formatFullSec(ts: String?): String {
         val dt = parse(ts) ?: return "-"
         return dayMonthYearTimeSec.format(dt)

@@ -67,14 +67,33 @@ import com.evrenhouse.trackscooter.util.StatusLabels
 import kotlinx.coroutines.delay
 
 // ── Status colors ──────────────────────────────────────────
-data class StatusColor(val color: Color, val subtle: Color)
+data class StatusColor(
+    val color: Color,
+    val subtle: Color,
+    val text: Color = color,
+)
 
 @Composable
-fun statusColor(status: String?): StatusColor = when (status) {
-    ScooterStatus.AVAILABLE -> StatusColor(Green, Green.copy(alpha = 0.12f))
-    ScooterStatus.IN_USE -> StatusColor(Accent, Accent.copy(alpha = 0.12f))
-    ScooterStatus.MAINTENANCE -> StatusColor(Warning, Warning.copy(alpha = 0.12f))
-    else -> StatusColor(TextMuted, Surface3)
+fun statusColor(status: String?): StatusColor {
+    val isDark = LocalThemeIsDark.current
+    return when (status) {
+        ScooterStatus.AVAILABLE -> StatusColor(
+            color = Green,
+            subtle = if (isDark) Green.copy(alpha = 0.18f) else Color(0xFFDCFCE7),
+            text = if (isDark) Color(0xFF4ADE80) else Color(0xFF15803D), // WCAG > 4.5:1
+        )
+        ScooterStatus.IN_USE -> StatusColor(
+            color = Accent,
+            subtle = if (isDark) Accent.copy(alpha = 0.18f) else Color(0xFFEFF6FF),
+            text = if (isDark) Color(0xFF818CF8) else Color(0xFF3730A3), // WCAG > 4.5:1
+        )
+        ScooterStatus.MAINTENANCE -> StatusColor(
+            color = Warning,
+            subtle = if (isDark) Warning.copy(alpha = 0.18f) else Color(0xFFFFF1DC),
+            text = if (isDark) Color(0xFFFBBF24) else Color(0xFF8A5300), // WCAG > 4.5:1 (Amber gelap di atas #FFF1DC)
+        )
+        else -> StatusColor(TextMuted, Surface3, TextMuted)
+    }
 }
 
 @Composable
@@ -94,7 +113,7 @@ fun StatusChip(status: String?, modifier: Modifier = Modifier, pulse: Boolean = 
         )
         Text(
             text = StatusLabels.of(status),
-            color = c.color,
+            color = c.text,
             fontSize = 9.5.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.2.sp,

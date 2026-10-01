@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.filled.Close
@@ -33,6 +35,8 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AlertDialog
@@ -62,6 +66,8 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
+import com.evrenhouse.trackscooter.ui.theme.TrackScooterTheme
 import androidx.compose.ui.unit.sp
 import com.evrenhouse.trackscooter.data.Scooter
 import com.evrenhouse.trackscooter.data.ScooterStatus
@@ -87,145 +93,382 @@ import com.evrenhouse.trackscooter.util.TypeLabels
 private val CircleShapeCompat = RoundedCornerShape(50)
 
 @Composable
-fun ScooterList(
-    scooters: List<Scooter>,
-    search: String,
-    onSearch: (String) -> Unit,
-    filterStatus: String,
-    onFilterStatus: (String) -> Unit,
-    filterType: String,
-    onFilterType: (String) -> Unit,
-    sortBy: String,
-    onSortBy: (String) -> Unit,
-    getTodayCount: (String) -> Int,
-    onOpenDetail: (String) -> Unit,
-    onStatusChange: (Scooter, String) -> Unit,
-    onDelete: (Scooter) -> Unit,
-    onDownloadQr: (Scooter) -> Unit,
-    onTroubleSwap: ((Scooter) -> Unit)? = null,
-    onEditScooter: ((Scooter) -> Unit)? = null,
-    onEditMaintenance: ((Scooter) -> Unit)? = null,
+fun UnitStatusChip(
+    status: String,
+    onStatusChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Surface, RoundedCornerShape(14.dp))
-            .border(1.dp, Border, RoundedCornerShape(14.dp)),
-    ) {
-        // Toolbar
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+    var expanded by remember { mutableStateOf(false) }
+    val color = statusColor(status)
+
+    Box(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .defaultMinSize(minHeight = 28.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(color.subtle)
+                .border(1.dp, color.color.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                .clickable { expanded = true }
+                .padding(horizontal = 7.dp, vertical = 3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text("DAFTAR UNIT (${scooters.size})", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
-
-            OutlinedTextField(
-                value = search,
-                onValueChange = onSearch,
-                placeholder = { Text("Cari ID...", color = TextSubtle, fontSize = 12.sp) },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = TextSubtle, modifier = Modifier.size(16.dp)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(10.dp),
-                textStyle = MaterialTheme.typography.bodySmall,
+            Box(modifier = Modifier.size(6.dp).background(color.color, CircleShape))
+            Text(
+                text = StatusLabels.of(status),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = color.text, // WCAG > 4.5:1 (amber gelap #8A5300 di light mode)
+                maxLines = 1,
             )
+            Icon(
+                imageVector = Icons.Filled.ArrowDropDown,
+                contentDescription = "Pilih status unit",
+                tint = color.text,
+                modifier = Modifier.size(14.dp),
+            )
+        }
 
-            var showFilterModal by remember { mutableStateOf(false) }
-            val activeFilterCount = (if (filterStatus != "all") 1 else 0) +
-                (if (filterType != "all") 1 else 0) +
-                (if (sortBy != "id-asc") 1 else 0)
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Active filter summary text
-                Text(
-                    text = buildString {
-                        if (filterStatus != "all") append(StatusLabels.of(filterStatus))
-                        if (filterType != "all") {
-                            if (isNotEmpty()) append(" · ")
-                            append(TypeLabels.of(filterType))
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier
+                .background(Surface, RoundedCornerShape(10.dp))
+                .border(1.dp, Border, RoundedCornerShape(10.dp)),
+        ) {
+            listOf(
+                ScooterStatus.AVAILABLE to "Unit Ready",
+                ScooterStatus.IN_USE to "Unit Diluar",
+                ScooterStatus.MAINTENANCE to "Unit Kendala",
+            ).forEach { (value, label) ->
+                val optColor = statusColor(value)
+                DropdownMenuItem(
+                    text = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Box(modifier = Modifier.size(6.dp).background(optColor.color, CircleShape))
+                            Text(label, fontSize = 12.sp, color = if (value == status) Accent else TextPrimary)
                         }
-                        if (sortBy != "id-asc") {
-                            if (isNotEmpty()) append(" · ")
-                            append(sortLabel(sortBy).replace("Urutkan: ", ""))
+                    },
+                    onClick = {
+                        expanded = false
+                        if (value != status) {
+                            onStatusChange(value)
                         }
-                        if (isEmpty()) append("Semua status & jenis")
                     },
-                    color = TextSubtle,
-                    fontSize = 11.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f).padding(end = 8.dp)
-                )
-
-                // Single Filter & Urutan Button (opens modal)
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(9.dp))
-                        .background(if (activeFilterCount > 0) Accent.copy(alpha = 0.15f) else Surface2)
-                        .border(1.dp, if (activeFilterCount > 0) Accent else Border, RoundedCornerShape(9.dp))
-                        .clickable { showFilterModal = true }
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Tune,
-                        contentDescription = "Filter",
-                        tint = if (activeFilterCount > 0) Accent else TextPrimary,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Text(
-                        text = if (activeFilterCount > 0) "Filter ($activeFilterCount)" else "Filter & Urutkan",
-                        color = if (activeFilterCount > 0) Accent else TextPrimary,
-                        fontSize = 11.5.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-
-            if (showFilterModal) {
-                ManageFilterDialog(
-                    currentStatus = filterStatus,
-                    currentType = filterType,
-                    currentSort = sortBy,
-                    onApply = { newStatus, newType, newSort ->
-                        onFilterStatus(newStatus)
-                        onFilterType(newType)
-                        onSortBy(newSort)
-                        showFilterModal = false
-                    },
-                    onDismiss = { showFilterModal = false }
                 )
             }
         }
+    }
+}
 
-        if (scooters.isEmpty()) {
-            Text("Tidak ada scooter ditemukan.", color = TextMuted, fontSize = 12.sp, modifier = Modifier.padding(28.dp))
-        } else {
-            scooters.forEach { scooter ->
-                key(scooter.id) {
-                    ScooterRow(
-                        scooter = scooter,
-                        todayCount = getTodayCount(scooter.id),
-                        onOpenDetail = { onOpenDetail(scooter.id) },
-                        onStatusChange = { onStatusChange(scooter, it) },
-                        onDelete = { onDelete(scooter) },
-                        onDownloadQr = { onDownloadQr(scooter) },
-                        onTroubleSwap = onTroubleSwap,
-                        onEditScooter = { onEditScooter?.invoke(scooter) },
-                        onEditMaintenance = onEditMaintenance,
-                    )
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(1.dp)
-                            .background(Border),
+/**
+ * Row unit padat 2 baris (tinggi ~58dp, minimal 5 row muat di layar 6" tanpa scroll).
+ */
+@Composable
+fun UnitRow(
+    scooter: Scooter,
+    todayCount: Int,
+    onOpenDetail: () -> Unit,
+    onStatusChange: (String) -> Unit,
+    onDelete: () -> Unit,
+    onDownloadQr: () -> Unit,
+    activeOutlet: String = "all",
+    onTroubleSwap: ((Scooter) -> Unit)? = null,
+    onEditScooter: (() -> Unit)? = null,
+    onEditMaintenance: ((Scooter) -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    var overflowMenuExpanded by remember { mutableStateOf(false) }
+    val isDark = LocalThemeIsDark.current
+    val isMaintenance = scooter.status == ScooterStatus.MAINTENANCE
+    val am = scooter.activeMaintenance
+    val isLuar = am?.location == "luar"
+    val locDetail = am?.locationDetail?.takeIf { it.isNotBlank() }
+    val issueText = am?.issue?.takeIf { it.isNotBlank() } ?: scooter.maintenanceNote
+
+    // Hilangkan badge 'SB' bila hanya mengulang prefix ID
+    val isRepeatingPrefix = scooter.id.startsWith(scooter.type, ignoreCase = true)
+    val showTypeBadge = !isRepeatingPrefix
+    // Hilangkan chip lokasi per row kecuali filter outlet sedang "Semua outlet"
+    val showLocationChip = activeOutlet == "all"
+    val currentOutletId = scooter.currentOutlet ?: Outlets.getHomeOutletForType(scooter.type)
+    val outletLabel = Outlets.shortLabelOf(currentOutletId)
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpenDetail)
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        // ── BARIS 1: ID, (Badge), (Lokasi), Chip Status, (Tukar), Aksi (Edit, QR, Overflow) ──
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(
+                modifier = Modifier.weight(1f, fill = false),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                // ID dengan FontFamily.Monospace (tanpa spasi aneh "SB- 53")
+                val nameColor = ScooterColors.getScooterNameColor(scooter.type, scooter.id, scooter.currentOutlet, isDark)
+                Text(
+                    text = scooter.id,
+                    color = nameColor,
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1,
+                )
+
+                // Lokasi outlet (hanya jika filter "Semua outlet")
+                if (showLocationChip) {
+                    val outletColor = ScooterColors.getOutletColor(currentOutletId)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Surface2)
+                            .border(0.5.dp, Border, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 4.dp, vertical = 1.5.dp),
+                    ) {
+                        Icon(Icons.Filled.LocationOn, contentDescription = null, tint = outletColor, modifier = Modifier.size(10.dp))
+                        Text(
+                            text = outletLabel,
+                            color = TextPrimary,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                        )
+                    }
+                }
+
+                // Badge jenis armada hanya bila tidak mengulang prefix ID
+                if (showTypeBadge) {
+                    TypeBadge(scooter.type, id = scooter.id, outlet = scooter.currentOutlet)
+                }
+
+                // Chip Status Interaktif dengan WCAG contrast 4.5:1
+                UnitStatusChip(
+                    status = scooter.status,
+                    onStatusChange = onStatusChange,
+                )
+
+                // Tombol Tukar Unit (bila status IN_USE)
+                if (scooter.status == ScooterStatus.IN_USE && onTroubleSwap != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Warning.copy(alpha = 0.12f))
+                            .border(1.dp, Warning.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                            .clickable { onTroubleSwap(scooter) }
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Icon(Icons.Filled.WarningAmber, contentDescription = null, tint = Warning, modifier = Modifier.size(11.dp))
+                        Text("Tukar", color = Warning, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            // Aksi Kanan: Edit, QR, dan Overflow Menu (Hapus aman dengan dropdown)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(0.dp),
+            ) {
+                // Ikon Edit Unit (touch target 48.dp)
+                Box(
+                    modifier = Modifier
+                        .defaultMinSize(minWidth = 36.dp, minHeight = 36.dp)
+                        .clip(CircleShape)
+                        .clickable { onEditScooter?.invoke() }
+                        .padding(8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Edit,
+                        contentDescription = "Atur outlet dan data unit ${scooter.id}",
+                        tint = TextMuted,
+                        modifier = Modifier.size(15.dp),
                     )
                 }
+
+                // Ikon Unduh QR (touch target 48.dp)
+                Box(
+                    modifier = Modifier
+                        .defaultMinSize(minWidth = 36.dp, minHeight = 36.dp)
+                        .clip(CircleShape)
+                        .clickable { onDownloadQr() }
+                        .padding(8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.QrCode,
+                        contentDescription = "Unduh kode QR unit ${scooter.id}",
+                        tint = TextMuted,
+                        modifier = Modifier.size(15.dp),
+                    )
+                }
+
+                // Overflow Menu (Hapus dipindahkan ke sini secara aman)
+                Box {
+                    Box(
+                        modifier = Modifier
+                            .defaultMinSize(minWidth = 36.dp, minHeight = 36.dp)
+                            .clip(CircleShape)
+                            .clickable { overflowMenuExpanded = true }
+                            .padding(8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.MoreVert,
+                            contentDescription = "Opsi lainnya untuk unit ${scooter.id}",
+                            tint = TextMuted,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = overflowMenuExpanded,
+                        onDismissRequest = { overflowMenuExpanded = false },
+                        modifier = Modifier
+                            .background(Surface, RoundedCornerShape(12.dp))
+                            .border(1.dp, Border, RoundedCornerShape(12.dp)),
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Atur Outlet & Unit", fontSize = 12.sp, color = TextPrimary) },
+                            leadingIcon = { Icon(Icons.Filled.Edit, null, tint = TextMuted, modifier = Modifier.size(15.dp)) },
+                            onClick = {
+                                overflowMenuExpanded = false
+                                onEditScooter?.invoke()
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Unduh QR Code", fontSize = 12.sp, color = TextPrimary) },
+                            leadingIcon = { Icon(Icons.Filled.QrCode, null, tint = TextMuted, modifier = Modifier.size(15.dp)) },
+                            onClick = {
+                                overflowMenuExpanded = false
+                                onDownloadQr()
+                            },
+                        )
+                        if (isMaintenance) {
+                            val editMaintenanceAction = onEditMaintenance ?: onEditScooter?.let { edit -> { _: Scooter -> edit() } }
+                            if (editMaintenanceAction != null) {
+                                DropdownMenuItem(
+                                    text = { Text("Edit Kendala & Catatan", fontSize = 12.sp, color = TextPrimary) },
+                                    leadingIcon = { Icon(Icons.Filled.Schedule, null, tint = Warning, modifier = Modifier.size(15.dp)) },
+                                    onClick = {
+                                        overflowMenuExpanded = false
+                                        editMaintenanceAction(scooter)
+                                    },
+                                )
+                            }
+                        }
+                        HorizontalDivider(color = Border, thickness = 0.5.dp)
+                        DropdownMenuItem(
+                            text = { Text("Hapus Unit", fontSize = 12.sp, color = Red, fontWeight = FontWeight.SemiBold) },
+                            leadingIcon = { Icon(Icons.Filled.Delete, null, tint = Red, modifier = Modifier.size(15.dp)) },
+                            onClick = {
+                                overflowMenuExpanded = false
+                                onDelete()
+                            },
+                        )
+                    }
+                }
+            }
+        }
+
+        // ── BARIS 2: Timestamp, Catatan inline (1 baris + ellipsis) & pensil edit, "Keluar: Nx" ──
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(
+                modifier = Modifier.weight(1f, fill = false),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                // Ikon jam + timestamp kontekstual
+                val timestampRaw = if (isMaintenance) (am?.startedAt ?: scooter.lastUpdated) else scooter.lastUpdated
+                val timestampFormatted = DateUtils.formatContextualTime(timestampRaw)
+                val timeColor = if (isMaintenance) statusColor(ScooterStatus.MAINTENANCE).text else TextSubtle
+
+                Icon(
+                    imageVector = Icons.Filled.Schedule,
+                    contentDescription = null,
+                    tint = timeColor,
+                    modifier = Modifier.size(11.dp),
+                )
+                Text(
+                    text = timestampFormatted,
+                    color = timeColor,
+                    fontSize = 10.5.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                )
+
+                // Indikator lokasi perbaikan luar/outlet
+                if (isMaintenance) {
+                    Text("·", color = Border, fontSize = 10.sp)
+                    Text(
+                        text = if (isLuar) (if (locDetail != null) "Luar ($locDetail)" else "Luar") else "Di Outlet",
+                        color = if (isLuar) Red else TextSubtle,
+                        fontSize = 10.sp,
+                        fontWeight = if (isLuar) FontWeight.SemiBold else FontWeight.Normal,
+                        maxLines = 1,
+                    )
+                }
+
+                // Catatan inline 1 baris dengan ellipsis + ikon pensil kecil di ujung catatan
+                if (!issueText.isNullOrBlank()) {
+                    Text("·", color = Border, fontSize = 10.sp)
+                    Text(
+                        text = issueText,
+                        color = TextMuted,
+                        fontSize = 10.5.sp,
+                        fontStyle = FontStyle.Italic,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+
+                    val inlineEditAction = onEditMaintenance ?: onEditScooter?.let { edit -> { _: Scooter -> edit() } }
+                    if (inlineEditAction != null) {
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .clickable { inlineEditAction(scooter) }
+                                .padding(2.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Edit,
+                                contentDescription = "Edit catatan unit ${scooter.id}",
+                                tint = Accent,
+                                modifier = Modifier.size(11.dp),
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Hitungan keluar hari ini: "Keluar: Nx" (disembunyikan bila 0x)
+            if (todayCount > 0) {
+                Text(
+                    text = "Keluar: ${todayCount}x",
+                    color = Accent,
+                    fontSize = 10.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = FontFamily.Monospace,
+                )
             }
         }
     }
@@ -243,199 +486,253 @@ fun ScooterRow(
     onEditScooter: (() -> Unit)? = null,
     onEditMaintenance: ((Scooter) -> Unit)? = null,
 ) {
-    Column(
-        modifier = Modifier
+    UnitRow(
+        scooter = scooter,
+        todayCount = todayCount,
+        onOpenDetail = onOpenDetail,
+        onStatusChange = onStatusChange,
+        onDelete = onDelete,
+        onDownloadQr = onDownloadQr,
+        onTroubleSwap = onTroubleSwap,
+        onEditScooter = onEditScooter,
+        onEditMaintenance = onEditMaintenance,
+    )
+}
+
+/**
+ * Filter status cepat (Semua, Ready, Diluar, Kendala) di bawah search bar.
+ */
+@Composable
+fun ManageFilterChips(
+    selectedStatus: String,
+    totalCount: Int,
+    readyCount: Int,
+    inUseCount: Int,
+    maintenanceCount: Int,
+    onStatusSelected: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onOpenDetail)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(
-                modifier = Modifier.weight(1f, fill = false),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                val isDark = LocalThemeIsDark.current
-                val nameColor = ScooterColors.getScooterNameColor(scooter.type, scooter.id, scooter.currentOutlet, isDark)
-                Text(
-                    text = scooter.id,
-                    color = nameColor,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace,
-                    maxLines = 1,
-                )
-                TypeBadge(scooter.type, id = scooter.id, outlet = scooter.currentOutlet)
+        StatusFilterPill(
+            label = "Semua",
+            count = totalCount,
+            selected = selectedStatus == "all",
+            onClick = { onStatusSelected("all") },
+        )
+        StatusFilterPill(
+            label = "Ready",
+            count = readyCount,
+            selected = selectedStatus == ScooterStatus.AVAILABLE,
+            onClick = { onStatusSelected(ScooterStatus.AVAILABLE) },
+            activeColor = Green,
+        )
+        StatusFilterPill(
+            label = "Diluar",
+            count = inUseCount,
+            selected = selectedStatus == ScooterStatus.IN_USE,
+            onClick = { onStatusSelected(ScooterStatus.IN_USE) },
+            activeColor = Accent,
+        )
+        StatusFilterPill(
+            label = "Kendala",
+            count = maintenanceCount,
+            selected = selectedStatus == ScooterStatus.MAINTENANCE,
+            onClick = { onStatusSelected(ScooterStatus.MAINTENANCE) },
+            activeColor = Warning,
+        )
+    }
+}
 
-                // Current Outlet Badge (Interactive)
-                val currentOutletId = scooter.currentOutlet ?: Outlets.getHomeOutletForType(scooter.type)
-                val outletLabel = Outlets.shortLabelOf(currentOutletId)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(3.dp),
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(Surface2)
-                        .border(1.dp, Border, RoundedCornerShape(6.dp))
-                        .clickable { onEditScooter?.invoke() }
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                ) {
-                    val outletColor = ScooterColors.getOutletColor(currentOutletId)
-                    Icon(Icons.Filled.LocationOn, contentDescription = null, tint = outletColor, modifier = Modifier.size(11.dp))
-                    Text(
-                        text = outletLabel,
-                        color = TextPrimary,
-                        fontSize = 10.5.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                IconButton(onClick = { onEditScooter?.invoke() }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Filled.Edit, contentDescription = "Atur Outlet & Unit", tint = TextMuted, modifier = Modifier.size(16.dp))
-                }
-                IconButton(onClick = onDownloadQr, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Filled.QrCode, contentDescription = "Unduh QR", tint = TextMuted, modifier = Modifier.size(16.dp))
-                }
-                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Filled.Delete, contentDescription = "Hapus", tint = TextMuted, modifier = Modifier.size(16.dp))
-                }
-            }
+@Composable
+private fun StatusFilterPill(
+    label: String,
+    count: Int,
+    selected: Boolean,
+    onClick: () -> Unit,
+    activeColor: Color = Accent,
+) {
+    val isDark = LocalThemeIsDark.current
+    val bg = if (selected) activeColor.copy(alpha = if (isDark) 0.18f else 0.12f) else Surface2
+    val border = if (selected) activeColor else Border
+    val text = if (selected) {
+        if (activeColor == Warning && !isDark) Color(0xFF8A5300) else activeColor
+    } else {
+        TextMuted
+    }
+
+    Row(
+        modifier = Modifier
+            .defaultMinSize(minHeight = 32.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(bg)
+            .border(1.dp, border, RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        Text(
+            text = label,
+            color = text,
+            fontSize = 11.5.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+        )
+        Box(
+            modifier = Modifier
+                .background(if (selected) activeColor.copy(alpha = 0.2f) else Surface3, RoundedCornerShape(6.dp))
+                .padding(horizontal = 5.dp, vertical = 1.dp),
+        ) {
+            Text(
+                text = "$count",
+                color = text,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+            )
         }
+    }
+}
 
+@Composable
+fun ScooterList(
+    scooters: List<Scooter>,
+    search: String,
+    onSearch: (String) -> Unit,
+    filterStatus: String,
+    onFilterStatus: (String) -> Unit,
+    filterType: String,
+    onFilterType: (String) -> Unit,
+    sortBy: String,
+    onSortBy: (String) -> Unit,
+    getTodayCount: (String) -> Int,
+    onOpenDetail: (String) -> Unit,
+    onStatusChange: (Scooter, String) -> Unit,
+    onDelete: (Scooter) -> Unit,
+    onDownloadQr: (Scooter) -> Unit,
+    activeOutlet: String = "all",
+    onTroubleSwap: ((Scooter) -> Unit)? = null,
+    onEditScooter: ((Scooter) -> Unit)? = null,
+    onEditMaintenance: ((Scooter) -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    var showFilterModal by remember { mutableStateOf(false) }
+    val activeFilterCount = (if (filterStatus != "all") 1 else 0) +
+        (if (filterType != "all") 1 else 0) +
+        (if (sortBy != "id-asc") 1 else 0)
+
+    val availableCount = remember(scooters) { scooters.count { it.status == ScooterStatus.AVAILABLE } }
+    val inUseCount = remember(scooters) { scooters.count { it.status == ScooterStatus.IN_USE } }
+    val maintenanceCount = remember(scooters) { scooters.count { it.status == ScooterStatus.MAINTENANCE } }
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        // Search Bar & Filter Button
         Row(
             modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
+            OutlinedTextField(
+                value = search,
+                onValueChange = onSearch,
+                placeholder = { Text("Cari ID unit...", color = TextSubtle, fontSize = 12.sp) },
+                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = TextSubtle, modifier = Modifier.size(16.dp)) },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                shape = RoundedCornerShape(10.dp),
+                textStyle = MaterialTheme.typography.bodySmall,
+            )
+
+            // Tombol Filter & Urutkan
             Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (activeFilterCount > 0) Accent.copy(alpha = 0.15f) else Surface2)
+                    .border(1.dp, if (activeFilterCount > 0) Accent else Border, RoundedCornerShape(10.dp))
+                    .clickable { showFilterModal = true }
+                    .padding(horizontal = 10.dp, vertical = 9.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                StatusPillButton(
-                    status = scooter.status,
-                    onStatusChange = onStatusChange,
+                Icon(
+                    imageVector = Icons.Filled.Tune,
+                    contentDescription = "Filter dan Urutkan",
+                    tint = if (activeFilterCount > 0) Accent else TextPrimary,
+                    modifier = Modifier.size(15.dp),
                 )
-                if (scooter.status == ScooterStatus.IN_USE && onTroubleSwap != null) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier
-                            .background(Warning.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
-                            .border(1.dp, Warning.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                            .clickable { onTroubleSwap(scooter) }
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
-                    ) {
-                        Icon(Icons.Filled.WarningAmber, contentDescription = null, tint = Warning, modifier = Modifier.size(13.dp))
-                        Text("Tukar", color = Warning, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
+                Text(
+                    text = if (activeFilterCount > 0) "Filter ($activeFilterCount)" else "Filter & Urutkan",
+                    color = if (activeFilterCount > 0) Accent else TextPrimary,
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.Bold,
+                )
             }
-            Text(
-                "${todayCount}x keluar",
-                color = if (todayCount > 0) Accent else TextMuted,
-                fontSize = 11.sp,
-                fontWeight = if (todayCount > 0) FontWeight.SemiBold else FontWeight.Normal,
+        }
+
+        // Quick Status Filter Chips
+        ManageFilterChips(
+            selectedStatus = filterStatus,
+            totalCount = scooters.size,
+            readyCount = availableCount,
+            inUseCount = inUseCount,
+            maintenanceCount = maintenanceCount,
+            onStatusSelected = onFilterStatus,
+        )
+
+        // Modal Filter & Urutkan
+        if (showFilterModal) {
+            ManageFilterDialog(
+                currentStatus = filterStatus,
+                currentType = filterType,
+                currentSort = sortBy,
+                onApply = { newStatus, newType, newSort ->
+                    onFilterStatus(newStatus)
+                    onFilterType(newType)
+                    onSortBy(newSort)
+                    showFilterModal = false
+                },
+                onDismiss = { showFilterModal = false },
             )
         }
 
-        if (scooter.status == ScooterStatus.MAINTENANCE) {
-            val am = scooter.activeMaintenance
-            val isLuar = am?.location == "luar"
-            val locDetail = am?.locationDetail?.takeIf { it.isNotBlank() }
-            val issueText = am?.issue?.takeIf { it.isNotBlank() } ?: scooter.maintenanceNote
-            val timestampText = DateUtils.formatDayMonthTime(am?.startedAt ?: scooter.lastUpdated)
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.fillMaxWidth(),
+        // Daftar baris unit langsung di atas background dengan HorizontalDivider (tanpa card ganda)
+        if (scooters.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 32.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Icon(Icons.Filled.Schedule, contentDescription = null, tint = Warning, modifier = Modifier.size(11.dp))
-                    Text(
-                        text = timestampText,
-                        color = Warning,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                if (isLuar) Red.copy(alpha = 0.12f) else Surface2,
-                                RoundedCornerShape(6.dp),
-                            )
-                            .border(
-                                1.dp,
-                                if (isLuar) Red.copy(alpha = 0.35f) else Border,
-                                RoundedCornerShape(6.dp),
-                            )
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(3.dp),
-                        ) {
-                            Icon(
-                                Icons.Filled.LocationOn,
-                                contentDescription = null,
-                                tint = if (isLuar) Red else TextMuted,
-                                modifier = Modifier.size(10.dp),
-                            )
-                            Text(
-                                text = if (isLuar) {
-                                    if (locDetail != null) "Luar Outlet: $locDetail" else "Luar Outlet"
-                                } else {
-                                    "Di Outlet"
-                                },
-                                color = if (isLuar) Red else TextMuted,
-                                fontSize = 10.sp,
-                                fontWeight = if (isLuar) FontWeight.SemiBold else FontWeight.Medium,
-                            )
-                        }
-                    }
-                    if (!issueText.isNullOrBlank()) {
-                        Text(
-                            text = "Catatan: $issueText",
-                            color = TextMuted,
-                            fontSize = 11.sp,
-                            fontStyle = FontStyle.Italic,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
+                Text("Tidak ada unit scooter yang cocok.", color = TextMuted, fontSize = 12.sp)
+            }
+        } else {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                scooters.forEach { scooter ->
+                    key(scooter.id) {
+                        UnitRow(
+                            scooter = scooter,
+                            todayCount = getTodayCount(scooter.id),
+                            activeOutlet = activeOutlet,
+                            onOpenDetail = { onOpenDetail(scooter.id) },
+                            onStatusChange = { onStatusChange(scooter, it) },
+                            onDelete = { onDelete(scooter) },
+                            onDownloadQr = { onDownloadQr(scooter) },
+                            onTroubleSwap = onTroubleSwap,
+                            onEditScooter = { onEditScooter?.invoke(scooter) },
+                            onEditMaintenance = onEditMaintenance,
                         )
-                    }
-                }
-                val editAction = onEditMaintenance ?: onEditScooter?.let { edit -> { _: Scooter -> edit() } }
-                if (editAction != null) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier
-                            .border(1.dp, Border, RoundedCornerShape(6.dp))
-                            .background(Surface2.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
-                            .clickable { editAction(scooter) }
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                    ) {
-                        Icon(Icons.Filled.Edit, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(10.dp))
-                        Text(
-                            text = "Edit Catatan",
-                            color = TextPrimary,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium,
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            color = Border.copy(alpha = 0.5f),
+                            thickness = 0.5.dp,
                         )
                     }
                 }
@@ -918,66 +1215,10 @@ fun StatusPillButton(
     status: String,
     onStatusChange: (String) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    val color = statusColor(status)
-
-    Box {
-        Row(
-            modifier = Modifier
-                .height(30.dp)
-                .background(color.subtle, RoundedCornerShape(8.dp))
-                .border(1.dp, color.color.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                .clickable { expanded = true }
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Box(modifier = Modifier.size(6.dp).background(color.color, CircleShapeCompat))
-            Text(
-                text = StatusLabels.of(status),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = color.color,
-            )
-            Icon(
-                Icons.Filled.ArrowDropDown,
-                contentDescription = null,
-                tint = color.color,
-                modifier = Modifier.size(14.dp),
-            )
-        }
-
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier
-                .background(Surface, RoundedCornerShape(10.dp))
-                .border(1.dp, Border, RoundedCornerShape(10.dp)),
-        ) {
-            listOf(
-                ScooterStatus.AVAILABLE to "Unit Ready",
-                ScooterStatus.IN_USE to "Unit Diluar",
-                ScooterStatus.MAINTENANCE to "Unit Kendala",
-            ).forEach { (value, label) ->
-                val optColor = statusColor(value)
-                DropdownMenuItem(
-                    text = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Box(modifier = Modifier.size(6.dp).background(optColor.color, CircleShapeCompat))
-                            Text(label, fontSize = 12.sp, color = if (value == status) Accent else TextPrimary)
-                        }
-                    },
-                    onClick = {
-                        onStatusChange(value)
-                        expanded = false
-                    },
-                )
-            }
-        }
-    }
+    UnitStatusChip(
+        status = status,
+        onStatusChange = onStatusChange,
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1182,6 +1423,74 @@ fun ManageFilterDialog(
                 }
             }
         }
+    }
+}
+
+// ── Previews ──────────────────────────────────────────────────────────
+
+@Preview(name = "UnitRow - Normal Ready", showBackground = true)
+@Composable
+private fun UnitRowReadyPreview() {
+    TrackScooterTheme(isDark = false) {
+        UnitRow(
+            scooter = Scooter(
+                id = "SB-01",
+                type = "sb",
+                status = ScooterStatus.AVAILABLE,
+                currentOutlet = "utara-motor",
+                lastUpdated = "2026-10-01T10:00:00Z",
+            ),
+            todayCount = 3,
+            onOpenDetail = {},
+            onStatusChange = {},
+            onDelete = {},
+            onDownloadQr = {},
+        )
+    }
+}
+
+@Preview(name = "UnitRow - In Use", showBackground = true)
+@Composable
+private fun UnitRowInUsePreview() {
+    TrackScooterTheme(isDark = false) {
+        UnitRow(
+            scooter = Scooter(
+                id = "FZ-12",
+                type = "fz",
+                status = ScooterStatus.IN_USE,
+                currentOutlet = "utara-motor",
+                lastUpdated = "2026-10-01T09:30:00Z",
+            ),
+            todayCount = 1,
+            onOpenDetail = {},
+            onStatusChange = {},
+            onDelete = {},
+            onDownloadQr = {},
+            onTroubleSwap = {},
+        )
+    }
+}
+
+@Preview(name = "UnitRow - Maintenance Long Note", showBackground = true)
+@Composable
+private fun UnitRowMaintenanceLongNotePreview() {
+    TrackScooterTheme(isDark = false) {
+        UnitRow(
+            scooter = Scooter(
+                id = "EX-05",
+                type = "ex",
+                status = ScooterStatus.MAINTENANCE,
+                currentOutlet = "utara-motor",
+                lastUpdated = "2026-10-01T08:15:00Z",
+                maintenanceNote = "Baterai bocor dan rem belakang berdecit saat turunan tajam",
+            ),
+            todayCount = 0,
+            onOpenDetail = {},
+            onStatusChange = {},
+            onDelete = {},
+            onDownloadQr = {},
+            onEditMaintenance = {},
+        )
     }
 }
 

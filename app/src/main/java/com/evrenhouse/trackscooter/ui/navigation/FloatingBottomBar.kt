@@ -12,6 +12,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -160,10 +161,7 @@ private fun FloatingNavItem(
 
     Column(
         modifier = modifier
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
+            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -176,6 +174,10 @@ private fun FloatingNavItem(
         // Pill indikator di belakang icon (1,5x lebih besar jika scan)
         Box(
             modifier = Modifier
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
                 .clip(RoundedCornerShape(if (isScan) 16.dp else 12.dp))
                 .background(animatedPillColor)
                 .padding(
@@ -186,7 +188,7 @@ private fun FloatingNavItem(
         ) {
             Icon(
                 imageVector = item.icon,
-                contentDescription = item.label,
+                contentDescription = "Navigasi ke ${item.label}",
                 tint = animatedContentColor,
                 modifier = Modifier.size(iconSize),
             )
@@ -195,11 +197,7 @@ private fun FloatingNavItem(
         Text(
             text = item.label,
             color = labelColor,
-            fontSize = if (isScan) {
-                if (selected) 12.5.sp else 11.5.sp
-            } else {
-                if (selected) 10.5.sp else 9.5.sp
-            },
+            fontSize = if (isScan) 11.5.sp else 10.sp,
             fontWeight = if (isScan) {
                 if (selected) FontWeight.Bold else FontWeight.SemiBold
             } else {
