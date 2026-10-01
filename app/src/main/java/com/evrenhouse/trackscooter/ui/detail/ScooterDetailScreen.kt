@@ -205,12 +205,15 @@ fun ScooterDetailScreen(
                     val scooter = state.scooter
                     val idText = scooter?.id ?: scooterId
                     val currentOutletId = scooter?.currentOutlet ?: Outlets.getHomeOutletForType(scooter?.type ?: "sd")
+                    val isDark = LocalThemeIsDark.current
+                    val idColor = remember(scooter?.type, scooter?.id, scooter?.currentOutlet, isDark) {
+                        ScooterColors.getScooterNameColor(scooter?.type, scooter?.id, scooter?.currentOutlet, isDark)
+                    }
 
                     Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                        // ID unit sebagai judul warna onSurface (netral), Monospace bold
                         Text(
                             text = idText,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = idColor,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace,

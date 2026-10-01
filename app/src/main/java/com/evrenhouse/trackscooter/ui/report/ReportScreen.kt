@@ -754,12 +754,16 @@ fun ScanAttendanceRecentLogCard(
                 if (index > 0) {
                     Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Border))
                 }
+                val isDark = LocalThemeIsDark.current
                 val timeStr = remember(record.scannedAt) {
                     val raw = record.scannedAt
                     if (raw != null) {
                         val dt = DateUtils.parse(raw)
                         if (dt != null) DateUtils.formatTime(dt) else raw
                     } else "-"
+                }
+                val nameColor = remember(record.scooterType, record.scooterId, isDark) {
+                    ScooterColors.getScooterNameColor(record.scooterType, record.scooterId, null, isDark)
                 }
 
                 Row(
@@ -788,7 +792,7 @@ fun ScanAttendanceRecentLogCard(
 
                         Text(
                             text = record.scooterId,
-                            color = TextPrimary,
+                            color = nameColor,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace,

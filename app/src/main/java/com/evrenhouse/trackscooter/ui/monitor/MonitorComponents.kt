@@ -73,6 +73,7 @@ import com.evrenhouse.trackscooter.ui.theme.TextSubtle
 import com.evrenhouse.trackscooter.ui.theme.TrackScooterTheme
 import com.evrenhouse.trackscooter.ui.theme.Warning
 import com.evrenhouse.trackscooter.util.DateUtils
+import com.evrenhouse.trackscooter.util.ScooterColors
 import java.time.Duration
 import java.time.LocalDateTime
 
@@ -247,6 +248,9 @@ fun LiveSessionCard(
     val keluarTime = if (dt != null) DateUtils.formatTime(dt) else "-"
 
     val isDark = LocalThemeIsDark.current
+    val nameColor = remember(scooter.type, scooter.id, scooter.currentOutlet, isDark) {
+        ScooterColors.getScooterNameColor(scooter.type, scooter.id, scooter.currentOutlet, isDark)
+    }
     val blueTextColor = if (isDark) Color(0xFF818CF8) else Color(0xFF1E40AF)
     val blueBgColor = if (isDark) Accent.copy(alpha = 0.18f) else Color(0xFFEFF6FF)
 
@@ -272,7 +276,7 @@ fun LiveSessionCard(
             ) {
                 Text(
                     text = scooter.id,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = nameColor,
                     fontSize = 16.5.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
@@ -547,8 +551,10 @@ fun ReadyUnitRow(
     modifier: Modifier = Modifier,
 ) {
     val isDark = LocalThemeIsDark.current
+    val nameColor = remember(unit.id, isDark) {
+        ScooterColors.getScooterNameColor(null, unit.id, null, isDark)
+    }
     val greenTextColor = if (isDark) Color(0xFF4ADE80) else Color(0xFF15803D)
-
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -564,7 +570,7 @@ fun ReadyUnitRow(
         ) {
             Text(
                 text = unit.id,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = nameColor,
                 fontSize = 13.5.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
