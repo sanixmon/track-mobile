@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.filled.Monitor
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Tune
@@ -63,11 +64,11 @@ private val operasionalItems = listOf(
     BottomNavItem(Routes.MONITOR, "Monitor", Icons.Filled.Monitor),
     BottomNavItem(Routes.SCAN, "Scan", Icons.Filled.QrCodeScanner),
     BottomNavItem(Routes.REPORT, "Laporan", Icons.Filled.Assignment),
-    BottomNavItem(Routes.MODE_MANAJEMEN, "Kelola", Icons.Filled.Tune),
+    BottomNavItem(Routes.MODE_MANAJEMEN, "Kelola", Icons.Outlined.Inventory2),
 )
 
 private val manajemenItems = listOf(
-    BottomNavItem(Routes.MANAGE, "Kelola", Icons.Filled.Inventory2),
+    BottomNavItem(Routes.MANAGE, "Kelola", Icons.Outlined.Inventory2),
     BottomNavItem(Routes.MANAGE_DASHBOARD, "Dashboard", Icons.Filled.Dashboard),
     BottomNavItem(Routes.MODE_OPERASIONAL, "Operasional", Icons.Filled.Home),
 )

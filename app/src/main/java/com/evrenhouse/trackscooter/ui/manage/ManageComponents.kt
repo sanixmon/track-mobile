@@ -106,20 +106,19 @@ fun UnitStatusChip(
     Box(modifier = modifier) {
         Row(
             modifier = Modifier
-                .defaultMinSize(minHeight = 28.dp)
+                .height(28.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(color.subtle)
                 .border(1.dp, color.color.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
                 .clickable { expanded = true }
-                .padding(horizontal = 7.dp, vertical = 3.dp),
+                .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Box(modifier = Modifier.size(6.dp).background(color.color, CircleShape))
             Text(
                 text = StatusLabels.of(status),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.labelMedium,
                 color = color.text, // WCAG > 4.5:1 (amber gelap #8A5300 di light mode)
                 maxLines = 1,
             )
@@ -202,7 +201,7 @@ fun UnitRow(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onOpenDetail)
+            .clickable(onClick = { onEditScooter?.invoke() ?: onOpenDetail() })
             .padding(horizontal = 16.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
@@ -217,11 +216,10 @@ fun UnitRow(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                // ID dengan FontFamily.Monospace (tanpa spasi aneh "SB- 53")
-                val nameColor = ScooterColors.getScooterNameColor(scooter.type, scooter.id, scooter.currentOutlet, isDark)
+                // ID dengan onSurface netral untuk semua jenis (tanpa warna merah/hijau)
                 Text(
                     text = scooter.id,
-                    color = nameColor,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 13.5.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
@@ -280,29 +278,12 @@ fun UnitRow(
                 }
             }
 
-            // Aksi Kanan: Edit, QR, dan Overflow Menu (Hapus aman dengan dropdown)
+            // Aksi Kanan: Hanya QR dan Menu Titik 3 (tampilan luar bersih tanpa pensil)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(0.dp),
             ) {
-                // Ikon Edit Unit (touch target 48.dp)
-                Box(
-                    modifier = Modifier
-                        .defaultMinSize(minWidth = 36.dp, minHeight = 36.dp)
-                        .clip(CircleShape)
-                        .clickable { onEditScooter?.invoke() }
-                        .padding(8.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Edit,
-                        contentDescription = "Atur outlet dan data unit ${scooter.id}",
-                        tint = TextMuted,
-                        modifier = Modifier.size(15.dp),
-                    )
-                }
-
-                // Ikon Unduh QR (touch target 48.dp)
+                // Ikon Unduh QR
                 Box(
                     modifier = Modifier
                         .defaultMinSize(minWidth = 36.dp, minHeight = 36.dp)
@@ -315,7 +296,7 @@ fun UnitRow(
                         imageVector = Icons.Filled.QrCode,
                         contentDescription = "Unduh kode QR unit ${scooter.id}",
                         tint = TextMuted,
-                        modifier = Modifier.size(15.dp),
+                        modifier = Modifier.size(16.dp),
                     )
                 }
 
@@ -372,7 +353,14 @@ fun UnitRow(
                                     },
                                 )
                             }
-                        }
+                        DropdownMenuItem(
+                            text = { Text("Detail Unit", fontSize = 12.sp, color = TextPrimary) },
+                            leadingIcon = { Icon(Icons.Filled.Tune, null, tint = TextMuted, modifier = Modifier.size(15.dp)) },
+                            onClick = {
+                                overflowMenuExpanded = false
+                                onOpenDetail()
+                            },
+                        )
                         HorizontalDivider(color = Border, thickness = 0.5.dp)
                         DropdownMenuItem(
                             text = { Text("Hapus Unit", fontSize = 12.sp, color = Red, fontWeight = FontWeight.SemiBold) },
@@ -429,7 +417,7 @@ fun UnitRow(
                     )
                 }
 
-                // Catatan inline 1 baris dengan ellipsis + ikon pensil kecil di ujung catatan
+                // Catatan inline 1 baris bersih tanpa tombol pensil yang mengotori tampilan
                 if (!issueText.isNullOrBlank()) {
                     Text("·", color = Border, fontSize = 10.sp)
                     Text(
@@ -441,24 +429,6 @@ fun UnitRow(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
                     )
-
-                    val inlineEditAction = onEditMaintenance ?: onEditScooter?.let { edit -> { _: Scooter -> edit() } }
-                    if (inlineEditAction != null) {
-                        Box(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .clickable { inlineEditAction(scooter) }
-                                .padding(2.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Edit,
-                                contentDescription = "Edit catatan unit ${scooter.id}",
-                                tint = Accent,
-                                modifier = Modifier.size(11.dp),
-                            )
-                        }
-                    }
                 }
             }
 
@@ -601,6 +571,109 @@ private fun StatusFilterPill(
     }
 }
 
+/**
+ * Toolbar pencarian, tombol filter & urutkan, dan quick status filter chips
+ * dengan tinggi search field ~48dp dan jarak vertikal rapat (<= 20% tinggi layar).
+ */
+@Composable
+fun ManageSearchBarSection(
+    search: String,
+    onSearch: (String) -> Unit,
+    filterStatus: String,
+    onFilterStatus: (String) -> Unit,
+    filterType: String,
+    onFilterType: (String) -> Unit,
+    sortBy: String,
+    onSortBy: (String) -> Unit,
+    totalCount: Int,
+    readyCount: Int,
+    inUseCount: Int,
+    maintenanceCount: Int,
+    modifier: Modifier = Modifier,
+) {
+    var showFilterModal by remember { mutableStateOf(false) }
+    val activeFilterCount = (if (filterStatus != "all") 1 else 0) +
+        (if (filterType != "all") 1 else 0) +
+        (if (sortBy != "id-asc") 1 else 0)
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        // Search Bar & Filter Button (tinggi ~48dp, rapat)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedTextField(
+                value = search,
+                onValueChange = onSearch,
+                placeholder = { Text("Cari ID unit...", color = TextSubtle, fontSize = 12.sp) },
+                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = TextSubtle, modifier = Modifier.size(16.dp)) },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
+                singleLine = true,
+                shape = RoundedCornerShape(10.dp),
+                textStyle = MaterialTheme.typography.bodySmall,
+            )
+
+            // Tombol Filter & Urutkan
+            Row(
+                modifier = Modifier
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (activeFilterCount > 0) Accent.copy(alpha = 0.15f) else Surface2)
+                    .border(1.dp, if (activeFilterCount > 0) Accent else Border, RoundedCornerShape(10.dp))
+                    .clickable { showFilterModal = true }
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Tune,
+                    contentDescription = "Filter dan Urutkan",
+                    tint = if (activeFilterCount > 0) Accent else TextPrimary,
+                    modifier = Modifier.size(15.dp),
+                )
+                Text(
+                    text = if (activeFilterCount > 0) "Filter ($activeFilterCount)" else "Filter & Urutkan",
+                    color = if (activeFilterCount > 0) Accent else TextPrimary,
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+
+        // Quick Status Filter Chips
+        ManageFilterChips(
+            selectedStatus = filterStatus,
+            totalCount = totalCount,
+            readyCount = readyCount,
+            inUseCount = inUseCount,
+            maintenanceCount = maintenanceCount,
+            onStatusSelected = onFilterStatus,
+        )
+
+        // Modal Filter & Urutkan
+        if (showFilterModal) {
+            ManageFilterDialog(
+                currentStatus = filterStatus,
+                currentType = filterType,
+                currentSort = sortBy,
+                onApply = { newStatus, newType, newSort ->
+                    onFilterStatus(newStatus)
+                    onFilterType(newType)
+                    onSortBy(newSort)
+                    showFilterModal = false
+                },
+                onDismiss = { showFilterModal = false },
+            )
+        }
+    }
+}
+
 @Composable
 fun ScooterList(
     scooters: List<Scooter>,
@@ -623,88 +696,28 @@ fun ScooterList(
     onEditMaintenance: ((Scooter) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    var showFilterModal by remember { mutableStateOf(false) }
-    val activeFilterCount = (if (filterStatus != "all") 1 else 0) +
-        (if (filterType != "all") 1 else 0) +
-        (if (sortBy != "id-asc") 1 else 0)
-
     val availableCount = remember(scooters) { scooters.count { it.status == ScooterStatus.AVAILABLE } }
     val inUseCount = remember(scooters) { scooters.count { it.status == ScooterStatus.IN_USE } }
     val maintenanceCount = remember(scooters) { scooters.count { it.status == ScooterStatus.MAINTENANCE } }
 
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // Search Bar & Filter Button
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OutlinedTextField(
-                value = search,
-                onValueChange = onSearch,
-                placeholder = { Text("Cari ID unit...", color = TextSubtle, fontSize = 12.sp) },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = TextSubtle, modifier = Modifier.size(16.dp)) },
-                modifier = Modifier.weight(1f),
-                singleLine = true,
-                shape = RoundedCornerShape(10.dp),
-                textStyle = MaterialTheme.typography.bodySmall,
-            )
-
-            // Tombol Filter & Urutkan
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(if (activeFilterCount > 0) Accent.copy(alpha = 0.15f) else Surface2)
-                    .border(1.dp, if (activeFilterCount > 0) Accent else Border, RoundedCornerShape(10.dp))
-                    .clickable { showFilterModal = true }
-                    .padding(horizontal = 10.dp, vertical = 9.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Tune,
-                    contentDescription = "Filter dan Urutkan",
-                    tint = if (activeFilterCount > 0) Accent else TextPrimary,
-                    modifier = Modifier.size(15.dp),
-                )
-                Text(
-                    text = if (activeFilterCount > 0) "Filter ($activeFilterCount)" else "Filter & Urutkan",
-                    color = if (activeFilterCount > 0) Accent else TextPrimary,
-                    fontSize = 11.5.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
-
-        // Quick Status Filter Chips
-        ManageFilterChips(
-            selectedStatus = filterStatus,
+        ManageSearchBarSection(
+            search = search,
+            onSearch = onSearch,
+            filterStatus = filterStatus,
+            onFilterStatus = onFilterStatus,
+            filterType = filterType,
+            onFilterType = onFilterType,
+            sortBy = sortBy,
+            onSortBy = onSortBy,
             totalCount = scooters.size,
             readyCount = availableCount,
             inUseCount = inUseCount,
             maintenanceCount = maintenanceCount,
-            onStatusSelected = onFilterStatus,
         )
-
-        // Modal Filter & Urutkan
-        if (showFilterModal) {
-            ManageFilterDialog(
-                currentStatus = filterStatus,
-                currentType = filterType,
-                currentSort = sortBy,
-                onApply = { newStatus, newType, newSort ->
-                    onFilterStatus(newStatus)
-                    onFilterType(newType)
-                    onSortBy(newSort)
-                    showFilterModal = false
-                },
-                onDismiss = { showFilterModal = false },
-            )
-        }
-
         // Daftar baris unit langsung di atas background dengan HorizontalDivider (tanpa card ganda)
         if (scooters.isEmpty()) {
             Box(

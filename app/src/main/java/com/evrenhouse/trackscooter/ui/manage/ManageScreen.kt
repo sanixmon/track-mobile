@@ -2,6 +2,13 @@ package com.evrenhouse.trackscooter.ui.manage
 import com.evrenhouse.trackscooter.BuildConfig
 
 import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -45,6 +53,8 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Surface
 import com.evrenhouse.trackscooter.util.toPngBytes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
@@ -54,6 +64,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -110,6 +122,7 @@ import com.evrenhouse.trackscooter.util.StatusLabels
 import com.evrenhouse.trackscooter.util.TypeLabels
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ManageScreen(
     viewModel: ScooterDataViewModel,
@@ -177,19 +190,50 @@ fun ManageScreen(
     }
 
     val lazyListState = rememberLazyListState()
-    val isFabExpanded by remember { derivedStateOf { lazyListState.firstVisibleItemIndex == 0 } }
+    var isFabVisible by remember { mutableStateOf(true) }
+    var lastFirstVisibleItemIndex by remember { mutableIntStateOf(0) }
+    var lastFirstVisibleItemScrollOffset by remember { mutableIntStateOf(0) }
+
+    // Otomatis sembunyikan FAB saat scroll turun, tampilkan saat scroll naik atau di paling atas
+    LaunchedEffect(lazyListState) {
+        snapshotFlow {
+            lazyListState.firstVisibleItemIndex to lazyListState.firstVisibleItemScrollOffset
+        }.collect { (index, offset) ->
+            if (index == 0 && offset < 40) {
+                isFabVisible = true
+            } else {
+                val isScrollingDown = index > lastFirstVisibleItemIndex || (index == lastFirstVisibleItemIndex && offset > lastFirstVisibleItemScrollOffset + 15)
+                val isScrollingUp = index < lastFirstVisibleItemIndex || (index == lastFirstVisibleItemIndex && offset < lastFirstVisibleItemScrollOffset - 15)
+                if (isScrollingDown) {
+                    isFabVisible = false
+                } else if (isScrollingUp) {
+                    isFabVisible = true
+                }
+            }
+            lastFirstVisibleItemIndex = index
+            lastFirstVisibleItemScrollOffset = offset
+        }
+    }
+
     var dataMenuExpanded by remember { mutableStateOf(false) }
+
+    val availableCount = remember(data.scooters) { data.scooters.count { it.status == ScooterStatus.AVAILABLE } }
+    val inUseCount = remember(data.scooters) { data.scooters.count { it.status == ScooterStatus.IN_USE } }
+    val maintenanceCount = remember(data.scooters) { data.scooters.count { it.status == ScooterStatus.MAINTENANCE } }
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             state = lazyListState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 140.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            contentPadding = PaddingValues(bottom = 140.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // Header: Judul (jumlah unit hanya tampil sekali) & Outlet Dropdown + Aksi Data
+            // Header: Judul (jumlah unit hanya tampil sekali "170 unit total") & Outlet Dropdown + Aksi Data
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -201,9 +245,9 @@ fun ManageScreen(
                         ) {
                             Text("Kelola", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                             Text(
-                                text = "· ${data.scooters.size} Unit",
+                                text = "· ${data.scooters.size} unit total",
                                 color = TextSubtle,
-                                fontSize = 13.sp,
+                                fontSize = 12.5.sp,
                                 fontWeight = FontWeight.Medium,
                             )
                         }
@@ -217,10 +261,7 @@ fun ManageScreen(
                         OutletDropdown(
                             selectedOutletId = activeOutlet,
                             onOutletSelected = { viewModel.setSelectedOutlet(it) },
-                            getOutletCount = { outletId ->
-                                if (outletId == "all") data.scooters.size
-                                else data.scooters.count { (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == outletId }
-                            },
+                            getOutletCount = null, // Hilangkan duplikasi angka, angka total hanya di FilterChip "Semua"
                             modifier = Modifier.weight(1f),
                         )
 
@@ -360,36 +401,68 @@ fun ManageScreen(
                     }
                 }
             }
-
-            when {
-                data.error != null && data.scooters.isEmpty() -> {
-                    item {
-                        ErrorState(message = data.error ?: "", onRetry = { viewModel.refresh() })
-                    }
+            // 2. STICKY HEADER: Search bar ~48dp, tombol filter & urutkan, dan quick status filter chips
+            stickyHeader {
+                Surface(
+                    color = MaterialTheme.colorScheme.background,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    ManageSearchBarSection(
+                        search = search,
+                        onSearch = { search = it },
+                        filterStatus = filterStatus,
+                        onFilterStatus = { filterStatus = it },
+                        filterType = filterType,
+                        onFilterType = { filterType = it },
+                        sortBy = sortBy,
+                        onSortBy = { sortBy = it },
+                        totalCount = data.scooters.size,
+                        readyCount = availableCount,
+                        inUseCount = inUseCount,
+                        maintenanceCount = maintenanceCount,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                    )
                 }
+            }
+
+            // 3. DAFTAR BARIS UNIT ATAU SKELETON LOADING (Prioritaskan skeleton loading agar tidak salah tampil error)
+            when {
                 data.loading && data.scooters.isEmpty() -> {
                     item {
                         ManageSkeleton()
                     }
                 }
-                else -> {
+                data.error != null && data.scooters.isEmpty() -> {
                     item {
-                        ScooterList(
-                            scooters = filtered,
-                            search = search,
-                            onSearch = { search = it },
-                            filterStatus = filterStatus,
-                            onFilterStatus = { filterStatus = it },
-                            filterType = filterType,
-                            onFilterType = { filterType = it },
-                            sortBy = sortBy,
-                            onSortBy = { sortBy = it },
-                            getTodayCount = getTodayCheckoutCount,
-                            onOpenDetail = onOpenDetail,
-                            onStatusChange = { scooter, newStatus ->
+                        ErrorState(message = data.error ?: "", onRetry = { viewModel.refresh() })
+                    }
+                }
+                filtered.isEmpty() -> {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 40.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("Tidak ada unit scooter yang cocok.", color = TextMuted, fontSize = 12.sp)
+                        }
+                    }
+                }
+                else -> {
+                    items(
+                        items = filtered,
+                        key = { it.id },
+                    ) { scooter ->
+                        UnitRow(
+                            scooter = scooter,
+                            todayCount = getTodayCheckoutCount(scooter.id),
+                            activeOutlet = activeOutlet,
+                            onOpenDetail = { onOpenDetail(scooter.id) },
+                            onStatusChange = { newStatus ->
                                 statusDialog = StatusDialogData(scooter, newStatus)
                             },
-                            onDelete = { scooter ->
+                            onDelete = {
                                 sweetAlert.showConfirm(
                                     title = "Hapus Unit Scooter?",
                                     message = "Apakah Anda yakin ingin menghapus scooter ${scooter.id}? Tindakan ini tidak dapat dibatalkan.",
@@ -409,7 +482,7 @@ fun ManageScreen(
                                     },
                                 )
                             },
-                            onDownloadQr = { scooter ->
+                            onDownloadQr = {
                                 scope.launch {
                                     runCatching {
                                         val outlet = scooter.currentOutlet ?: Outlets.getHomeOutletForType(scooter.type)
@@ -422,7 +495,6 @@ fun ManageScreen(
                                         .onFailure { sweetAlert.showError(it.toUserMessage()) }
                                 }
                             },
-                            activeOutlet = activeOutlet,
                             onTroubleSwap = { troubleScooter = it },
                             onEditScooter = { editingScooter = it },
                             onEditMaintenance = {
@@ -433,11 +505,16 @@ fun ManageScreen(
                                 )
                             },
                         )
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            color = Border.copy(alpha = 0.5f),
+                            thickness = 0.5.dp,
+                        )
                     }
                 }
             }
 
-            // App Version Info Footer
+            // 4. App Version Info Footer
             item {
                 Column(
                     modifier = Modifier
@@ -456,21 +533,25 @@ fun ManageScreen(
             }
         }
 
-        // Floating Action Button Tambah Unit di pojok kanan bawah
         // Extended Floating Action Button Tambah Unit di pojok kanan bawah
-        // Otomatis collapse jadi ikon bulat saat list scroll turun
-        ExtendedFloatingActionButton(
-            onClick = { showAddDialog = true },
-            expanded = isFabExpanded,
-            icon = { Icon(Icons.Filled.Add, contentDescription = "Tambah Unit Baru", modifier = Modifier.size(20.dp)) },
-            text = { Text("Tambah Unit", fontSize = 13.sp, fontWeight = FontWeight.Bold) },
-            containerColor = Accent,
-            contentColor = Color.White,
-            shape = RoundedCornerShape(16.dp),
+        // Sembunyi sepenuhnya saat scroll turun, tampil saat scroll naik atau di posisi paling atas
+        AnimatedVisibility(
+            visible = isFabVisible,
+            enter = fadeIn(animationSpec = tween(150)) + scaleIn(animationSpec = tween(150)),
+            exit = fadeOut(animationSpec = tween(150)) + scaleOut(animationSpec = tween(150)),
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(bottom = 76.dp, end = 16.dp),
-        )
+        ) {
+            ExtendedFloatingActionButton(
+                onClick = { showAddDialog = true },
+                icon = { Icon(Icons.Filled.Add, contentDescription = "Tambah Unit Baru", modifier = Modifier.size(20.dp)) },
+                text = { Text("Tambah Unit", fontSize = 13.sp, fontWeight = FontWeight.Bold) },
+                containerColor = Accent,
+                contentColor = Color.White,
+                shape = RoundedCornerShape(16.dp),
+            )
+        }
     }
 
     // Status change dialog (OPERASIONAL) vs Edit Scooter dialog (MANAJEMEN) di bawah.
