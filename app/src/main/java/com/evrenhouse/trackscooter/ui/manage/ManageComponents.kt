@@ -353,6 +353,7 @@ fun UnitRow(
                                     },
                                 )
                             }
+                        }
                         DropdownMenuItem(
                             text = { Text("Detail Unit", fontSize = 12.sp, color = TextPrimary) },
                             leadingIcon = { Icon(Icons.Filled.Tune, null, tint = TextMuted, modifier = Modifier.size(15.dp)) },
