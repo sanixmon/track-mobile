@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import com.evrenhouse.trackscooter.data.Scooter
+import com.evrenhouse.trackscooter.data.ScooterStatus
 import com.evrenhouse.trackscooter.ui.theme.TrackScooterTheme
 import com.evrenhouse.trackscooter.ui.common.CompactDropdown
 import com.evrenhouse.trackscooter.ui.common.ErrorState

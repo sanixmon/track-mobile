@@ -67,6 +67,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.evrenhouse.trackscooter.ui.theme.TrackScooterTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.evrenhouse.trackscooter.data.SaveDeviceConditionRequest
+import com.evrenhouse.trackscooter.data.Scooter
 import com.evrenhouse.trackscooter.data.ScooterStatus
 import com.evrenhouse.trackscooter.ui.common.AppViewModelFactory
 import com.evrenhouse.trackscooter.ui.common.LiveTimer
@@ -112,9 +113,6 @@ fun ScooterDetailScreen(
 ) {
     var showDiscardDialog by remember { mutableStateOf(false) }
     var showCompleteConfirm by remember { mutableStateOf(false) }
-    BackHandler(enabled = isDirty) {
-        showDiscardDialog = true
-    }
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
     val sweetAlert = LocalSweetAlert.current
@@ -173,6 +171,9 @@ fun ScooterDetailScreen(
     }
     val isDirty by remember {
         derivedStateOf { edited || currentSnapshot() != savedSnapshot }
+    }
+    BackHandler(enabled = isDirty) {
+        showDiscardDialog = true
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Surface)) {
