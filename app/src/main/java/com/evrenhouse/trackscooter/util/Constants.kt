@@ -238,9 +238,9 @@ object DeviceFields {
         DeviceField("setelan", "Spakbor", listOf("ada" to "Ada", "tidak" to "Tidak")),
         DeviceField("lampu", "Lampu", listOf("nyala" to "Nyala", "tidak" to "Tidak")),
         DeviceField("baterai", "Baterai", listOf("normal" to "Normal", "drop" to "Drop")),
-        DeviceField("monitor", "Jenis Error", listOf("normal" to "Normal", "e2" to "E2", "e4" to "E4", "e16" to "E16", "e6" to "E6", "lain" to "Lain Lain")),
         DeviceField("rem", "Rem", listOf("normal" to "Normal", "rusak" to "Rusak")),
-        DeviceField("ban", "Ban", listOf("botak" to "Botak", "tipis" to "Tipis", "aman" to "Aman")),
+        DeviceField("ban", "Ban", listOf("aman" to "Aman", "tipis" to "Tipis", "botak" to "Botak")),
+        DeviceField("monitor", "Jenis Error", listOf("normal" to "Normal", "e2" to "E2", "e4" to "E4", "e16" to "E16", "e6" to "E6", "lain" to "Lain Lain")),
     )
 }
 

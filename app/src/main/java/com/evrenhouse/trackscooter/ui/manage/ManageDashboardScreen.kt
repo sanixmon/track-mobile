@@ -57,13 +57,15 @@ fun ManageDashboardScreen(viewModel: ScooterDataViewModel) {
         }
     }
 
-    val filteredRecords = state.maintenanceRecords.filter { rec ->
-        if (activeOutlet == "all") true
+    val activeRepairs = state.maintenanceRecords.filter { rec ->
+        val isRepair = rec.status == "repair"
+        val matchesOutlet = if (activeOutlet == "all") true
         else {
             val bike = state.scooters.find { it.id == rec.scooterId }
             val cur = bike?.currentOutlet ?: Outlets.getHomeOutletForType(rec.scooterType ?: bike?.type ?: "sd")
             cur == activeOutlet
         }
+        isRepair && matchesOutlet
     }
 
     LazyColumn(
@@ -83,20 +85,19 @@ fun ManageDashboardScreen(viewModel: ScooterDataViewModel) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier
-                            .background(Surface, RoundedCornerShape(8.dp))
-                            .border(1.dp, Border, RoundedCornerShape(8.dp))
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                            .background(Surface2, RoundedCornerShape(20.dp))
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
                     ) {
                         Box(
                             modifier = Modifier
                                 .size(6.dp)
-                                .background(Accent, RoundedCornerShape(50)),
+                                .background(Accent, CircleShape),
                         )
                         Text(
                             "Mode Manajemen",
                             color = TextSubtle,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
                         )
                     }
                 }
@@ -141,11 +142,11 @@ fun ManageDashboardScreen(viewModel: ScooterDataViewModel) {
                     TypeSummaryCard(outletFilteredScooters)
                 }
 
-                if (filteredRecords.isNotEmpty()) {
+                if (activeRepairs.isNotEmpty()) {
                     item {
                         MaintenanceSection(
                             viewModel = viewModel,
-                            records = filteredRecords,
+                            records = activeRepairs,
                         )
                     }
                 }

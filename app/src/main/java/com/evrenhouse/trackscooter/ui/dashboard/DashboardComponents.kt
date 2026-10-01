@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -28,6 +30,12 @@ import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.ElectricScooter
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -49,6 +57,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.tooling.preview.Preview
+import com.evrenhouse.trackscooter.ui.theme.TrackScooterTheme
 import androidx.compose.ui.unit.sp
 import com.evrenhouse.trackscooter.data.ActivityLogEntry
 import com.evrenhouse.trackscooter.data.MaintenanceRecord
@@ -394,6 +405,11 @@ private fun CategoryBentoCard(
     val catInUse = scooters.count { it.type in catTypes && it.status == "in-use" }
     val catKendala = scooters.count { it.type in catTypes && it.status == "maintenance" }
 
+    val isDark = LocalThemeIsDark.current
+    val readyTextColor = if (isDark) Color(0xFF4ADE80) else Color(0xFF15803D)
+    val inUseTextColor = if (isDark) Color(0xFF818CF8) else Color(0xFF3730A3)
+    val kendalaTextColor = if (isDark) Color(0xFFFBBF24) else Color(0xFF8A5300)
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -401,153 +417,166 @@ private fun CategoryBentoCard(
             .background(Surface)
             .border(1.dp, Border, RoundedCornerShape(14.dp)),
     ) {
-        // Card Header with More/Collapse toggle
+        // Card Header: Seluruh header bisa di-klik untuk buka/tutup rincian dengan chevron
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Surface3.copy(alpha = 0.5f), RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
                 .clickable { isExpanded = !isExpanded }
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = catTitle,
-                    color = TextPrimary,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f),
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .background(Surface, RoundedCornerShape(8.dp))
-                            .border(1.dp, Border, RoundedCornerShape(8.dp))
-                            .padding(horizontal = 8.dp, vertical = 3.dp)
-                    ) {
-                        Text(
-                            text = "$catTotal unit",
-                            color = TextPrimary,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace
+                    Text(
+                        text = catTitle,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    // Teks hitungan biasa (bukan pill tombol)
+                    Text(
+                        text = "· $catTotal unit",
+                        color = TextMuted,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+
+                // Ikon Chevron buka/tutup (hapus tombol More)
+                IconButton(
+                    onClick = { isExpanded = !isExpanded },
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Icon(
+                        imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                        contentDescription = if (isExpanded) "Tutup rincian kategori" else "Buka rincian kategori",
+                        tint = TextMuted,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
+
+            // Bar proporsi bersegmen (ready hijau, disewa biru, kendala amber)
+            if (catTotal > 0) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp)),
+                ) {
+                    if (catReady > 0) {
+                        Box(
+                            modifier = Modifier
+                                .weight(catReady.toFloat())
+                                .fillMaxHeight()
+                                .background(Green),
                         )
                     }
-
-                    // Tombol More / Collapse
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (isExpanded) Surface else Accent.copy(alpha = 0.12f))
-                            .border(1.dp, if (isExpanded) Border else Accent.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = if (isExpanded) "Collapse" else "More",
-                            color = if (isExpanded) TextMuted else Accent,
-                            fontSize = 10.5.sp,
-                            fontWeight = FontWeight.Bold
+                    if (catInUse > 0) {
+                        Box(
+                            modifier = Modifier
+                                .weight(catInUse.toFloat())
+                                .fillMaxHeight()
+                                .background(Accent),
                         )
-                        Icon(
-                            imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                            contentDescription = if (isExpanded) "Collapse" else "More",
-                            tint = if (isExpanded) TextMuted else Accent,
-                            modifier = Modifier.size(14.dp)
+                    }
+                    if (catKendala > 0) {
+                        Box(
+                            modifier = Modifier
+                                .weight(catKendala.toFloat())
+                                .fillMaxHeight()
+                                .background(Warning),
                         )
                     }
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("$catReady ready", color = Green, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                Text("·", color = TextSubtle)
-                Text("$catInUse disewa", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            // Teks hitungan di bawah bar dengan rasio kontras tinggi
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("$catReady ready", color = readyTextColor, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
+                Text("·", color = Border)
+                Text("$catInUse disewa", color = inUseTextColor, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
                 if (catKendala > 0) {
-                    Text("·", color = TextSubtle)
-                    Text("$catKendala kendala", color = Warning, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    Text("·", color = Border)
+                    Text("$catKendala kendala", color = kendalaTextColor, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
 
-        // Sub-types list only when expanded!
+        // Sub-types list only when expanded
         if (isExpanded) {
-            Box(
-                Modifier
+            HorizontalDivider(color = Border.copy(alpha = 0.5f), thickness = 0.5.dp)
+            Column(
+                modifier = Modifier
                     .fillMaxWidth()
-                    .height(1.dp)
-                    .background(Border)
-            )
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (relevantTypes.isEmpty()) {
+                    Text(
+                        text = "Tidak ada unit di kategori ini.",
+                        color = TextMuted,
+                        fontSize = 11.sp,
+                    )
+                } else {
+                    for ((idx, type) in relevantTypes.withIndex()) {
+                        val group = scooters.filter { it.type == type }
+                        val available = group.count { it.status == "available" }
+                        val inUse = group.count { it.status == "in-use" }
+                        val kendala = group.count { it.status == "maintenance" }
 
-            if (relevantTypes.isEmpty()) {
-                Text(
-                    text = "Tidak ada unit di kategori ini.",
-                    color = TextMuted,
-                    fontSize = 11.sp,
-                    modifier = Modifier.padding(16.dp)
-                )
-            } else {
-                for ((idx, type) in relevantTypes.withIndex()) {
-                    val group = scooters.filter { it.type == type }
-                    val available = group.count { it.status == "available" }
-                    val inUse = group.count { it.status == "in-use" }
-                    val kendala = group.count { it.status == "maintenance" }
-
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
                         ) {
                             Row(
-                                modifier = Modifier.weight(1f, fill = false),
+                                modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
-                                TypeBadge(type)
-                                Text(
-                                    text = TypeLabels.of(type),
-                                    color = TextPrimary,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                                Row(
+                                    modifier = Modifier.weight(1f, fill = false),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    TypeBadge(type)
+                                    Text(
+                                        text = TypeLabels.of(type),
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                                Text("${group.size} unit", color = TextSubtle, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
                             }
-                            Text("${group.size} unit", color = TextSubtle, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
-                        }
-                        Spacer(Modifier.height(4.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("$available ready", color = Green, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                            Text("·", color = TextSubtle)
-                            Text("$inUse disewa", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                            if (kendala > 0) {
+                            Spacer(Modifier.height(4.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("$available ready", color = readyTextColor, fontSize = 11.sp, fontWeight = FontWeight.Medium)
                                 Text("·", color = TextSubtle)
-                                Text("$kendala kendala", color = Warning, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                Text("$inUse disewa", color = inUseTextColor, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                if (kendala > 0) {
+                                    Text("·", color = TextSubtle)
+                                    Text("$kendala kendala", color = kendalaTextColor, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                }
                             }
                         }
-                    }
-                    if (idx < relevantTypes.size - 1) {
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .height(1.dp)
-                                .background(Border)
-                        )
+                        if (idx < relevantTypes.size - 1) {
+                            HorizontalDivider(color = Border.copy(alpha = 0.4f), thickness = 0.5.dp)
+                        }
                     }
                 }
             }
@@ -563,76 +592,70 @@ fun MaintenanceTable(
     completingId: String?,
     modifier: Modifier = Modifier,
 ) {
-    val repair = records.count { it.status == "repair" }
-    val done = records.count { it.status == "done" }
+    // Filter hanya armada yang masih dalam perbaikan ("repair") dan urutkan paling lama lebih dulu
+    val activeRepairs = remember(records) {
+        records
+            .filter { it.status == "repair" }
+            .sortedBy { it.startedAt }
+    }
     var showAll by rememberSaveable { mutableStateOf(false) }
-    val displayedRecords = if (showAll) records else records.take(5)
+    val displayedRecords = if (showAll) activeRepairs else activeRepairs.take(5)
 
     Column(
         modifier = modifier
-            .background(Surface, RoundedCornerShape(14.dp))
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Surface)
             .border(1.dp, Border, RoundedCornerShape(14.dp)),
     ) {
+        // Header Antrian Perbaikan (tanpa pill Maintenance berlebih & gap rapat)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column {
-                Text(
-                    text = "STATUS MAINTENANCE",
-                    color = TextSubtle,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.2.sp,
-                )
-                Text("$repair dalam perbaikan · $done selesai", color = TextMuted, fontSize = 11.sp)
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier
-                    .background(Warning.copy(alpha = 0.12f), RoundedCornerShape(50))
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
-            ) {
-                Icon(Icons.Filled.Construction, contentDescription = null, tint = Warning, modifier = Modifier.size(12.dp))
-                Text("Maintenance", color = Warning, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            }
+            Text(
+                text = "Perbaikan Berjalan (${activeRepairs.size})",
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+            )
         }
 
-        if (records.isEmpty()) {
+        HorizontalDivider(color = Border.copy(alpha = 0.5f), thickness = 0.5.dp)
+
+        if (activeRepairs.isEmpty()) {
             Text(
-                "Belum ada catatan maintenance.",
+                "Tidak ada armada dalam antrian perbaikan.",
                 color = TextMuted,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(24.dp),
             )
         } else {
             displayedRecords.forEach { rec ->
-                MaintenanceRow(rec, onComplete, completingId == rec.id)
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .background(Border),
+                RepairQueueRow(rec, onComplete, completingId == rec.id)
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    color = Border.copy(alpha = 0.5f),
+                    thickness = 0.5.dp,
                 )
             }
 
-            if (records.size > 5) {
+            if (activeRepairs.size > 5) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { showAll = !showAll }
                         .padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = if (showAll) "Tampilkan lebih sedikit" else "Lihat semua (${records.size})",
+                        text = if (showAll) "Tampilkan lebih sedikit" else "Lihat semua (${activeRepairs.size})",
                         color = Accent,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             }
@@ -641,91 +664,116 @@ fun MaintenanceTable(
 }
 
 @Composable
-private fun MaintenanceRow(rec: MaintenanceRecord, onComplete: (MaintenanceRecord) -> Unit, completing: Boolean) {
-    val isRepair = rec.status == "repair"
+fun RepairQueueRow(
+    rec: MaintenanceRecord,
+    onComplete: (MaintenanceRecord) -> Unit,
+    completing: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val isDark = LocalThemeIsDark.current
+    val locLabel = if (rec.location == "outlet") {
+        "Di Outlet"
+    } else if (!rec.locationDetail.isNullOrBlank()) {
+        "Luar (${rec.locationDetail})"
+    } else {
+        "Luar Outlet"
+    }
+    val noteText = rec.issue?.takeIf { it.isNotBlank() && it != "-" }
+        ?: rec.note?.takeIf { it.isNotBlank() && it != "-" }
+    val durationText = DateUtils.timeAgo(rec.startedAt)
+
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = rec.scooterId,
-                color = Accent,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
-            )
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(Icons.Filled.LocationOn, contentDescription = null, tint = TextSubtle, modifier = Modifier.size(11.dp))
+        // Kolom Kiri 2 Baris:
+        // Baris 1: ID (onSurface, monospace) dan lokasi
+        // Baris 2: Catatan (maxLines = 1, ellipsis, sembunyikan jika kosong) dan durasi relatif
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            // Baris 1
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
                 Text(
-                    text = if (rec.location == "outlet") "Di Outlet" else if (!rec.locationDetail.isNullOrBlank()) "Luar · ${rec.locationDetail}" else "Luar Outlet",
-                    color = TextMuted,
-                    fontSize = 11.sp,
+                    text = rec.scooterId,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
                 )
-            }
-            if (!rec.issue.isNullOrBlank()) {
+                Text("·", color = Border)
                 Text(
-                    text = rec.issue,
-                    color = TextPrimary,
+                    text = locLabel,
+                    color = if (rec.location == "outlet") TextMuted else Red,
                     fontSize = 11.sp,
-                    maxLines = 2,
+                    fontWeight = if (rec.location == "outlet") FontWeight.Normal else FontWeight.SemiBold,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Text(
-                text = DateUtils.formatFull(rec.startedAt),
-                color = TextSubtle,
-                fontSize = 10.sp,
-            )
-        }
-        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+
+            // Baris 2
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier
-                    .background(
-                        if (isRepair) Warning.copy(alpha = 0.12f) else Green.copy(alpha = 0.12f),
-                        RoundedCornerShape(6.dp),
-                    )
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Icon(
-                    if (isRepair) Icons.Filled.Construction else Icons.Filled.CheckCircle,
+                    imageVector = Icons.Filled.Schedule,
                     contentDescription = null,
-                    tint = if (isRepair) Warning else Green,
+                    tint = TextSubtle,
                     modifier = Modifier.size(11.dp),
                 )
                 Text(
-                    text = if (isRepair) "Repair" else "Selesai",
-                    color = if (isRepair) Warning else Green,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
+                    text = durationText,
+                    color = TextSubtle,
+                    fontSize = 10.5.sp,
                 )
-            }
-            if (isRepair) {
-                androidx.compose.material3.OutlinedButton(
-                    onClick = { onComplete(rec) },
-                    enabled = !completing,
-                    shape = RoundedCornerShape(8.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Warning),
-                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = Warning),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                ) {
-                    if (completing) {
-                        androidx.compose.material3.CircularProgressIndicator(
-                            modifier = Modifier.size(12.dp),
-                            color = Warning,
-                            strokeWidth = 2.dp,
-                        )
-                    } else {
-                        Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(12.dp))
-                    }
-                    Spacer(Modifier.width(4.dp))
-                    Text("Selesai", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                if (!noteText.isNullOrBlank()) {
+                    Text("·", color = Border)
+                    Text(
+                        text = noteText,
+                        color = TextMuted,
+                        fontSize = 10.5.sp,
+                        fontStyle = FontStyle.Italic,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
                 }
+            }
+        }
+
+        // Tombol Selesai Kompak dengan min 48dp touch target
+        Box(contentAlignment = Alignment.Center) {
+            Button(
+                onClick = { onComplete(rec) },
+                enabled = !completing,
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isDark) Color(0xFFD97706) else Color(0xFF8A5300),
+                    contentColor = Color.White,
+                ),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                modifier = Modifier.defaultMinSize(minWidth = 72.dp, minHeight = 44.dp),
+            ) {
+                if (completing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(12.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Icon(Icons.Filled.CheckCircle, contentDescription = "Tandai perbaikan selesai", modifier = Modifier.size(13.dp))
+                }
+                Spacer(Modifier.width(4.dp))
+                Text("Selesai", fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -792,35 +840,102 @@ fun FilterDropdown(
  * Diekstrak dari DashboardScreen agar dua ranah tidak menduplikasi hitungan.
  */
 @Composable
-fun FleetStatCards(scooters: List<Scooter>, modifier: Modifier = Modifier) {
+fun KpiCard(
+    label: String,
+    value: Int,
+    icon: @Composable (Color) -> Unit,
+    accentColor: Color,
+    valueTextColor: Color,
+    onClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    val clickModifier = if (onClick != null) {
+        Modifier.clickable(onClick = onClick)
+    } else Modifier
+
+    Column(
+        modifier = modifier
+            .height(138.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(Surface)
+            .border(1.dp, Border, RoundedCornerShape(14.dp))
+            .then(clickModifier)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
+        // Icon kecil
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(accentColor.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            icon(accentColor)
+        }
+
+        // Angka besar (28sp bold monospace) + Satu label (tanpa subjudul bertele-tele)
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = value.toString(),
+                color = valueTextColor,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+            )
+            Text(
+                text = label,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/**
+ * 4 kartu statistik armada padat (Ready, Disewa, Maint Outlet, Maint Luar).
+ * Total armada di chip outlet = ready + inUse + maintOutlet + maintLuar (100% konsisten).
+ */
+@Composable
+fun FleetStatCards(
+    scooters: List<Scooter>,
+    onCardClick: ((String) -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    val isDark = LocalThemeIsDark.current
     val ready = scooters.count { it.status == ScooterStatus.AVAILABLE }
-    val maintLuar = scooters.count { it.status == ScooterStatus.MAINTENANCE && it.activeMaintenance?.location == "luar" }
+    val inUse = scooters.count { it.status == ScooterStatus.IN_USE }
     val maintOutlet = scooters.count { it.status == ScooterStatus.MAINTENANCE && it.activeMaintenance?.location != "luar" }
-    val total = ready + maintLuar + maintOutlet
+    val maintLuar = scooters.count { it.status == ScooterStatus.MAINTENANCE && it.activeMaintenance?.location == "luar" }
+
+    val readyTextColor = if (isDark) Color(0xFF4ADE80) else Color(0xFF15803D)
+    val inUseTextColor = if (isDark) Color(0xFF818CF8) else Color(0xFF3730A3)
+    val amberTextColor = if (isDark) Color(0xFFFBBF24) else Color(0xFF8A5300)
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            StatCard(
+            KpiCard(
                 label = "Unit Ready",
-                sub = "Siap disewakan",
                 value = ready,
-                icon = { tint -> Icon(Icons.Filled.CheckCircle, null, Modifier.size(17.dp), tint = tint) },
-                valueColor = Green,
-                iconBg = Green.copy(alpha = 0.12f),
-                iconColor = Green,
+                icon = { tint -> Icon(Icons.Filled.CheckCircle, null, Modifier.size(16.dp), tint = tint) },
+                accentColor = Green,
+                valueTextColor = readyTextColor,
+                onClick = { onCardClick?.invoke(ScooterStatus.AVAILABLE) },
                 modifier = Modifier.weight(1f),
             )
-            StatCard(
-                label = "Maint. Luar Outlet",
-                sub = "Perbaikan luar",
-                value = maintLuar,
-                icon = { tint -> Icon(Icons.Filled.Construction, null, Modifier.size(17.dp), tint = tint) },
-                valueColor = Warning,
-                iconBg = Warning.copy(alpha = 0.12f),
-                iconColor = Warning,
+            KpiCard(
+                label = "Unit Disewa",
+                value = inUse,
+                icon = { tint -> Icon(Icons.Filled.ElectricScooter, null, Modifier.size(16.dp), tint = tint) },
+                accentColor = Accent,
+                valueTextColor = inUseTextColor,
+                onClick = { onCardClick?.invoke(ScooterStatus.IN_USE) },
                 modifier = Modifier.weight(1f),
             )
         }
@@ -829,24 +944,22 @@ fun FleetStatCards(scooters: List<Scooter>, modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            StatCard(
-                label = "Maint. di Outlet",
-                sub = "Perbaikan outlet",
+            KpiCard(
+                label = "Perbaikan di Outlet",
                 value = maintOutlet,
-                icon = { tint -> Icon(Icons.Filled.Build, null, Modifier.size(17.dp), tint = tint) },
-                valueColor = Red,
-                iconBg = Red.copy(alpha = 0.12f),
-                iconColor = Red,
+                icon = { tint -> Icon(Icons.Filled.Build, null, Modifier.size(16.dp), tint = tint) },
+                accentColor = Warning,
+                valueTextColor = amberTextColor,
+                onClick = { onCardClick?.invoke(ScooterStatus.MAINTENANCE) },
                 modifier = Modifier.weight(1f),
             )
-            StatCard(
-                label = "Unit Total",
-                sub = "Total armada outlet",
-                value = total,
-                icon = { tint -> Icon(Icons.Filled.Layers, null, Modifier.size(17.dp), tint = tint) },
-                valueColor = Color(0xFFA855F7),
-                iconBg = Color(0xFFA855F7).copy(alpha = 0.12f),
-                iconColor = Color(0xFFA855F7),
+            KpiCard(
+                label = "Perbaikan Luar Outlet",
+                value = maintLuar,
+                icon = { tint -> Icon(Icons.Filled.Construction, null, Modifier.size(16.dp), tint = tint) },
+                accentColor = Warning,
+                valueTextColor = amberTextColor,
+                onClick = { onCardClick?.invoke(ScooterStatus.MAINTENANCE) },
                 modifier = Modifier.weight(1f),
             )
         }
@@ -854,8 +967,7 @@ fun FleetStatCards(scooters: List<Scooter>, modifier: Modifier = Modifier) {
 }
 
 /**
- * Tabel maintenance + alur selesaikan (dipakai dua dashboard).
- * Diekstrak dari DashboardScreen agar perilaku Selesaikan identik.
+ * Tabel perbaikan berjalan + dialog konfirmasi selesaikan.
  */
 @Composable
 fun MaintenanceSection(
@@ -872,8 +984,8 @@ fun MaintenanceSection(
         completingId = completingId,
         onComplete = { rec ->
             sweetAlert.showConfirm(
-                title = "Selesaikan Maintenance?",
-                message = "Tandai perbaikan unit ${rec.scooterId} selesai? Unit akan kembali tersedia.",
+                title = "Selesaikan Perbaikan?",
+                message = "Tandai unit ${rec.scooterId} selesai diperbaiki? Unit akan kembali berstatus Ready.",
                 confirmText = "Ya, Selesai",
                 cancelText = "Batal",
                 onConfirm = {
@@ -882,7 +994,7 @@ fun MaintenanceSection(
                         runCatching { viewModel.completeMaintenance(rec.id) }
                             .onSuccess {
                                 viewModel.refresh()
-                                sweetAlert.showSuccess("Maintenance unit ${rec.scooterId} selesai")
+                                sweetAlert.showSuccess("Perbaikan unit ${rec.scooterId} selesai")
                             }
                             .onFailure { err -> sweetAlert.showError(err.toUserMessage()) }
                         completingId = null
@@ -892,4 +1004,41 @@ fun MaintenanceSection(
         },
         modifier = modifier,
     )
+}
+
+// ── Previews ──────────────────────────────────────────────────────────
+
+@Preview(name = "Fleet Stat Cards", showBackground = true)
+@Composable
+private fun FleetStatCardsPreview() {
+    val sampleScooters = listOf(
+        Scooter("SB-01", "sb", ScooterStatus.AVAILABLE, currentOutlet = "utara"),
+        Scooter("SB-02", "sb", ScooterStatus.IN_USE, currentOutlet = "utara"),
+        Scooter("FZ-05", "fz", ScooterStatus.MAINTENANCE, currentOutlet = "utara", activeMaintenance = com.evrenhouse.trackscooter.data.ActiveMaintenance("m1", "outlet", null, "baterai", null, "repair", "2026-09-25T10:00:00Z")),
+        Scooter("EX-10", "ex", ScooterStatus.MAINTENANCE, currentOutlet = "utara", activeMaintenance = com.evrenhouse.trackscooter.data.ActiveMaintenance("m2", "luar", "Bengkel Pak Budi", "rem", null, "repair", "2026-09-20T10:00:00Z")),
+    )
+    TrackScooterTheme(isDark = false) {
+        Box(modifier = Modifier.padding(16.dp)) {
+            FleetStatCards(scooters = sampleScooters)
+        }
+    }
+}
+
+@Preview(name = "Repair Queue Row", showBackground = true)
+@Composable
+private fun RepairQueueRowPreview() {
+    val sampleRecord = MaintenanceRecord(
+        id = "rec-1",
+        scooterId = "SD-57",
+        location = "luar",
+        locationDetail = "Bengkel Maju",
+        issue = "Rem blong dan setelan patah",
+        status = "repair",
+        startedAt = "2026-09-26T08:00:00Z",
+    )
+    TrackScooterTheme(isDark = false) {
+        Box(modifier = Modifier.padding(16.dp)) {
+            RepairQueueRow(rec = sampleRecord, onComplete = {}, completing = false)
+        }
+    }
 }

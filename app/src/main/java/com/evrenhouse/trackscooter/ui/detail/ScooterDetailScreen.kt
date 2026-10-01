@@ -33,6 +33,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.foundation.clickable
 import com.evrenhouse.trackscooter.ui.manage.StatusChangeDialog
 import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -62,6 +63,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
+import com.evrenhouse.trackscooter.ui.theme.TrackScooterTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.evrenhouse.trackscooter.data.SaveDeviceConditionRequest
 import com.evrenhouse.trackscooter.data.ScooterStatus
@@ -107,7 +110,11 @@ fun ScooterDetailScreen(
         factory = AppViewModelFactory(repository())
     ),
 ) {
-    BackHandler(onBack = onBack)
+    var showDiscardDialog by remember { mutableStateOf(false) }
+    var showCompleteConfirm by remember { mutableStateOf(false) }
+    BackHandler(enabled = isDirty) {
+        showDiscardDialog = true
+    }
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
     val sweetAlert = LocalSweetAlert.current
@@ -168,283 +175,300 @@ fun ScooterDetailScreen(
         derivedStateOf { edited || currentSnapshot() != savedSnapshot }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Surface)
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        // Top bar
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+    Box(modifier = Modifier.fillMaxSize().background(Surface)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 110.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            // ── 3. TOP APP BAR: Back, ID (onSurface, Monospace), Outlet subtitle, Menu ⋮ ──
             Row(
-                modifier = Modifier.weight(1f, fill = false),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali", tint = TextMuted)
-                }
-                val isDark = LocalThemeIsDark.current
-                val scooter = state.scooter
-                val idText = scooter?.id ?: scooterId
-                val nameColor = ScooterColors.getScooterNameColor(scooter?.type, idText, scooter?.currentOutlet, isDark)
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = idText,
-                        color = nameColor,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace,
-                        maxLines = 1,
-                    )
-                    if (scooter != null) {
-                        val currentOutletId = scooter.currentOutlet ?: Outlets.getHomeOutletForType(scooter.type)
-                        val outletColor = ScooterColors.getOutletColor(currentOutletId)
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(Surface2)
-                                .border(1.dp, Border, RoundedCornerShape(6.dp))
-                                .clickable { showOutletDialog = true }
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Icon(Icons.Filled.LocationOn, contentDescription = null, tint = outletColor, modifier = Modifier.size(11.dp))
-                            Text(
-                                text = "Outlet: ${Outlets.labelOf(currentOutletId)}",
-                                color = TextPrimary,
-                                fontSize = 10.5.sp,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Icon(Icons.Filled.ArrowDropDown, contentDescription = "Ubah Outlet", tint = TextMuted, modifier = Modifier.size(13.dp))
-                        }
-                    }
-                }
-            }
-            state.scooter?.let { s ->
-                Box {
-                    StatusChip(
-                        status = s.status,
-                        modifier = Modifier.clickable { statusMenuOpen = true }
-                    )
-                    DropdownMenu(
-                        expanded = statusMenuOpen,
-                        onDismissRequest = { statusMenuOpen = false },
-                        modifier = Modifier
-                            .background(Surface, RoundedCornerShape(10.dp))
-                            .border(1.dp, Border, RoundedCornerShape(10.dp))
-                    ) {
-                        listOf(
-                            ScooterStatus.AVAILABLE to "Unit Ready",
-                            ScooterStatus.IN_USE to "Unit Diluar",
-                            ScooterStatus.MAINTENANCE to "Unit Kendala",
-                        ).forEach { (value, label) ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        label,
-                                        color = if (s.status == value) Accent else TextPrimary,
-                                        fontWeight = if (s.status == value) FontWeight.Bold else FontWeight.Normal,
-                                        fontSize = 12.sp
-                                    )
-                                },
-                                onClick = {
-                                    statusMenuOpen = false
-                                    if (value != s.status) {
-                                        statusChangeTarget = value
-                                    }
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        when {
-            state.loading && state.scooter == null -> DetailSkeleton()
-            state.scooter == null -> {
-                Text(
-                    "Unit tidak ditemukan.",
-                    color = TextMuted,
-                    fontSize = 12.sp,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            else -> {
-                val scooter = state.scooter!!
-
-                // Live timer + active maintenance badge
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Surface2.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-                        .border(1.dp, Border, RoundedCornerShape(12.dp))
-                        .padding(12.dp),
+                    modifier = Modifier.weight(1f, fill = false),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    LiveTimer(scooter.status, scooter.lastUpdated)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    IconButton(
+                        onClick = { if (isDirty) showDiscardDialog = true else onBack() },
+                        modifier = Modifier.size(44.dp),
                     ) {
-                        if (scooter.activeMaintenance != null) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                modifier = Modifier
-                                    .background(Warning.copy(alpha = 0.12f), RoundedCornerShape(50))
-                                    .padding(horizontal = 8.dp, vertical = 3.dp),
-                            ) {
-                                Icon(Icons.Filled.Construction, contentDescription = null, tint = Warning, modifier = Modifier.size(11.dp))
-                                Text("Dalam Perbaikan", color = Warning, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                        if (scooter.status == ScooterStatus.IN_USE) {
-                            Button(
-                                onClick = { showTroubleDialog = true },
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Warning),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                            ) {
-                                Icon(Icons.Filled.WarningAmber, contentDescription = null, modifier = Modifier.size(12.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Trouble / Tukar", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali ke daftar unit", tint = TextPrimary)
                     }
-                }
 
-                // Device condition editor
-                ConditionEditor(
-                    condition = condition,
-                    onFieldChange = { key, value ->
-                        edited = true
-                        condition = condition + (key to value)
-                    },
-                    monitorDetail = monitorDetail,
-                    onMonitorDetailChange = {
-                        edited = true
-                        monitorDetail = it
-                    },
-                    isDirty = isDirty,
-                    hasCondition = hasCondition,
-                    saving = state.saving,
-                    onSave = {
-                        viewModel.saveCondition(
-                            SaveDeviceConditionRequest(
-                                setelan = condition["setelan"],
-                                lampu = condition["lampu"],
-                                baterai = condition["baterai"],
-                                monitor = condition["monitor"],
-                                rem = condition["rem"],
-                                ban = condition["ban"],
-                                monitorDetail = if (condition["monitor"] == "lain") monitorDetail else null,
-                            )
+                    val scooter = state.scooter
+                    val idText = scooter?.id ?: scooterId
+                    val currentOutletId = scooter?.currentOutlet ?: Outlets.getHomeOutletForType(scooter?.type ?: "sd")
+
+                    Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                        // ID unit sebagai judul warna onSurface (netral), Monospace bold
+                        Text(
+                            text = idText,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            maxLines = 1,
                         )
-                        edited = false
-                        savedSnapshot = currentSnapshot()
-                    },
-                )
-
-                // Active maintenance (mirrors web ScooterDetailModal)
-                scooter.activeMaintenance?.let { am ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Warning.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
-                            .border(1.dp, Warning.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Icon(Icons.Filled.WarningAmber, contentDescription = null, tint = Warning, modifier = Modifier.size(18.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Perbaikan Berjalan", color = Warning, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            val locLabel = if (am.location == "outlet") "Di Outlet" else if (!am.locationDetail.isNullOrBlank()) "Luar · ${am.locationDetail}" else "Luar Outlet"
-                            Text(
-                                "$locLabel${if (!am.issue.isNullOrBlank()) " · ${am.issue}" else ""}",
-                                color = TextMuted,
-                                fontSize = 11.sp,
-                            )
-                            if (!am.note.isNullOrBlank()) {
-                                Text(am.note, color = TextMuted, fontSize = 11.sp, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
-                            }
-                        }
-                        Column(
-                            horizontalAlignment = Alignment.End,
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            OutlinedButton(
-                                onClick = { showEditMaintenance = true },
-                                shape = RoundedCornerShape(8.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Warning.copy(alpha = 0.5f)),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Warning),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                            ) {
-                                Text("Edit", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                            }
-                            Button(
-                                onClick = {
-                                    sweetAlert.showConfirm(
-                                        title = "Selesaikan Maintenance?",
-                                        message = "Tandai perbaikan unit $scooterId selesai? Unit akan kembali tersedia.",
-                                        confirmText = "Ya, Selesai",
-                                        cancelText = "Batal",
-                                        onConfirm = {
-                                            state.scooter?.activeMaintenance?.id?.let { viewModel.completeMaintenance(it) }
-                                        },
-                                    )
-                                },
-                                enabled = !state.completing,
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Warning),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                            ) {
-                                if (state.completing) {
-                                    CircularProgressIndicator(modifier = Modifier.size(12.dp), color = Color.White, strokeWidth = 2.dp)
-                                } else {
-                                    Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(12.dp))
-                                }
-                                Spacer(Modifier.width(4.dp))
-                                Text("Selesai", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
+                        // Outlet sebagai subtitle satu baris tanpa awalan "Outlet:"
+                        Text(
+                            text = Outlets.labelOf(currentOutletId),
+                            color = TextMuted,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                 }
 
-                // History
-                HistorySection(
-                    log = state.log,
-                    maintenance = state.maintenance,
-                    onOpenFullHistory = {
-                        viewModel.loadTechnicalHistory()
-                        showHistorySheet = true
-                    },
-                    onExport = {
-                        scope.launch {
-                            runCatching {
-                                val bytes = Exporter.buildHistoryXlsx(scooter, state.log, state.maintenance)
-                                val filename = "Riwayat-${scooter.id}-${DateUtils.localDateKey(DateUtils.today())}.xlsx"
-                                Exporter.saveBytesToDownloads(context, filename, bytes, MIME_XLSX)
-                            }
-                                .onSuccess { sweetAlert.showSuccess("File XLSX berhasil diunduh ($it)") }
-                                .onFailure { sweetAlert.showError(it.message ?: "Gagal export") }
+                // Menu Titik Tiga (⋮) di app bar untuk Ganti Outlet & Tukar Unit
+                var appBarMenuOpen by remember { mutableStateOf(false) }
+                Box {
+                    IconButton(onClick = { appBarMenuOpen = true }, modifier = Modifier.size(44.dp)) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "Menu opsi detail unit", tint = TextMuted)
+                    }
+
+                    DropdownMenu(
+                        expanded = appBarMenuOpen,
+                        onDismissRequest = { appBarMenuOpen = false },
+                        modifier = Modifier
+                            .background(Surface, RoundedCornerShape(12.dp))
+                            .border(1.dp, Border, RoundedCornerShape(12.dp)),
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Pindahkan Outlet", fontSize = 12.sp, color = TextPrimary) },
+                            leadingIcon = { Icon(Icons.Filled.LocationOn, null, tint = Accent, modifier = Modifier.size(16.dp)) },
+                            onClick = {
+                                appBarMenuOpen = false
+                                showOutletDialog = true
+                            },
+                        )
+                        if (state.scooter?.status == ScooterStatus.IN_USE) {
+                            DropdownMenuItem(
+                                text = { Text("Trouble / Tukar Unit", fontSize = 12.sp, color = Warning) },
+                                leadingIcon = { Icon(Icons.Filled.WarningAmber, null, tint = Warning, modifier = Modifier.size(16.dp)) },
+                                onClick = {
+                                    appBarMenuOpen = false
+                                    showTroubleDialog = true
+                                },
+                            )
                         }
-                    },
-                )
+                    }
+                }
+            }
+
+            // ── Status Chip di bawah judul & Tanggal diperbarui absolut ──
+            state.scooter?.let { s ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box {
+                        StatusChip(
+                            status = s.status,
+                            modifier = Modifier.clickable { statusMenuOpen = true }
+                        )
+                        DropdownMenu(
+                            expanded = statusMenuOpen,
+                            onDismissRequest = { statusMenuOpen = false },
+                            modifier = Modifier
+                                .background(Surface, RoundedCornerShape(10.dp))
+                                .border(1.dp, Border, RoundedCornerShape(10.dp))
+                        ) {
+                            listOf(
+                                ScooterStatus.AVAILABLE to "Unit Ready",
+                                ScooterStatus.IN_USE to "Unit Diluar",
+                                ScooterStatus.MAINTENANCE to "Unit Kendala",
+                            ).forEach { (value, label) ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            label,
+                                            color = if (s.status == value) Accent else TextPrimary,
+                                            fontWeight = if (s.status == value) FontWeight.Bold else FontWeight.Normal,
+                                            fontSize = 12.sp
+                                        )
+                                    },
+                                    onClick = {
+                                        statusMenuOpen = false
+                                        if (value != s.status) {
+                                            statusChangeTarget = value
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // Tanggal kondisi diperbarui relatif + tanggal absolut
+                    val timeAgo = DateUtils.timeAgo(s.lastUpdated)
+                    val absTime = DateUtils.formatContextualTime(s.lastUpdated)
+                    Text(
+                        text = "Kondisi diperbarui $timeAgo ($absTime)",
+                        color = TextSubtle,
+                        fontSize = 10.5.sp,
+                    )
+                }
+            }
+
+            when {
+                state.loading && state.scooter == null -> DetailSkeleton()
+                state.scooter == null -> {
+                    Text(
+                        "Unit tidak ditemukan.",
+                        color = TextMuted,
+                        fontSize = 12.sp,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                else -> {
+                    val scooter = state.scooter!!
+
+                    // ── 1. Blok Status dan Aksi Perbaikan Terpadu (di bawah header, di atas form) ──
+                    UnitStatusBlock(
+                        scooter = scooter,
+                        onEditMaintenance = { showEditMaintenance = true },
+                        onCompleteMaintenance = { showCompleteConfirm = true },
+                        completing = state.completing,
+                    )
+
+                    // ── 4. Form Kondisi Perangkat Kompak ──
+                    ConditionEditor(
+                        condition = condition,
+                        onFieldChange = { key, value ->
+                            edited = true
+                            condition = condition + (key to value)
+                        },
+                        monitorDetail = monitorDetail,
+                        onMonitorDetailChange = {
+                            edited = true
+                            monitorDetail = it
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
+                    // ── 6. Laporan Riwayat ──
+                    HistorySection(
+                        log = state.log,
+                        maintenance = state.maintenance,
+                        onOpenFullHistory = {
+                            viewModel.loadTechnicalHistory()
+                            showHistorySheet = true
+                        },
+                        onExport = {
+                            scope.launch {
+                                runCatching {
+                                    val bytes = Exporter.buildHistoryXlsx(scooter, state.log, state.maintenance)
+                                    val filename = "Riwayat-${scooter.id}-${DateUtils.localDateKey(DateUtils.today())}.xlsx"
+                                    Exporter.saveBytesToDownloads(context, filename, bytes, MIME_XLSX)
+                                }
+                                    .onSuccess { sweetAlert.showSuccess("File XLSX berhasil diunduh ($it)") }
+                                    .onFailure { sweetAlert.showError(it.message ?: "Gagal export") }
+                            }
+                        },
+                    )
+                }
             }
         }
+
+        // ── 5. Sticky Bottom Bar Simpan & Batal (Hanya muncul saat dirty) ──
+        SaveBar(
+            isDirty = isDirty,
+            saving = state.saving,
+            onSave = {
+                viewModel.saveCondition(
+                    SaveDeviceConditionRequest(
+                        setelan = condition["setelan"],
+                        lampu = condition["lampu"],
+                        baterai = condition["baterai"],
+                        monitor = condition["monitor"],
+                        rem = condition["rem"],
+                        ban = condition["ban"],
+                        monitorDetail = if (condition["monitor"] == "lain") monitorDetail else null,
+                    )
+                )
+                edited = false
+                savedSnapshot = currentSnapshot()
+            },
+            onCancel = {
+                state.scooter?.deviceCondition?.let { dc ->
+                    condition = mapOf(
+                        "setelan" to (dc.setelan ?: "ada"),
+                        "lampu" to (dc.lampu ?: "nyala"),
+                        "baterai" to (dc.baterai ?: "normal"),
+                        "monitor" to (dc.monitor ?: "normal"),
+                        "rem" to (dc.rem ?: "normal"),
+                        "ban" to (dc.ban ?: "aman"),
+                    )
+                    monitorDetail = dc.monitorDetail ?: ""
+                }
+                edited = false
+            },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+    }
+
+    // Dialog konfirmasi "Selesai Maintenance"
+    if (showCompleteConfirm && state.scooter != null) {
+        AlertDialog(
+            onDismissRequest = { showCompleteConfirm = false },
+            containerColor = Surface,
+            titleContentColor = TextPrimary,
+            textContentColor = TextMuted,
+            title = { Text("Selesaikan Maintenance?", fontSize = 16.sp, fontWeight = FontWeight.Bold) },
+            text = { Text("Tandai perbaikan unit $scooterId selesai? Unit akan kembali berstatus Ready.", fontSize = 13.sp) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showCompleteConfirm = false
+                        state.scooter?.activeMaintenance?.id?.let { viewModel.completeMaintenance(it) }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Accent),
+                ) {
+                    Text("Ya, Selesai", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCompleteConfirm = false }) {
+                    Text("Batal")
+                }
+            },
+        )
+    }
+
+    // Dialog konfirmasi "Buang Perubahan" jika back ditekan saat dirty
+    if (showDiscardDialog) {
+        AlertDialog(
+            onDismissRequest = { showDiscardDialog = false },
+            containerColor = Surface,
+            titleContentColor = TextPrimary,
+            textContentColor = TextMuted,
+            title = { Text("Buang Perubahan?", fontSize = 16.sp, fontWeight = FontWeight.Bold) },
+            text = { Text("Perubahan kondisi perangkat belum disimpan. Yakin ingin keluar tanpa menyimpan?", fontSize = 13.sp) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDiscardDialog = false
+                        onBack()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Red),
+                ) {
+                    Text("Buang", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDiscardDialog = false }) {
+                    Text("Batal")
+                }
+            },
+        )
     }
 
     if (showTroubleDialog && state.scooter != null) {
@@ -585,6 +609,92 @@ fun ScooterDetailScreen(
             },
             onDismiss = { showHistorySheet = false }
         )
+    }
+}
+
+// ── Previews ──────────────────────────────────────────────────────────
+
+@Preview(name = "Detail Screen - Maintenance Active (Light)", showBackground = true)
+@Composable
+private fun DetailScreenMaintenanceLightPreview() {
+    val sampleScooter = Scooter(
+        id = "SB-53",
+        type = "sb",
+        status = ScooterStatus.MAINTENANCE,
+        currentOutlet = "utara",
+        lastUpdated = "2026-09-25T10:00:00Z",
+        maintenanceNote = "e2",
+        activeMaintenance = com.evrenhouse.trackscooter.data.ActiveMaintenance(
+            id = "m-1",
+            location = "outlet",
+            issue = "e2",
+            status = "repair",
+            startedAt = "2026-09-25T10:00:00Z",
+        ),
+    )
+    TrackScooterTheme(isDark = false) {
+        Box(modifier = Modifier.fillMaxSize().background(Surface)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                UnitStatusBlock(
+                    scooter = sampleScooter,
+                    onEditMaintenance = {},
+                    onCompleteMaintenance = {},
+                )
+                ConditionEditor(
+                    condition = mapOf("setelan" to "ada", "lampu" to "nyala", "baterai" to "normal", "rem" to "normal", "ban" to "aman", "monitor" to "normal"),
+                    onFieldChange = { _, _ -> },
+                    monitorDetail = "",
+                    onMonitorDetailChange = {},
+                )
+            }
+        }
+    }
+}
+
+@Preview(name = "Detail Screen - Maintenance Active (Dark)", showBackground = true)
+@Composable
+private fun DetailScreenMaintenanceDarkPreview() {
+    val sampleScooter = Scooter(
+        id = "SB-53",
+        type = "sb",
+        status = ScooterStatus.MAINTENANCE,
+        currentOutlet = "utara",
+        lastUpdated = "2026-09-25T10:00:00Z",
+        maintenanceNote = "e2",
+        activeMaintenance = com.evrenhouse.trackscooter.data.ActiveMaintenance(
+            id = "m-1",
+            location = "outlet",
+            issue = "e2",
+            status = "repair",
+            startedAt = "2026-09-25T10:00:00Z",
+        ),
+    )
+    TrackScooterTheme(isDark = true) {
+        Box(modifier = Modifier.fillMaxSize().background(Surface)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                UnitStatusBlock(
+                    scooter = sampleScooter,
+                    onEditMaintenance = {},
+                    onCompleteMaintenance = {},
+                )
+                ConditionEditor(
+                    condition = mapOf("setelan" to "ada", "lampu" to "nyala", "baterai" to "normal", "rem" to "normal", "ban" to "aman", "monitor" to "normal"),
+                    onFieldChange = { _, _ -> },
+                    monitorDetail = "",
+                    onMonitorDetailChange = {},
+                )
+            }
+        }
     }
 }
 

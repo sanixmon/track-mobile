@@ -41,6 +41,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
+import com.evrenhouse.trackscooter.data.Scooter
+import com.evrenhouse.trackscooter.ui.theme.TrackScooterTheme
 import com.evrenhouse.trackscooter.ui.common.CompactDropdown
 import com.evrenhouse.trackscooter.ui.common.ErrorState
 import com.evrenhouse.trackscooter.ui.common.FilledAction
@@ -196,23 +199,63 @@ fun DashboardScreen(
                     TypeSummaryCard(outletFilteredScooters)
                 }
 
-                // ── Tabel Maintenance Aktif (1:1 Web) ──
-                val filteredRecords = state.maintenanceRecords.filter { rec ->
-                    if (activeOutlet == "all") true
+                // ── Tabel Perbaikan Berjalan ──
+                val activeRepairs = state.maintenanceRecords.filter { rec ->
+                    val isRepair = rec.status == "repair"
+                    val matchesOutlet = if (activeOutlet == "all") true
                     else {
                         val bike = state.scooters.find { it.id == rec.scooterId }
                         val cur = bike?.currentOutlet ?: Outlets.getHomeOutletForType(rec.scooterType ?: bike?.type ?: "sd")
                         cur == activeOutlet
                     }
+                    isRepair && matchesOutlet
                 }
-                if (filteredRecords.isNotEmpty()) {
+                if (activeRepairs.isNotEmpty()) {
                     item {
                         MaintenanceSection(
                             viewModel = viewModel,
-                            records = filteredRecords,
+                            records = activeRepairs,
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+// ── Previews ──────────────────────────────────────────────────────────
+
+@Preview(name = "Dashboard Screen - Light", showBackground = true)
+@Composable
+private fun DashboardScreenLightPreview() {
+    val sampleScooters = listOf(
+        Scooter("SB-01", "sb", ScooterStatus.AVAILABLE, currentOutlet = "utara"),
+        Scooter("SB-02", "sb", ScooterStatus.IN_USE, currentOutlet = "utara"),
+        Scooter("FZ-05", "fz", ScooterStatus.MAINTENANCE, currentOutlet = "utara"),
+    )
+    TrackScooterTheme(isDark = false) {
+        Box(modifier = Modifier.fillMaxSize().background(Surface)) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                FleetStatCards(scooters = sampleScooters)
+                TypeSummaryCard(scooters = sampleScooters)
+            }
+        }
+    }
+}
+
+@Preview(name = "Dashboard Screen - Dark", showBackground = true)
+@Composable
+private fun DashboardScreenDarkPreview() {
+    val sampleScooters = listOf(
+        Scooter("SB-01", "sb", ScooterStatus.AVAILABLE, currentOutlet = "utara"),
+        Scooter("SB-02", "sb", ScooterStatus.IN_USE, currentOutlet = "utara"),
+        Scooter("FZ-05", "fz", ScooterStatus.MAINTENANCE, currentOutlet = "utara"),
+    )
+    TrackScooterTheme(isDark = true) {
+        Box(modifier = Modifier.fillMaxSize().background(Surface)) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                FleetStatCards(scooters = sampleScooters)
+                TypeSummaryCard(scooters = sampleScooters)
             }
         }
     }
