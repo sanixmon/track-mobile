@@ -621,7 +621,7 @@ fun ActivityFeedPanel(
     val todayStr = remember(today) { DateUtils.localDateKey(today) }
 
     // Group logs per unit → list TripChip (1:1 web groupSessionsByUnit)
-    val unitRows = remember(activityLog, todayStr, scooters) {
+    val unitRows: List<UnitLogRow> = remember(activityLog, todayStr, scooters) {
         val allowedIds = scooters.map { it.id }.toSet()
 
         // Collect per-unit, today only
@@ -691,11 +691,12 @@ fun ActivityFeedPanel(
         }
         // Berjalan dulu, lalu urut terbaru
         rows.sortWith(compareByDescending<UnitLogRow> { it.masihKeluar }.thenByDescending { it.lastEventDt })
+        rows as List<UnitLogRow>
     }
 
     // Filter: semua | keluar (masih berjalan) | kembali (sudah selesai)
     var selectedFilter by rememberSaveable { mutableStateOf("all") }
-    val filteredRows = remember(unitRows, selectedFilter) {
+    val filteredRows: List<UnitLogRow> = remember(unitRows, selectedFilter) {
         when (selectedFilter) {
             "keluar"  -> unitRows.filter { it.masihKeluar }
             "kembali" -> unitRows.filter { !it.masihKeluar }
