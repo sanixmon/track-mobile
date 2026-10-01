@@ -522,23 +522,6 @@ fun ReportScreen(
                                             .clip(RoundedCornerShape(12.dp))
                                             .background(if (isAttended) Green.copy(alpha = 0.05f) else Surface2)
                                             .border(1.dp, if (isAttended) Green.copy(alpha = 0.3f) else Border, RoundedCornerShape(12.dp))
-                                            .clickable {
-                                                scope.launch {
-                                                    runCatching {
-                                                        repository.recordDailyAttendance(
-                                                            scooterId = scooter.id,
-                                                            date = selectedDate,
-                                                            outlet = if (selectedOutlet == "all") null else selectedOutlet,
-                                                        )
-                                                    }.onSuccess {
-                                                        sweetAlert.showSuccess(it.message ?: "Unit ${scooter.id} diabsen")
-                                                        loadAttendanceData()
-                                                        viewModel.refresh()
-                                                    }.onFailure {
-                                                        sweetAlert.showError(it.toUserMessage())
-                                                    }
-                                                }
-                                            }
                                             .padding(12.dp),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically,
@@ -578,7 +561,7 @@ fun ReportScreen(
                                                     text = if (isAttended && record?.scannedAt != null) {
                                                         val scanDt = DateUtils.parse(record.scannedAt)
                                                         if (scanDt != null) "Diabsen: ${DateUtils.formatTime(scanDt)}" else "Sudah diabsen"
-                                                    } else "Belum diabsen hadir",
+                                                    } else "Scan QR untuk absen",
                                                     color = TextMuted,
                                                     fontSize = 11.sp,
                                                 )
