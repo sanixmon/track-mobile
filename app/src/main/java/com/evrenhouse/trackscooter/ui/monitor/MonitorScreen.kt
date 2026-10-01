@@ -46,6 +46,7 @@ import com.evrenhouse.trackscooter.data.Scooter
 import com.evrenhouse.trackscooter.data.ScooterStatus
 import com.evrenhouse.trackscooter.ui.common.ErrorState
 import com.evrenhouse.trackscooter.ui.common.LoadingState
+import com.evrenhouse.trackscooter.ui.common.MonitorSkeleton
 import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
 import com.evrenhouse.trackscooter.ui.common.TroubleSwapDialog
@@ -169,14 +170,7 @@ fun MonitorScreen(
                     }
                 }
                 state.loading && state.scooters.isEmpty() -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        LoadingState("Memuat data pemantauan...")
-                    }
+                    MonitorSkeleton()
                 }
                 else -> {
                     HorizontalPager(

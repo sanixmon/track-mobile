@@ -85,6 +85,9 @@ fun AppNavHost() {
         val appMode by dataViewModel.appMode.collectAsState()
         val bottomItems = if (appMode == ModePrefs.MANAJEMEN) manajemenItems else operasionalItems
         var hasAutoRedirected by rememberSaveable { mutableStateOf(false) }
+        var switchingModeTarget by rememberSaveable { mutableStateOf<String?>(null) }
+        val initialMode = rememberSaveable { dataViewModel.appMode.value }
+        val startDestination = if (initialMode == ModePrefs.MANAJEMEN) Routes.MANAGE else Routes.SCAN
 
         // Cek update tiap app dibuka dari background: cek di init tidak jalan
         // ulang bila proses hidup terus (kasus "app lama tidak dapat notif").
@@ -125,10 +128,19 @@ fun AppNavHost() {
             }
         }
 
-        // Hide bottom bar on the detail screen (full-screen modal-like page).
-        // Sentinel pindah ranah (__mode_*) tidak pernah cocok destinasi.
-        val showBottomBar = bottomItems.any { item ->
-            currentDestination?.hierarchy?.any { it.route == item.route } == true
+        // Bottom bar ditampilkan pada semua layar navigasi utama,
+        // dan disembunyikan hanya saat di layar detail unit atau saat splash mode transition aktif.
+        val isDetailScreen = currentDestination?.hierarchy?.any { it.route == Routes.DETAIL } == true
+        val showBottomBar = !isDetailScreen && switchingModeTarget == null
+
+        // Sinkronisasi otomatis mode saat mendarat di rute mode spesifik
+        LaunchedEffect(currentDestination?.route) {
+            val route = currentDestination?.route ?: return@LaunchedEffect
+            if (route in listOf(Routes.MANAGE, Routes.MANAGE_DASHBOARD) && appMode != ModePrefs.MANAJEMEN) {
+                dataViewModel.setAppMode(ModePrefs.MANAJEMEN)
+            } else if (route in listOf(Routes.DASHBOARD, Routes.MONITOR, Routes.SCAN, Routes.REPORT) && appMode != ModePrefs.OPERASIONAL) {
+                dataViewModel.setAppMode(ModePrefs.OPERASIONAL)
+            }
         }
 
         fun navigateTab(route: String) {
@@ -157,12 +169,10 @@ fun AppNavHost() {
                         onNavigate = { item ->
                             when (item.route) {
                                 Routes.MODE_MANAJEMEN -> {
-                                    dataViewModel.setAppMode(ModePrefs.MANAJEMEN)
-                                    navigateTab(Routes.MANAGE)
+                                    switchingModeTarget = ModePrefs.MANAJEMEN
                                 }
                                 Routes.MODE_OPERASIONAL -> {
-                                    dataViewModel.setAppMode(ModePrefs.OPERASIONAL)
-                                    navigateTab(Routes.SCAN)
+                                    switchingModeTarget = ModePrefs.OPERASIONAL
                                 }
                                 else -> navigateTab(item.route)
                             }
@@ -180,7 +190,7 @@ fun AppNavHost() {
             // Transisi geser + fade antar layar (termasuk pindah ranah).
             NavHost(
                 navController = navController,
-                startDestination = Routes.SCAN,
+                startDestination = startDestination,
                 enterTransition = {
                     slideInHorizontally(
                         initialOffsetX = { it / 4 },
@@ -242,6 +252,22 @@ fun AppNavHost() {
                     ScooterDetailScreen(scooterId = id, onBack = { navController.popBackStack() })
                 }
             }
+        }
+
+        // Splash screen transisi penuh layar 2 detik saat berganti mode
+        switchingModeTarget?.let { targetMode ->
+            ModeTransitionSplash(
+                targetMode = targetMode,
+                onFinished = {
+                    dataViewModel.setAppMode(targetMode)
+                    if (targetMode == ModePrefs.MANAJEMEN) {
+                        navigateTab(Routes.MANAGE)
+                    } else {
+                        navigateTab(Routes.SCAN)
+                    }
+                    switchingModeTarget = null
+                },
+            )
         }
     }
         appUpdate?.let { update ->

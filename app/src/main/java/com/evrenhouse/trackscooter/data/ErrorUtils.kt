@@ -12,8 +12,13 @@ import java.io.IOException
 fun Throwable.toUserMessage(): String = when (this) {
     is IOException -> "Tidak dapat terhubung ke server API. Periksa koneksi internet."
     is HttpException -> {
-        val body = errorBodyMessage()
-        if (!body.isNullOrBlank()) body else "Permintaan gagal (${code()})."
+        when (code()) {
+            502, 503, 504 -> "Server backend sedang sibuk atau dalam pemeliharaan (${code()}). Silakan coba beberapa saat lagi."
+            else -> {
+                val body = errorBodyMessage()
+                if (!body.isNullOrBlank()) body else "Permintaan gagal (${code()})."
+            }
+        }
     }
     else -> message ?: "Terjadi kesalahan. Silakan coba lagi."
 }

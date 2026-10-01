@@ -197,11 +197,11 @@ fun RecentLogTableCard(
             activityLog.forEach { e ->
                 perUnit.getOrPut(e.scooterId) { mutableListOf() }.add(e)
             }
-
+            val scootersById = scooters.associateBy { it.id.uppercase() }
             val sessionList = mutableListOf<RentalSessionSimple>()
 
             perUnit.forEach { (scooterId, logs) ->
-                val bike = scooters.find { it.id.equals(scooterId, ignoreCase = true) } ?: return@forEach
+                val bike = scootersById[scooterId.uppercase()] ?: return@forEach
                 val type = bike.type
                 val sorted = logs.mapNotNull {
                     val dt = DateUtils.parse(it.timestamp)

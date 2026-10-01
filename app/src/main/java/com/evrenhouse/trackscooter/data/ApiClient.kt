@@ -8,6 +8,8 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
+import okhttp3.Interceptor
+import okhttp3.Response
 
 object ApiClient {
 
@@ -22,6 +24,7 @@ object ApiClient {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
+            .addInterceptor(RetryOn5xxInterceptor())
 
         if (BuildConfig.DEBUG) {
             val logging = HttpLoggingInterceptor().apply {
@@ -59,5 +62,28 @@ object ApiClient {
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(GitHubApiService::class.java)
+    }
+}
+
+/** Interceptor to retry on transient upstream 502/503/504 errors with exponential backoff */
+private class RetryOn5xxInterceptor(private val maxRetries: Int = 2) : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val request = chain.request()
+        var response = chain.proceed(request)
+        var attempt = 0
+
+        while (!response.isSuccessful && response.code in 502..504 && attempt < maxRetries) {
+            attempt++
+            response.close()
+            val backoffMs = (350L * attempt).coerceAtMost(1200L)
+            try {
+                Thread.sleep(backoffMs)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                break
+            }
+            response = chain.proceed(request)
+        }
+        return response
     }
 }

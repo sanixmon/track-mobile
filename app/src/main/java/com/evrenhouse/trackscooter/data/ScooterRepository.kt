@@ -42,6 +42,13 @@ class ScooterRepository(
 
     private val _localUpdates = MutableSharedFlow<LocalDataUpdate>(extraBufferCapacity = 16)
     val localUpdates: SharedFlow<LocalDataUpdate> = _localUpdates.asSharedFlow()
+    @Volatile
+    private var _cachedScooters: List<Scooter> = emptyList()
+
+    fun getCachedScooters(): List<Scooter> = _cachedScooters
+
+    fun getCachedScooter(id: String): Scooter? =
+        _cachedScooters.find { it.id.equals(id.trim(), ignoreCase = true) }
 
     fun notifyScooterToggled(response: ToggleResponse) {
         _localUpdates.tryEmit(LocalDataUpdate.Toggled(response))
@@ -92,11 +99,28 @@ class ScooterRepository(
             val scooters = async { api.getScooters() }
             val log = async { api.getActivityLog() }
             val maintenance = async { api.getMaintenanceRecords() }
-            DashboardData(scooters.await(), log.await(), maintenance.await())
+            val fetchedScooters = scooters.await()
+            if (fetchedScooters.isNotEmpty()) {
+                _cachedScooters = fetchedScooters
+            }
+            DashboardData(fetchedScooters, log.await(), maintenance.await())
         }
     }
 
-    suspend fun getScooters(): List<Scooter> = withContext(Dispatchers.IO) { api.getScooters() }
+    suspend fun getScooters(): List<Scooter> = withContext(Dispatchers.IO) {
+        runCatching {
+            val list = api.getScooters()
+            if (list.isNotEmpty()) _cachedScooters = list
+            list
+        }.getOrElse { err ->
+            if (_cachedScooters.isNotEmpty()) {
+                Log.w("ScooterRepository", "getScooters failed, falling back to cached ${_cachedScooters.size} scooters", err)
+                _cachedScooters
+            } else {
+                throw err
+            }
+        }
+    }
 
     suspend fun getActivityLog(): List<ActivityLogEntry> = withContext(Dispatchers.IO) { api.getActivityLog() }
 

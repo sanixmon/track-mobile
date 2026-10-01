@@ -471,9 +471,10 @@ fun ActivityFeedPanel(
     val standbyUnits = remember(scooters, activityLog) {
         val available = scooters.filter { it.status == ScooterStatus.AVAILABLE }
         val now = LocalDateTime.now(DateUtils.WIB)
+        val logsByScooter = activityLog.groupBy { it.scooterId }
 
         available.mapNotNull { s ->
-            val logs = activityLog.filter { it.scooterId == s.id }
+            val logs = (logsByScooter[s.id] ?: emptyList())
                 .mapNotNull { l ->
                     val dt = DateUtils.parse(l.timestamp)
                     if (dt != null) l to dt else null

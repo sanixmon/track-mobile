@@ -65,6 +65,8 @@ import com.evrenhouse.trackscooter.ui.common.repository
 import com.evrenhouse.trackscooter.ui.scan.CameraScanner
 import com.evrenhouse.trackscooter.ui.theme.Accent
 import com.evrenhouse.trackscooter.ui.theme.Border
+import com.evrenhouse.trackscooter.ui.common.ReportSkeleton
+import com.evrenhouse.trackscooter.ui.common.SkeletonBox
 import com.evrenhouse.trackscooter.ui.theme.Green
 import com.evrenhouse.trackscooter.ui.theme.LocalThemeIsDark
 import com.evrenhouse.trackscooter.ui.theme.Surface
@@ -185,6 +187,11 @@ fun ReportScreen(
                 }
                 .sortedWith(compareBy<Scooter> { it.id.filter { ch -> !ch.isDigit() } }.thenBy { it.id.filter { ch -> ch.isDigit() }.toIntOrNull() ?: 0 })
         }
+    }
+
+    if (data.loading && data.scooters.isEmpty()) {
+        ReportSkeleton()
+        return
     }
 
     Column(
@@ -477,7 +484,21 @@ fun ReportScreen(
                         }
 
                         // Unit List
-                        if (filteredAttendanceUnits.isEmpty()) {
+                        if (loadingAttendance && attendanceRecords.isEmpty()) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                repeat(5) {
+                                    SkeletonBox(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(48.dp),
+                                        shape = RoundedCornerShape(12.dp),
+                                    )
+                                }
+                            }
+                        } else if (filteredAttendanceUnits.isEmpty()) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()

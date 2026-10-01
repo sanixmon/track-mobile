@@ -22,10 +22,15 @@ object DateUtils {
     private val weekdayFull = DateTimeFormatter.ofPattern("EEEE, dd MMMM yyyy", Locale("id", "ID"))
     private val shortPill = DateTimeFormatter.ofPattern("EEE dd/MM", Locale("id", "ID"))
 
+
+    private val parseCache = java.util.concurrent.ConcurrentHashMap<String, java.time.LocalDateTime>(256)
+    private val dateKeyCache = java.util.concurrent.ConcurrentHashMap<String, String>(256)
     /** Parse an ISO-8601 timestamp to a LocalDateTime in WIB. Returns null on failure. */
     fun parse(ts: String?): java.time.LocalDateTime? {
         if (ts.isNullOrBlank()) return null
-        return runCatching {
+        val cached = parseCache[ts]
+        if (cached != null) return cached
+        val parsed = runCatching {
             Instant.parse(ts).atZone(WIB).toLocalDateTime()
         }.getOrElse {
             // fallback for non-ISO strings
@@ -33,6 +38,10 @@ object DateUtils {
                 java.time.LocalDateTime.parse(ts)
             }.getOrNull()
         }
+        if (parsed != null && parseCache.size < 2048) {
+            parseCache[ts] = parsed
+        }
+        return parsed
     }
 
     fun formatFull(ts: String?): String {
@@ -78,8 +87,15 @@ object DateUtils {
     fun formatPill(date: java.time.LocalDate): String = shortPill.format(date)
 
     fun dateKey(ts: String?): String? {
+        if (ts.isNullOrBlank()) return null
+        val cached = dateKeyCache[ts]
+        if (cached != null) return cached
         val dt = parse(ts) ?: return null
-        return dateKeyFmt.format(dt)
+        val formatted = dateKeyFmt.format(dt)
+        if (dateKeyCache.size < 2048) {
+            dateKeyCache[ts] = formatted
+        }
+        return formatted
     }
 
     fun localDateKey(date: java.time.LocalDate): String = dateKeyFmt.format(date)

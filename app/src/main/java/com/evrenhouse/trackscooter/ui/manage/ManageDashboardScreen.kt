@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.evrenhouse.trackscooter.ui.common.ErrorState
 import com.evrenhouse.trackscooter.ui.common.LoadingState
+import com.evrenhouse.trackscooter.ui.common.DashboardSkeleton
 import com.evrenhouse.trackscooter.ui.common.OutletDropdown
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
 import com.evrenhouse.trackscooter.ui.dashboard.FleetStatCards
@@ -119,7 +120,7 @@ fun ManageDashboardScreen(viewModel: ScooterDataViewModel) {
             }
             state.loading && state.scooters.isEmpty() -> {
                 item {
-                    LoadingState("Memuat data armada...")
+                    DashboardSkeleton()
                 }
             }
             else -> {

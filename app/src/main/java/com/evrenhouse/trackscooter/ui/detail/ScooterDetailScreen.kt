@@ -68,6 +68,7 @@ import com.evrenhouse.trackscooter.data.ScooterStatus
 import com.evrenhouse.trackscooter.ui.common.AppViewModelFactory
 import com.evrenhouse.trackscooter.ui.common.LiveTimer
 import com.evrenhouse.trackscooter.ui.common.LoadingState
+import com.evrenhouse.trackscooter.ui.common.DetailSkeleton
 import com.evrenhouse.trackscooter.ui.common.StatusChip
 import com.evrenhouse.trackscooter.ui.common.TroubleSwapDialog
 import com.evrenhouse.trackscooter.ui.common.repository
@@ -270,7 +271,7 @@ fun ScooterDetailScreen(
         }
 
         when {
-            state.loading && state.scooter == null -> LoadingState("Memuat detail unit...")
+            state.loading && state.scooter == null -> DetailSkeleton()
             state.scooter == null -> {
                 Text(
                     "Unit tidak ditemukan.",

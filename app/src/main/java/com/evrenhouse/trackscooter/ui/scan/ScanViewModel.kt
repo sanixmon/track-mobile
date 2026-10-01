@@ -10,6 +10,8 @@ import com.evrenhouse.trackscooter.data.toUserMessage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.delay
+import retrofit2.HttpException
 import kotlinx.coroutines.launch
 
 data class ScanUiState(
@@ -50,8 +52,17 @@ class ScanViewModel(
 
         viewModelScope.launch {
             runCatching {
-                val scooters = repository.getScooters()
-                scooters.find { it.id.equals(cleanId, ignoreCase = true) }
+                // Cek data cache di repository terlebih dahulu agar instan dan tahan error 502
+                val cached = repository.getCachedScooter(cleanId)
+                if (cached != null) {
+                    cached
+                } else {
+                    val scooters = repository.getScooters()
+                    scooters.find { it.id.equals(cleanId, ignoreCase = true) }
+                }
+            }.recoverCatching { err ->
+                // Fallback ke cache jika jaringan atau proxy upstream mengembalikan error (misal 502)
+                repository.getCachedScooter(cleanId) ?: throw err
             }.onSuccess { scooter ->
                 if (scooter != null) {
                     _state.value = _state.value.copy(
@@ -88,6 +99,18 @@ class ScanViewModel(
                     repository.returnScooter(scooter.id)
                 } else {
                     repository.checkoutScooter(scooter.id)
+                }
+            }.recoverCatching { err ->
+                // Toleransi error server sesaat (502 Bad Gateway / 503 / 504): jeda 500ms dan coba ulang
+                if (err is HttpException && err.code() in 502..504) {
+                    delay(500)
+                    if (isReturn) {
+                        repository.returnScooter(scooter.id)
+                    } else {
+                        repository.checkoutScooter(scooter.id)
+                    }
+                } else {
+                    throw err
                 }
             }.onSuccess { res ->
                 if (res.success) {

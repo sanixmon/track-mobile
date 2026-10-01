@@ -233,12 +233,36 @@ fun LoadingState(text: String = "Memuat data...") {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 48.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        CircularProgressIndicator(color = Accent, strokeWidth = 3.dp)
-        Text(text, color = TextMuted, fontSize = 12.sp)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(Surface)
+                .border(1.dp, Border, RoundedCornerShape(14.dp))
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SkeletonLine(width = 140.dp, height = 16.dp)
+                CircularProgressIndicator(color = Accent, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+            }
+            Text(text, color = TextMuted, fontSize = 12.sp)
+            repeat(3) {
+                SkeletonBox(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(36.dp),
+                    shape = RoundedCornerShape(8.dp),
+                )
+            }
+        }
     }
 }
 

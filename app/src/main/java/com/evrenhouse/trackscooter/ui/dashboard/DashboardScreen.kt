@@ -47,6 +47,7 @@ import com.evrenhouse.trackscooter.ui.common.FilledAction
 import com.evrenhouse.trackscooter.ui.common.OutletDropdown
 import com.evrenhouse.trackscooter.util.Outlets
 import com.evrenhouse.trackscooter.ui.common.LoadingState
+import com.evrenhouse.trackscooter.ui.common.DashboardSkeleton
 import com.evrenhouse.trackscooter.ui.common.OutlinedAction
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
 import com.evrenhouse.trackscooter.ui.common.SectionCard
@@ -141,7 +142,7 @@ fun DashboardScreen(
             }
             state.loading && state.scooters.isEmpty() -> {
                 item {
-                    LoadingState("Memuat data scooter...")
+                    DashboardSkeleton()
                 }
             }
             else -> {

@@ -76,6 +76,7 @@ import com.evrenhouse.trackscooter.data.UpdateScooterRequest
 import com.evrenhouse.trackscooter.ui.common.AppViewModelFactory
 import com.evrenhouse.trackscooter.ui.common.ErrorState
 import com.evrenhouse.trackscooter.ui.common.LoadingState
+import com.evrenhouse.trackscooter.ui.common.ManageSkeleton
 import com.evrenhouse.trackscooter.ui.common.OutletDropdown
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
 import com.evrenhouse.trackscooter.ui.common.TroubleSwapDialog
@@ -139,9 +140,22 @@ fun ManageScreen(
         }
     }
 
-    val todayKey = DateUtils.localDateKey(DateUtils.today())
-    fun todayCheckoutCount(id: String): Int =
-        data.activityLog.count { it.scooterId == id && it.action == "checkout" && DateUtils.dateKey(it.timestamp) == todayKey }
+    val todayKey = remember { DateUtils.localDateKey(DateUtils.today()) }
+    val todayCheckoutCounts by remember(data.activityLog, todayKey) {
+        derivedStateOf {
+            val counts = HashMap<String, Int>(data.scooters.size.coerceAtLeast(16))
+            for (entry in data.activityLog) {
+                if (entry.action == "checkout" && DateUtils.dateKey(entry.timestamp) == todayKey) {
+                    val cur = counts[entry.scooterId] ?: 0
+                    counts[entry.scooterId] = cur + 1
+                }
+            }
+            counts
+        }
+    }
+    val getTodayCheckoutCount: (String) -> Int = remember(todayCheckoutCounts) {
+        { id -> todayCheckoutCounts[id] ?: 0 }
+    }
 
     val filtered by remember(data.scooters, search, filterStatus, filterType, sortBy, activeOutlet) {
         derivedStateOf {
@@ -153,7 +167,7 @@ fun ManageScreen(
                     val matchesType = filterType == "all" || s.type == filterType
                     matchesOutlet && matchesSearch && matchesStatus && matchesType
                 }
-                .sortedWith(compareScooters(sortBy, ::todayCheckoutCount))
+                .sortedWith(compareScooters(sortBy, getTodayCheckoutCount))
         }
     }
 
@@ -326,7 +340,7 @@ fun ManageScreen(
                 ErrorState(message = data.error ?: "", onRetry = { viewModel.refresh() })
             }
             data.loading && data.scooters.isEmpty() -> {
-                LoadingState("Memuat data scooter...")
+                ManageSkeleton()
             }
             else -> {
 
@@ -341,7 +355,7 @@ fun ManageScreen(
                     onFilterType = { filterType = it },
                     sortBy = sortBy,
                     onSortBy = { sortBy = it },
-                    getTodayCount = ::todayCheckoutCount,
+                    getTodayCount = getTodayCheckoutCount,
                     onOpenDetail = onOpenDetail,
                     onStatusChange = { scooter, newStatus ->
                         statusDialog = StatusDialogData(scooter, newStatus)
