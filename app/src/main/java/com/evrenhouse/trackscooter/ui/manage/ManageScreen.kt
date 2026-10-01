@@ -496,7 +496,7 @@ fun ManageScreen(
                                 }
                             },
                             onTroubleSwap = { troubleScooter = it },
-                            onEditScooter = { editingScooter = it },
+                            onEditScooter = { editingScooter = scooter },
                             onEditMaintenance = {
                                 statusDialog = StatusDialogData(
                                     it,
