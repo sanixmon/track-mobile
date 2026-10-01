@@ -69,6 +69,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun ModeTransitionSplash(
     targetMode: String,
+    onSwitch: () -> Unit = {},
     onFinished: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -92,23 +93,37 @@ fun ModeTransitionSplash(
         ),
         label = "pulse_scale",
     )
+    var splashVisible by remember { mutableStateOf(true) }
 
     LaunchedEffect(targetMode) {
         progressTarget = 1f
-        // Exactly 2 seconds as requested
-        delay(2000L)
+        // Pindahkan mode dan navigasi di detik awal saat layar tertutup penuh oleh splash (600ms)
+        // agar layar tujuan punya waktu cukup untuk render dan stabil di belakang splash screen
+        delay(600L)
+        onSwitch()
+        // Pertahankan splash screen tetap menutup penuh selama sisa 1400ms agar tidak ada komponen glitchy
+        delay(1400L)
+        splashVisible = false
+        // Berikan waktu fade out halus sebelum overlay dilepas
+        delay(300L)
         onFinished()
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                // Intercept all touches during the 2-second transition
-            }
-            .background(Surface),
-        contentAlignment = Alignment.Center,
+    AnimatedVisibility(
+        visible = splashVisible,
+        enter = fadeIn(animationSpec = tween(150)),
+        exit = fadeOut(animationSpec = tween(300)),
+        modifier = modifier.fillMaxSize(),
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    // Intercept all touches during the 2-second transition
+                }
+                .background(Surface),
+            contentAlignment = Alignment.Center,
+        ) {
         // Decorative background radial gradient
         Box(
             modifier = Modifier
@@ -230,5 +245,6 @@ fun ModeTransitionSplash(
                 )
             }
         }
+    }
     }
 }

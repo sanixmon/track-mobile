@@ -259,13 +259,15 @@ fun AppNavHost() {
         switchingModeTarget?.let { targetMode ->
             ModeTransitionSplash(
                 targetMode = targetMode,
-                onFinished = {
+                onSwitch = {
                     dataViewModel.setAppMode(targetMode)
                     if (targetMode == ModePrefs.MANAJEMEN) {
                         navigateTab(Routes.MANAGE)
                     } else {
                         navigateTab(Routes.SCAN)
                     }
+                },
+                onFinished = {
                     switchingModeTarget = null
                 },
             )

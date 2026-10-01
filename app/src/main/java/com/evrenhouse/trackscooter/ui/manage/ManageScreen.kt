@@ -189,6 +189,31 @@ fun ManageScreen(
         }
     }
 
+    // Windowed Pagination: batasi render awal 10 item agar scroll super ringan (60-120fps),
+    // bertambah +10 item saat mendekati akhir daftar. Pencarian tetap menyaring seluruh data armada.
+    var displayLimit by rememberSaveable(search, filterStatus, filterType, sortBy, activeOutlet) {
+        mutableIntStateOf(10)
+    }
+    val displayedScooters by remember(filtered, displayLimit) {
+        derivedStateOf {
+            filtered.take(displayLimit)
+        }
+    }
+
+    // Auto-load 10 item berikutnya saat pengguna scroll mendekati ujung daftar
+    LaunchedEffect(lazyListState, filtered.size) {
+        snapshotFlow {
+            val layoutInfo = lazyListState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            totalItems > 0 && lastVisibleItem >= totalItems - 2
+        }.collect { nearEnd ->
+            if (nearEnd && displayLimit < filtered.size) {
+                displayLimit = (displayLimit + 10).coerceAtMost(filtered.size)
+            }
+        }
+    }
+
     val lazyListState = rememberLazyListState()
     var isFabVisible by remember { mutableStateOf(true) }
     var lastFirstVisibleItemIndex by remember { mutableIntStateOf(0) }
@@ -451,7 +476,7 @@ fun ManageScreen(
                 }
                 else -> {
                     items(
-                        items = filtered,
+                        items = displayedScooters,
                         key = { it.id },
                     ) { scooter ->
                         UnitRow(
@@ -510,6 +535,31 @@ fun ManageScreen(
                             color = Border.copy(alpha = 0.5f),
                             thickness = 0.5.dp,
                         )
+                    }
+
+                    // Footer indikator jika masih ada sisa item yang belum dimuat
+                    if (displayLimit < filtered.size) {
+                        item(key = "load_more_footer") {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { displayLimit = (displayLimit + 10).coerceAtMost(filtered.size) }
+                                    .padding(vertical = 10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                CircularProgressIndicator(
+                                    color = Accent,
+                                    modifier = Modifier.size(14.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                                Text(
+                                    text = "Menampilkan ${displayedScooters.size} dari ${filtered.size} unit...",
+                                    color = TextSubtle,
+                                    fontSize = 11.5.sp,
+                                )
+                            }
+                        }
                     }
                 }
             }

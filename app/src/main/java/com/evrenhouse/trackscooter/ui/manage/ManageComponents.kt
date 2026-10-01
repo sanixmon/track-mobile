@@ -130,13 +130,14 @@ fun UnitStatusChip(
             )
         }
 
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier
-                .background(Surface, RoundedCornerShape(10.dp))
-                .border(1.dp, Border, RoundedCornerShape(10.dp)),
-        ) {
+        if (expanded) {
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier
+                    .background(Surface, RoundedCornerShape(10.dp))
+                    .border(1.dp, Border, RoundedCornerShape(10.dp)),
+            ) {
             listOf(
                 ScooterStatus.AVAILABLE to "Unit Ready",
                 ScooterStatus.IN_USE to "Unit Diluar",
@@ -161,6 +162,7 @@ fun UnitStatusChip(
                     },
                 )
             }
+        }
         }
     }
 }
@@ -205,7 +207,7 @@ fun UnitRow(
             .padding(horizontal = 16.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        // ── BARIS 1: ID, (Badge), (Lokasi), Chip Status, (Tukar), Aksi (Edit, QR, Overflow) ──
+        // ── BARIS 1: ID, (Badge), (Lokasi) di kiri  ⟷  Chip Status mepet dengan Tombol Titik 3 di kanan ──
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -253,124 +255,92 @@ fun UnitRow(
                 if (showTypeBadge) {
                     TypeBadge(scooter.type, id = scooter.id, outlet = scooter.currentOutlet)
                 }
+            }
 
+            // Aksi Kanan: Chip Status mepet dengan Menu Titik 3 (bersih tanpa tombol tukar & tanpa unduh QR luar)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 // Chip Status Interaktif dengan WCAG contrast 4.5:1
                 UnitStatusChip(
                     status = scooter.status,
                     onStatusChange = onStatusChange,
                 )
 
-                // Tombol Tukar Unit (bila status IN_USE)
-                if (scooter.status == ScooterStatus.IN_USE && onTroubleSwap != null) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Warning.copy(alpha = 0.12f))
-                            .border(1.dp, Warning.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
-                            .clickable { onTroubleSwap(scooter) }
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                    ) {
-                        Icon(Icons.Filled.WarningAmber, contentDescription = null, tint = Warning, modifier = Modifier.size(11.dp))
-                        Text("Tukar", color = Warning, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-
-            // Aksi Kanan: Hanya QR dan Menu Titik 3 (tampilan luar bersih tanpa pensil)
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(0.dp),
-            ) {
-                // Ikon Unduh QR
-                Box(
-                    modifier = Modifier
-                        .defaultMinSize(minWidth = 36.dp, minHeight = 36.dp)
-                        .clip(CircleShape)
-                        .clickable { onDownloadQr() }
-                        .padding(8.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.QrCode,
-                        contentDescription = "Unduh kode QR unit ${scooter.id}",
-                        tint = TextMuted,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
-
-                // Overflow Menu (Hapus dipindahkan ke sini secara aman)
+                // Overflow Menu Titik 3 (Unduh QR, Edit, Detail, Hapus di dalam menu)
                 Box {
                     Box(
                         modifier = Modifier
                             .defaultMinSize(minWidth = 36.dp, minHeight = 36.dp)
                             .clip(CircleShape)
                             .clickable { overflowMenuExpanded = true }
-                            .padding(8.dp),
+                            .padding(6.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             imageVector = Icons.Filled.MoreVert,
                             contentDescription = "Opsi lainnya untuk unit ${scooter.id}",
                             tint = TextMuted,
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(17.dp),
                         )
                     }
 
-                    DropdownMenu(
-                        expanded = overflowMenuExpanded,
-                        onDismissRequest = { overflowMenuExpanded = false },
-                        modifier = Modifier
-                            .background(Surface, RoundedCornerShape(12.dp))
-                            .border(1.dp, Border, RoundedCornerShape(12.dp)),
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Atur Outlet & Unit", fontSize = 12.sp, color = TextPrimary) },
-                            leadingIcon = { Icon(Icons.Filled.Edit, null, tint = TextMuted, modifier = Modifier.size(15.dp)) },
-                            onClick = {
-                                overflowMenuExpanded = false
-                                onEditScooter?.invoke()
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Unduh QR Code", fontSize = 12.sp, color = TextPrimary) },
-                            leadingIcon = { Icon(Icons.Filled.QrCode, null, tint = TextMuted, modifier = Modifier.size(15.dp)) },
-                            onClick = {
-                                overflowMenuExpanded = false
-                                onDownloadQr()
-                            },
-                        )
-                        if (isMaintenance) {
-                            val editMaintenanceAction = onEditMaintenance ?: onEditScooter?.let { edit -> { _: Scooter -> edit() } }
-                            if (editMaintenanceAction != null) {
-                                DropdownMenuItem(
-                                    text = { Text("Edit Kendala & Catatan", fontSize = 12.sp, color = TextPrimary) },
-                                    leadingIcon = { Icon(Icons.Filled.Schedule, null, tint = Warning, modifier = Modifier.size(15.dp)) },
-                                    onClick = {
-                                        overflowMenuExpanded = false
-                                        editMaintenanceAction(scooter)
-                                    },
-                                )
+                    if (overflowMenuExpanded) {
+                        DropdownMenu(
+                            expanded = overflowMenuExpanded,
+                            onDismissRequest = { overflowMenuExpanded = false },
+                            modifier = Modifier
+                                .background(Surface, RoundedCornerShape(12.dp))
+                                .border(1.dp, Border, RoundedCornerShape(12.dp)),
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Atur Outlet & Unit", fontSize = 12.sp, color = TextPrimary) },
+                                leadingIcon = { Icon(Icons.Filled.Edit, null, tint = TextMuted, modifier = Modifier.size(15.dp)) },
+                                onClick = {
+                                    overflowMenuExpanded = false
+                                    onEditScooter?.invoke()
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Unduh QR Code", fontSize = 12.sp, color = TextPrimary) },
+                                leadingIcon = { Icon(Icons.Filled.QrCode, null, tint = TextMuted, modifier = Modifier.size(15.dp)) },
+                                onClick = {
+                                    overflowMenuExpanded = false
+                                    onDownloadQr()
+                                },
+                            )
+                            if (isMaintenance) {
+                                val editMaintenanceAction = onEditMaintenance ?: onEditScooter?.let { edit -> { _: Scooter -> edit() } }
+                                if (editMaintenanceAction != null) {
+                                    DropdownMenuItem(
+                                        text = { Text("Edit Kendala & Catatan", fontSize = 12.sp, color = TextPrimary) },
+                                        leadingIcon = { Icon(Icons.Filled.Schedule, null, tint = Warning, modifier = Modifier.size(15.dp)) },
+                                        onClick = {
+                                            overflowMenuExpanded = false
+                                            editMaintenanceAction(scooter)
+                                        },
+                                    )
+                                }
                             }
+                            DropdownMenuItem(
+                                text = { Text("Detail Unit", fontSize = 12.sp, color = TextPrimary) },
+                                leadingIcon = { Icon(Icons.Filled.Tune, null, tint = TextMuted, modifier = Modifier.size(15.dp)) },
+                                onClick = {
+                                    overflowMenuExpanded = false
+                                    onOpenDetail()
+                                },
+                            )
+                            HorizontalDivider(color = Border, thickness = 0.5.dp)
+                            DropdownMenuItem(
+                                text = { Text("Hapus Unit", fontSize = 12.sp, color = Red, fontWeight = FontWeight.SemiBold) },
+                                leadingIcon = { Icon(Icons.Filled.Delete, null, tint = Red, modifier = Modifier.size(15.dp)) },
+                                onClick = {
+                                    overflowMenuExpanded = false
+                                    onDelete()
+                                },
+                            )
                         }
-                        DropdownMenuItem(
-                            text = { Text("Detail Unit", fontSize = 12.sp, color = TextPrimary) },
-                            leadingIcon = { Icon(Icons.Filled.Tune, null, tint = TextMuted, modifier = Modifier.size(15.dp)) },
-                            onClick = {
-                                overflowMenuExpanded = false
-                                onOpenDetail()
-                            },
-                        )
-                        HorizontalDivider(color = Border, thickness = 0.5.dp)
-                        DropdownMenuItem(
-                            text = { Text("Hapus Unit", fontSize = 12.sp, color = Red, fontWeight = FontWeight.SemiBold) },
-                            leadingIcon = { Icon(Icons.Filled.Delete, null, tint = Red, modifier = Modifier.size(15.dp)) },
-                            onClick = {
-                                overflowMenuExpanded = false
-                                onDelete()
-                            },
-                        )
                     }
                 }
             }
