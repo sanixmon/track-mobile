@@ -188,6 +188,10 @@ fun ManageScreen(
                 .sortedWith(compareScooters(sortBy, getTodayCheckoutCount))
         }
     }
+    val lazyListState = rememberLazyListState()
+    var isFabVisible by remember { mutableStateOf(true) }
+    var lastFirstVisibleItemIndex by remember { mutableIntStateOf(0) }
+    var lastFirstVisibleItemScrollOffset by remember { mutableIntStateOf(0) }
 
     // Windowed Pagination: batasi render awal 10 item agar scroll super ringan (60-120fps),
     // bertambah +10 item saat mendekati akhir daftar. Pencarian tetap menyaring seluruh data armada.
@@ -213,12 +217,6 @@ fun ManageScreen(
             }
         }
     }
-
-    val lazyListState = rememberLazyListState()
-    var isFabVisible by remember { mutableStateOf(true) }
-    var lastFirstVisibleItemIndex by remember { mutableIntStateOf(0) }
-    var lastFirstVisibleItemScrollOffset by remember { mutableIntStateOf(0) }
-
     // Otomatis sembunyikan FAB saat scroll turun, tampilkan saat scroll naik atau di paling atas
     LaunchedEffect(lazyListState) {
         snapshotFlow {
@@ -545,8 +543,8 @@ fun ManageScreen(
                                     .fillMaxWidth()
                                     .clickable { displayLimit = (displayLimit + 10).coerceAtMost(filtered.size) }
                                     .padding(vertical = 10.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 CircularProgressIndicator(
                                     color = Accent,
