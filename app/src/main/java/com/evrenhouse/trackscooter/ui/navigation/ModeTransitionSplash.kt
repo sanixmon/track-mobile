@@ -82,18 +82,6 @@ fun ModeTransitionSplash(
         animationSpec = tween(durationMillis = 2000, easing = FastOutSlowInEasing),
         label = "splash_progress",
     )
-
-    // Pulse animation for icon glow
-    val infiniteTransition = rememberInfiniteTransition(label = "splash_pulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.94f,
-        targetValue = 1.06f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(900, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "pulse_scale",
-    )
     var splashVisible by remember { mutableStateOf(true) }
 
     LaunchedEffect(targetMode) {
@@ -125,127 +113,52 @@ fun ModeTransitionSplash(
                 .background(Surface),
             contentAlignment = Alignment.Center,
         ) {
-        // Decorative background radial gradient
-        Box(
-            modifier = Modifier
-                .size(340.dp)
-                .scale(pulseScale)
-                .background(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            if (isManajemen) Accent.copy(alpha = 0.22f) else Accent.copy(alpha = 0.18f),
-                            Color.Transparent,
-                        ),
-                    ),
-                    shape = CircleShape,
-                ),
-        )
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(horizontal = 32.dp),
-        ) {
-            // Icon Badge with pulse
-            Box(
-                modifier = Modifier
-                    .size(92.dp)
-                    .scale(pulseScale)
-                    .clip(RoundedCornerShape(26.dp))
-                    .background(Surface2)
-                    .border(1.5.dp, Accent.copy(alpha = 0.5f), RoundedCornerShape(26.dp)),
-                contentAlignment = Alignment.Center,
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(horizontal = 32.dp),
             ) {
-                Icon(
-                    imageVector = if (isManajemen) Icons.Filled.Inventory2 else Icons.Filled.ElectricScooter,
-                    contentDescription = null,
-                    tint = Accent,
-                    modifier = Modifier.size(46.dp),
-                )
-            }
-
-            Spacer(Modifier.height(28.dp))
-
-            // Mode Label Chip
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Accent.copy(alpha = 0.12f))
-                    .border(1.dp, Accent.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
-                    .padding(horizontal = 14.dp, vertical = 6.dp),
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                // Icon Badge (bersih & tenang tanpa animasi denyut / pulse)
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(Surface2)
+                        .border(1.dp, Border, RoundedCornerShape(22.dp)),
+                    contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        imageVector = if (isManajemen) Icons.Filled.Tune else Icons.Filled.Home,
+                        imageVector = if (isManajemen) Icons.Filled.Inventory2 else Icons.Filled.ElectricScooter,
                         contentDescription = null,
                         tint = Accent,
-                        modifier = Modifier.size(13.dp),
-                    )
-                    Text(
-                        text = if (isManajemen) "Mode Manajemen" else "Mode Operasional",
-                        color = Accent,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp,
+                        modifier = Modifier.size(40.dp),
                     )
                 }
-            }
 
-            Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(20.dp))
 
-            // Main Title
-            Text(
-                text = if (isManajemen) "Beralih ke Mode Manajemen..." else "Beralih ke Mode Operasional...",
-                color = TextPrimary,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-            )
+                // Judul mode ringkas tanpa teks berlebih
+                Text(
+                    text = if (isManajemen) "Mode Manajemen" else "Mode Operasional",
+                    color = TextPrimary,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                )
 
-            Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(24.dp))
 
-            // Subtitle
-            Text(
-                text = if (isManajemen) {
-                    "Menyiapkan modul kelola armada, riwayat, dan analitik"
-                } else {
-                    "Menyiapkan modul pemindai lapangan, live monitor, dan laporan"
-                },
-                color = TextMuted,
-                fontSize = 12.sp,
-                lineHeight = 16.sp,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            )
-
-            Spacer(Modifier.height(36.dp))
-
-            // 2-second Progress Bar
-            Column(
-                modifier = Modifier.width(220.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
+                // Progress Bar minimalis
                 LinearProgressIndicator(
                     progress = { animatedProgress },
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp)),
+                        .width(180.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp)),
                     color = Accent,
                     trackColor = Surface2,
                     strokeCap = StrokeCap.Round,
                 )
-
-                Text(
-                    text = "Memuat antarmuka...",
-                    color = TextSubtle,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                )
             }
         }
-    }
     }
 }

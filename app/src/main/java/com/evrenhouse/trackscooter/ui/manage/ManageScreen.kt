@@ -530,8 +530,8 @@ fun ManageScreen(
                         )
                         HorizontalDivider(
                             modifier = Modifier.padding(horizontal = 16.dp),
-                            color = Border.copy(alpha = 0.5f),
-                            thickness = 0.5.dp,
+                            color = Border.copy(alpha = 0.65f),
+                            thickness = 0.8.dp,
                         )
                     }
 
@@ -589,7 +589,7 @@ fun ManageScreen(
             exit = fadeOut(animationSpec = tween(150)) + scaleOut(animationSpec = tween(150)),
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(bottom = 76.dp, end = 16.dp),
+                .padding(bottom = 60.dp, end = 16.dp),
         ) {
             ExtendedFloatingActionButton(
                 onClick = { showAddDialog = true },

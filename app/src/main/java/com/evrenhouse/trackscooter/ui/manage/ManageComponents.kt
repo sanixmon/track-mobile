@@ -203,7 +203,7 @@ fun UnitRow(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = { onEditScooter?.invoke() ?: onOpenDetail() })
+            .clickable(onClick = onOpenDetail)
             .padding(horizontal = 16.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
@@ -218,10 +218,11 @@ fun UnitRow(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                // ID dengan onSurface netral untuk semua jenis (tanpa warna merah/hijau)
+                // ID dengan warna sesuai outlet (kodename outlet)
+                val idColor = ScooterColors.getOutletColor(currentOutletId)
                 Text(
                     text = scooter.id,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = idColor,
                     fontSize = 13.5.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
