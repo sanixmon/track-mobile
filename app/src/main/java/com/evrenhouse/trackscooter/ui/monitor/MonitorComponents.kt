@@ -5,39 +5,47 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.DirectionsBike
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.NorthEast
-import androidx.compose.material.icons.filled.SouthWest
 import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,14 +53,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.evrenhouse.trackscooter.data.ActivityLogEntry
 import com.evrenhouse.trackscooter.data.Scooter
-import com.evrenhouse.trackscooter.data.ScooterStatus
+import com.evrenhouse.trackscooter.ui.common.OutletDropdown
 import com.evrenhouse.trackscooter.ui.theme.Accent
 import com.evrenhouse.trackscooter.ui.theme.Border
 import com.evrenhouse.trackscooter.ui.theme.Green
+import com.evrenhouse.trackscooter.ui.theme.LocalThemeIsDark
 import com.evrenhouse.trackscooter.ui.theme.Red
 import com.evrenhouse.trackscooter.ui.theme.Surface
 import com.evrenhouse.trackscooter.ui.theme.Surface2
@@ -60,11 +70,9 @@ import com.evrenhouse.trackscooter.ui.theme.Surface3
 import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
+import com.evrenhouse.trackscooter.ui.theme.TrackScooterTheme
 import com.evrenhouse.trackscooter.ui.theme.Warning
-import com.evrenhouse.trackscooter.ui.theme.LocalThemeIsDark
-import com.evrenhouse.trackscooter.util.ScooterColors
 import com.evrenhouse.trackscooter.util.DateUtils
-import com.evrenhouse.trackscooter.util.TypeLabels
 import java.time.Duration
 import java.time.LocalDateTime
 
@@ -73,92 +81,86 @@ enum class MonitorTab(val label: String, val icon: ImageVector) {
     ACTIVITY("Aktivitas Terbaru", Icons.Filled.History),
 }
 
-/** ── Header with smart live pulse (1:1 with web MonitorPage.jsx) ── */
+/** ── Header with Outlet Selector & slim real-time indicator ── */
 @Composable
 fun LivePulseHeader(
     isLiveConnected: Boolean,
     isReconnecting: Boolean,
-    outletName: String? = null,
+    selectedOutletId: String,
+    onOutletSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(900),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "pulseAlpha",
-    )
+    val isDark = LocalThemeIsDark.current
+    val isDisconnected = !isLiveConnected && !isReconnecting
 
-    Row(
+    Column(
         modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            text = "Monitor",
-            color = TextPrimary,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-        )
-
-        // Live status badge (1:1 with web)
         Row(
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier
-                .background(
-                    color = when {
-                        isReconnecting -> Warning.copy(alpha = 0.12f)
-                        isLiveConnected -> Green.copy(alpha = 0.12f)
-                        else -> Red.copy(alpha = 0.12f)
-                    },
-                    shape = RoundedCornerShape(20.dp),
-                )
-                .border(
-                    1.dp,
-                    when {
-                        isReconnecting -> Warning.copy(alpha = 0.3f)
-                        isLiveConnected -> Green.copy(alpha = 0.3f)
-                        else -> Red.copy(alpha = 0.3f)
-                    },
-                    RoundedCornerShape(20.dp),
-                )
-                .padding(horizontal = 10.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .background(
-                        color = when {
-                            isReconnecting -> Warning.copy(alpha = pulseAlpha)
-                            isLiveConnected -> Green.copy(alpha = pulseAlpha)
-                            else -> Red.copy(alpha = pulseAlpha)
-                        },
-                        shape = CircleShape,
-                    ),
-            )
             Text(
-                text = when {
-                    isReconnecting -> "Menghubungkan..."
-                    isLiveConnected -> "Terhubung real-time"
-                    else -> "Koneksi terputus"
-                },
-                color = when {
-                    isReconnecting -> Warning
-                    isLiveConnected -> Green
-                    else -> Red
-                },
-                fontSize = 11.sp,
+                text = "Monitor",
+                color = TextPrimary,
+                fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
             )
+
+            // Indikator status real-time ramping
+            if (isDisconnected) {
+                // Warning pill merah jika koneksi terputus
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    modifier = Modifier
+                        .background(Red.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
+                        .border(1.dp, Red.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
+                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                ) {
+                    Box(modifier = Modifier.size(6.dp).background(Red, CircleShape))
+                    Text(
+                        text = "Koneksi terputus",
+                        color = Red,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            } else {
+                // Titik hijau/amber kecil + teks tanpa pill tebal
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .background(if (isLiveConnected) Green else Warning, CircleShape),
+                    )
+                    Text(
+                        text = if (isReconnecting) "Menghubungkan..." else "Terhubung real-time",
+                        color = if (isReconnecting) (if (isDark) Color(0xFFFBBF24) else Color(0xFF8A5300))
+                        else (if (isDark) Color(0xFF4ADE80) else Color(0xFF15803D)),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+            }
         }
+
+        // Chip outlet sama persis dengan Dashboard/Kelola (karena semua angka di layar ini milik outlet terpilih)
+        OutletDropdown(
+            selectedOutletId = selectedOutletId,
+            onOutletSelected = onOutletSelected,
+            getOutletCount = null,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 
-/** ── Tab Selector (1:1 with web MonitorPage.jsx) ── */
+/** ── Tab Selector ── */
 @Composable
 fun MonitorTabSelector(
     selectedTab: MonitorTab,
@@ -211,7 +213,6 @@ fun MonitorTabSelector(
                         modifier = Modifier
                             .background(
                                 if (isSelected) Color.White.copy(alpha = 0.25f)
-                                else if (tab == MonitorTab.LIVE_SESSION) Warning.copy(alpha = 0.2f)
                                 else Surface3,
                                 CircleShape,
                             )
@@ -219,9 +220,7 @@ fun MonitorTabSelector(
                     ) {
                         Text(
                             text = count.toString(),
-                            color = if (isSelected) Color.White
-                            else if (tab == MonitorTab.LIVE_SESSION) Warning
-                            else TextMuted,
+                            color = if (isSelected) Color.White else TextPrimary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -232,7 +231,7 @@ fun MonitorTabSelector(
     }
 }
 
-/** ── Live Session Card (1:1 with web LiveSessionCard.jsx) ── */
+/** ── Live Session Card: Padat ~115dp, ID netral onSurface, durasi besar di kanan, badge biru Disewa ── */
 @Composable
 fun LiveSessionCard(
     scooter: Scooter,
@@ -244,20 +243,12 @@ fun LiveSessionCard(
     val dt = DateUtils.parse(scooter.lastUpdated)
     val startMillis = dt?.atZone(DateUtils.WIB)?.toInstant()?.toEpochMilli() ?: nowMillis
     val elapsedSecs = ((nowMillis - startMillis) / 1000).coerceAtLeast(0)
-    val isOverHour = elapsedSecs >= 3600
     val durationText = DateUtils.formatDuration(elapsedSecs)
     val keluarTime = if (dt != null) DateUtils.formatTime(dt) else "-"
 
-    val infiniteTransition = rememberInfiniteTransition(label = "ping")
-    val pingAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "pingAlpha",
-    )
+    val isDark = LocalThemeIsDark.current
+    val blueTextColor = if (isDark) Color(0xFF818CF8) else Color(0xFF1E40AF)
+    val blueBgColor = if (isDark) Accent.copy(alpha = 0.18f) else Color(0xFFEFF6FF)
 
     Column(
         modifier = modifier
@@ -267,174 +258,139 @@ fun LiveSessionCard(
             .border(1.dp, Border, RoundedCornerShape(14.dp))
             .let { if (onClick != null) it.clickable(onClick = onClick) else it }
             .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // Header: Nomer ID & Badge Disewa (1:1 web)
+        // Baris 1: ID di kiri (onSurface, monospace), durasi sewa besar di kanan
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            val isDark = LocalThemeIsDark.current
-            val nameColor = ScooterColors.getScooterNameColor(scooter.type, scooter.id, scooter.currentOutlet, isDark)
-            Text(
-                text = scooter.id,
-                color = nameColor,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Black,
-                fontFamily = FontFamily.Monospace,
-                maxLines = 1,
-                modifier = Modifier.weight(1f, fill = false),
-            )
-
-            // Badge Disewa (Amber with glowing dot)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier
-                    .background(Warning.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
-                    .border(1.dp, Warning.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
-                    .padding(horizontal = 9.dp, vertical = 3.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                Text(
+                    text = scooter.id,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 16.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1,
+                )
+                // Badge Disewa (Biru, bukan amber)
                 Box(
                     modifier = Modifier
-                        .size(6.dp)
-                        .background(Warning.copy(alpha = pingAlpha), CircleShape)
-                )
-                Text(
-                    text = "Disewa",
-                    color = Warning,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(blueBgColor)
+                        .padding(horizontal = 7.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = "Disewa",
+                        color = blueTextColor,
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
+
+            // Durasi sewa besar di kanan
+            Text(
+                text = durationText,
+                color = Accent,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+            )
         }
 
-        // Info: Jam Keluar & Durasi Berjalan (1:1 web)
+        // Baris 2 & 3: Keluar jam di kiri & Tombol Tukar Unit kompak di kanan
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Surface2, RoundedCornerShape(10.dp))
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.Bottom,
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Column {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(Icons.Filled.AccessTime, contentDescription = null, tint = TextSubtle, modifier = Modifier.size(11.dp))
-                    Text(
-                        text = "KELUAR",
-                        color = TextSubtle,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.8.sp
-                    )
-                }
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = keluarTime,
-                    color = TextPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace
-                )
-            }
-
-            Column(horizontalAlignment = Alignment.End) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(Icons.Filled.Timer, contentDescription = null, tint = TextSubtle, modifier = Modifier.size(11.dp))
-                    Text(
-                        text = "DURASI",
-                        color = TextSubtle,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.8.sp
-                    )
-                }
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = durationText,
-                    color = if (isOverHour) Red else Accent,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace
-                )
-            }
-        }
-
-        // Action Footer: Tukar Unit Button (1:1 web)
-        if (onTroubleSwap != null) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Surface3)
-                    .border(1.dp, Border, RoundedCornerShape(8.dp))
-                    .clickable { onTroubleSwap(scooter) }
-                    .padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Icon(
-                    Icons.Filled.SwapHoriz,
+                    imageVector = Icons.Filled.AccessTime,
                     contentDescription = null,
-                    tint = TextMuted,
-                    modifier = Modifier.size(14.dp)
+                    tint = TextSubtle,
+                    modifier = Modifier.size(12.dp),
                 )
-                Spacer(Modifier.width(6.dp))
                 Text(
-                    text = "Tukar Unit",
-                    color = TextMuted,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold
+                    text = "Keluar $keluarTime",
+                    color = TextSubtle,
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.Medium,
                 )
+            }
+
+            if (onTroubleSwap != null) {
+                OutlinedButton(
+                    onClick = { onTroubleSwap(scooter) },
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, Border),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextMuted),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 36.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.SwapHoriz,
+                        contentDescription = "Tukar unit sewa",
+                        tint = TextMuted,
+                        modifier = Modifier.size(13.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = "Tukar Unit",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
             }
         }
     }
 }
 
-/** ── Live Session Empty State (1:1 with web) ── */
+/** ── Empty State Sesi Berjalan ── */
 @Composable
 fun LiveSessionEmptyState(modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(Surface, RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(14.dp))
+            .background(Surface)
             .border(1.dp, Border, RoundedCornerShape(14.dp))
-            .padding(32.dp),
+            .padding(vertical = 32.dp, horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box(
             modifier = Modifier
                 .size(48.dp)
-                .background(Green.copy(alpha = 0.12f), CircleShape),
+                .background(Surface2, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                Icons.Filled.CheckCircle,
+                imageVector = Icons.Filled.DirectionsBike,
                 contentDescription = null,
-                tint = Green,
+                tint = TextSubtle,
                 modifier = Modifier.size(24.dp),
             )
         }
         Text(
-            text = "Tidak Ada Sesi Berjalan",
+            text = "Tidak ada sesi berjalan",
             color = TextPrimary,
-            fontSize = 15.sp,
+            fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
         )
         Text(
-            text = "Semua armada saat ini berada di outlet dan siap untuk disewa.",
+            text = "Semua armada sedang ready atau dalam perbaikan.",
             color = TextMuted,
-            fontSize = 12.sp,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            fontSize = 11.5.sp,
         )
     }
 }
@@ -444,7 +400,7 @@ data class StandbyUnitInfo(
     val breakText: String,
     val breakSeconds: Long,
     val isReady: Boolean,
-    val remainingText: String? = null
+    val remainingText: String? = null,
 )
 
 data class UnifiedLogItem(
@@ -454,52 +410,202 @@ data class UnifiedLogItem(
     val scooterType: String,
     val dt: LocalDateTime,
     val waktu: String,
-    val durationOrBreak: String?
+    val durationOrBreak: String?,
 )
 
-/** ── Activity Feed Panel (1:1 with web ActivityFeedPanel.jsx) ── */
+/** ── Section Unit Ready (Pindah ke bawah daftar Sesi Berjalan) ── */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ReadyUnitsSection(
+    readyUnits: List<StandbyUnitInfo>,
+    onOpenDetail: ((String) -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    var showSheet by rememberSaveable { mutableStateOf(false) }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Surface)
+            .border(1.dp, Border, RoundedCornerShape(14.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(Green, CircleShape),
+                )
+                Text(
+                    text = "Ready (${readyUnits.size})",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+
+        HorizontalDivider(color = Border.copy(alpha = 0.5f), thickness = 0.5.dp)
+
+        if (readyUnits.isEmpty()) {
+            Text(
+                text = "Tidak ada unit ready saat ini.",
+                color = TextMuted,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(vertical = 12.dp),
+            )
+        } else {
+            // Tampilkan 5 unit yang paling lama menganggur
+            readyUnits.take(5).forEach { u ->
+                ReadyUnitRow(
+                    unit = u,
+                    onClick = { onOpenDetail?.invoke(u.id) },
+                )
+                HorizontalDivider(color = Border.copy(alpha = 0.35f), thickness = 0.5.dp)
+            }
+
+            if (readyUnits.size > 5) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { showSheet = true }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "Lihat semua (${readyUnits.size})",
+                        color = Accent,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+        }
+    }
+
+    if (showSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showSheet = false },
+            containerColor = Surface,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = "Daftar Unit Ready (${readyUnits.size})",
+                    color = TextPrimary,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "Diurutkan dari unit yang paling lama menganggur",
+                    color = TextMuted,
+                    fontSize = 11.5.sp,
+                )
+                HorizontalDivider(color = Border, thickness = 0.5.dp)
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 32.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    items(readyUnits, key = { it.id }) { u ->
+                        ReadyUnitRow(
+                            unit = u,
+                            onClick = {
+                                showSheet = false
+                                onOpenDetail?.invoke(u.id)
+                            },
+                        )
+                        HorizontalDivider(color = Border.copy(alpha = 0.35f), thickness = 0.5.dp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ReadyUnitRow(
+    unit: StandbyUnitInfo,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val isDark = LocalThemeIsDark.current
+    val greenTextColor = if (isDark) Color(0xFF4ADE80) else Color(0xFF15803D)
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = unit.id,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 13.5.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(if (isDark) Green.copy(alpha = 0.15f) else Color(0xFFDCFCE7))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    text = "Ready",
+                    color = greenTextColor,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+
+        Text(
+            text = "Menganggur ${unit.breakText}",
+            color = TextSubtle,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+        )
+    }
+}
+
+/** ── Activity Feed Panel (Tab Aktivitas Terbaru) ── */
 @Composable
 fun ActivityFeedPanel(
     activityLog: List<ActivityLogEntry>,
     scooters: List<Scooter>,
     onOpenDetail: ((String) -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val today = remember { DateUtils.today() }
+    val todayStr = remember(today) { DateUtils.localDateKey(today) }
 
-    // Standby units with break duration (longest resting first)
-    val standbyUnits = remember(scooters, activityLog) {
-        val available = scooters.filter { it.status == ScooterStatus.AVAILABLE }
-        val now = LocalDateTime.now(DateUtils.WIB)
-        val logsByScooter = activityLog.groupBy { it.scooterId }
-
-        available.mapNotNull { s ->
-            val logs = (logsByScooter[s.id] ?: emptyList())
-                .mapNotNull { l ->
-                    val dt = DateUtils.parse(l.timestamp)
-                    if (dt != null) l to dt else null
-                }.sortedBy { it.second }
-
-            val lastReturn = logs.lastOrNull { it.first.action == "return" }
-            val baseTime = lastReturn?.second ?: DateUtils.parse(s.lastUpdated)
-
-            if (baseTime != null) {
-                val diffSecs = Duration.between(baseTime, now).seconds.coerceAtLeast(0)
-                val isReady = diffSecs >= 900 // 15 mins
-                val remainingSecs = (900 - diffSecs).coerceAtLeast(0)
-                StandbyUnitInfo(
-                    id = s.id,
-                    breakText = DateUtils.formatDuration(diffSecs),
-                    breakSeconds = diffSecs,
-                    isReady = isReady,
-                    remainingText = if (!isReady) DateUtils.formatDuration(remainingSecs) else null
-                )
-            } else null
-        }.sortedByDescending { it.breakSeconds }
-    }
-
-    // Unified logs for today
-    val unifiedLogs = remember(activityLog, today) {
+    // Pre-calculate unified logs today
+    val unifiedLogs = remember(activityLog, todayStr, scooters) {
         val perUnit = mutableMapOf<String, MutableList<Pair<ActivityLogEntry, LocalDateTime>>>()
         for (l in activityLog) {
             val dt = DateUtils.parse(l.timestamp) ?: continue
@@ -507,9 +613,8 @@ fun ActivityFeedPanel(
         }
 
         val list = mutableListOf<UnifiedLogItem>()
-        val todayStr = DateUtils.localDateKey(today)
-
         val allowedScooterIds = scooters.map { it.id }.toSet()
+
         for ((scooterId, logs) in perUnit) {
             if (allowedScooterIds.isNotEmpty() && !allowedScooterIds.contains(scooterId)) continue
             logs.sortBy { it.second }
@@ -523,7 +628,7 @@ fun ActivityFeedPanel(
                     var jedaText: String? = null
                     if (lastReturnDt != null) {
                         val diff = Duration.between(lastReturnDt, dt).seconds.coerceAtLeast(0)
-                        jedaText = "Jeda ${DateUtils.formatDuration(diff)}"
+                        jedaText = "Menganggur ${DateUtils.formatDuration(diff)}"
                     }
                     lastCheckoutDt = dt
                     lastReturnDt = null
@@ -537,7 +642,7 @@ fun ActivityFeedPanel(
                                 scooterType = entry.scooterType,
                                 dt = dt,
                                 waktu = DateUtils.formatTime(dt),
-                                durationOrBreak = jedaText
+                                durationOrBreak = jedaText,
                             )
                         )
                     }
@@ -545,7 +650,7 @@ fun ActivityFeedPanel(
                     var durasiText: String? = null
                     if (lastCheckoutDt != null) {
                         val diff = Duration.between(lastCheckoutDt, dt).seconds.coerceAtLeast(0)
-                        durasiText = "Durasi ${DateUtils.formatDuration(diff)}"
+                        durasiText = "Durasi sewa ${DateUtils.formatDuration(diff)}"
                     }
                     lastReturnDt = dt
                     lastCheckoutDt = null
@@ -559,7 +664,7 @@ fun ActivityFeedPanel(
                                 scooterType = entry.scooterType,
                                 dt = dt,
                                 waktu = DateUtils.formatTime(dt),
-                                durationOrBreak = durasiText
+                                durationOrBreak = durasiText,
                             )
                         )
                     }
@@ -569,173 +674,223 @@ fun ActivityFeedPanel(
         list.sortedByDescending { it.dt }
     }
 
+    var selectedFilter by rememberSaveable { mutableStateOf("all") }
+
+    val filteredLogs = remember(unifiedLogs, selectedFilter) {
+        when (selectedFilter) {
+            "checkout" -> unifiedLogs.filter { it.action == "checkout" }
+            "return" -> unifiedLogs.filter { it.action == "return" }
+            else -> unifiedLogs
+        }
+    }
+
+    val isDark = LocalThemeIsDark.current
+    val greenText = if (isDark) Color(0xFF4ADE80) else Color(0xFF15803D)
+    val blueText = if (isDark) Color(0xFF818CF8) else Color(0xFF1E40AF)
+
     Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Surface)
+            .border(1.dp, Border, RoundedCornerShape(14.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        // 1. Standby Units with Longest Rest (Ready: Jeda >= 15 mnt) (1:1 with web)
-        if (standbyUnits.isNotEmpty()) {
-            Column(
+        // Filter Chips di atas daftar
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val totalAll = unifiedLogs.size
+            val countCheckout = unifiedLogs.count { it.action == "checkout" }
+            val countReturn = unifiedLogs.count { it.action == "return" }
+
+            ActivityFilterChip(
+                label = "Semua",
+                count = totalAll,
+                selected = selectedFilter == "all",
+                onClick = { selectedFilter = "all" },
+            )
+            ActivityFilterChip(
+                label = "Keluar",
+                count = countCheckout,
+                selected = selectedFilter == "checkout",
+                onClick = { selectedFilter = "checkout" },
+                activeColor = Accent,
+            )
+            ActivityFilterChip(
+                label = "Kembali",
+                count = countReturn,
+                selected = selectedFilter == "return",
+                onClick = { selectedFilter = "return" },
+                activeColor = Green,
+            )
+        }
+
+        HorizontalDivider(color = Border.copy(alpha = 0.5f), thickness = 0.5.dp)
+
+        if (filteredLogs.isEmpty()) {
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Surface, RoundedCornerShape(14.dp))
-                    .border(1.dp, Border, RoundedCornerShape(14.dp))
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                    .padding(vertical = 24.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(Icons.Filled.Coffee, contentDescription = null, tint = Green, modifier = Modifier.size(15.dp))
-                        Text(
-                            text = "UNIT STANDBY",
-                            color = TextSubtle,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        )
-                    }
-                    Text("${standbyUnits.size} unit", color = TextMuted, fontSize = 11.sp)
-                }
+                Text(
+                    text = "Tidak ada aktivitas untuk filter ini.",
+                    color = TextMuted,
+                    fontSize = 12.sp,
+                )
+            }
+        } else {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                filteredLogs.forEach { item ->
+                    val isCheckout = item.action == "checkout"
+                    val actionLabel = if (isCheckout) "Keluar sewa" else "Kembali"
+                    val actionColor = if (isCheckout) blueText else greenText
 
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(standbyUnits, key = { it.id }) { u ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (u.isReady) Green.copy(alpha = 0.1f) else Warning.copy(alpha = 0.1f))
-                                .border(1.dp, if (u.isReady) Green.copy(alpha = 0.3f) else Warning.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                                .let { if (onOpenDetail != null) it.clickable { onOpenDetail(u.id) } else it }
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onOpenDetail?.invoke(item.scooterId) }
+                            .padding(vertical = 10.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        // Kolom Kiri
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Text(
+                                    text = item.scooterId,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontSize = 13.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                )
+                                Text(
+                                    text = item.waktu,
+                                    color = TextSubtle,
+                                    fontSize = 11.5.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                )
+                            }
+                        }
+
+                        // Kolom Kanan
+                        Column(
+                            horizontalAlignment = Alignment.End,
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
                         ) {
-                            val isDark = LocalThemeIsDark.current
-                            val nameColor = ScooterColors.getScooterNameColor(null, u.id, isDark = isDark)
-                            Text(u.id, color = nameColor, fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                             Text(
-                                text = if (u.isReady) "Jeda ${u.breakText}" else "Jeda ${u.breakText} (sisa ${u.remainingText})",
-                                color = if (u.isReady) Green else Warning,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold
+                                text = actionLabel,
+                                color = actionColor,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Bold,
                             )
+                            if (item.durationOrBreak != null) {
+                                Text(
+                                    text = item.durationOrBreak,
+                                    color = TextMuted,
+                                    fontSize = 10.5.sp,
+                                )
+                            }
                         }
                     }
+
+                    HorizontalDivider(color = Border.copy(alpha = 0.35f), thickness = 0.5.dp)
                 }
             }
         }
+    }
+}
 
-        // 2. Unified Activity Feed for Today
-        Column(
+@Composable
+private fun ActivityFilterChip(
+    label: String,
+    count: Int,
+    selected: Boolean,
+    onClick: () -> Unit,
+    activeColor: Color = Accent,
+) {
+    val isDark = LocalThemeIsDark.current
+    val bg = if (selected) activeColor.copy(alpha = if (isDark) 0.18f else 0.12f) else Surface2
+    val border = if (selected) activeColor else Border
+    val text = if (selected) activeColor else TextMuted
+
+    Row(
+        modifier = Modifier
+            .defaultMinSize(minHeight = 32.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(bg)
+            .border(1.dp, border, RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        Text(
+            text = label,
+            color = text,
+            fontSize = 11.5.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+        )
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .background(Surface, RoundedCornerShape(14.dp))
-                .border(1.dp, Border, RoundedCornerShape(14.dp))
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .background(if (selected) activeColor.copy(alpha = 0.2f) else Surface3, RoundedCornerShape(6.dp))
+                .padding(horizontal = 5.dp, vertical = 1.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "AKTIVITAS TERBARU HARI INI",
-                    color = TextSubtle,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-                Text("${unifiedLogs.size} aktivitas", color = TextMuted, fontSize = 11.sp)
-            }
+            Text(
+                text = "$count",
+                color = text,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+            )
+        }
+    }
+}
 
-            if (unifiedLogs.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Belum ada aktivitas transaksi sewa hari ini.", color = TextMuted, fontSize = 12.sp)
-                }
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    unifiedLogs.forEachIndexed { index, item ->
-                        val isCheckout = item.action == "checkout"
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(Surface2)
-                                .let { if (onOpenDetail != null) it.clickable { onOpenDetail(item.scooterId) } else it }
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .background(if (isCheckout) Warning.copy(alpha = 0.15f) else Green.copy(alpha = 0.15f), RoundedCornerShape(8.dp)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = if (isCheckout) Icons.Filled.NorthEast else Icons.Filled.SouthWest,
-                                        contentDescription = null,
-                                        tint = if (isCheckout) Warning else Green,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
+// ── Previews ──────────────────────────────────────────────────────────
 
-                                Column {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        val isDark = LocalThemeIsDark.current
-                                        val nameColor = ScooterColors.getScooterNameColor(item.scooterType, item.scooterId, isDark = isDark)
-                                        Text(item.scooterId, color = nameColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                                    }
-                                    Text(
-                                        text = if (isCheckout) "Keluar sewa" else "Selesai / Kembali",
-                                        color = TextMuted,
-                                        fontSize = 11.sp
-                                    )
-                                }
-                            }
+@Preview(name = "Live Session Card", showBackground = true)
+@Composable
+private fun LiveSessionCardPreview() {
+    val sampleScooter = Scooter(
+        id = "SB-01",
+        type = "sb",
+        status = "in-use",
+        lastUpdated = "2026-10-01T11:28:00Z",
+    )
+    TrackScooterTheme(isDark = false) {
+        Box(modifier = Modifier.padding(16.dp)) {
+            LiveSessionCard(
+                scooter = sampleScooter,
+                nowMillis = System.currentTimeMillis(),
+                onTroubleSwap = {},
+            )
+        }
+    }
+}
 
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(
-                                    text = item.waktu,
-                                    color = TextPrimary,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                                if (item.durationOrBreak != null) {
-                                    Text(
-                                        text = item.durationOrBreak,
-                                        color = if (isCheckout) TextMuted else Accent,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+@Preview(name = "Ready Units Section", showBackground = true)
+@Composable
+private fun ReadyUnitsSectionPreview() {
+    val sampleReady = listOf(
+        StandbyUnitInfo("SB-02", "7 hari 22 j", 684000L, true),
+        StandbyUnitInfo("FZ-10", "1 j 39 mnt", 5940L, true),
+        StandbyUnitInfo("EX-04", "59 mnt", 3540L, true),
+    )
+    TrackScooterTheme(isDark = false) {
+        Box(modifier = Modifier.padding(16.dp)) {
+            ReadyUnitsSection(readyUnits = sampleReady)
         }
     }
 }

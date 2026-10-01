@@ -47,9 +47,9 @@ data class BottomNavItem(
     val icon: ImageVector,
 )
 
-// Ukuran referensi terinspirasi dari FloatingNavigationToolbar ArchiveTune
-private val NavigationBarMaxWidth = 380.dp
-private val NavigationBarHorizontalPadding = 12.dp
+// Ukuran referensi navbar mengambang
+private val NavigationBarMaxWidth = 420.dp
+private val NavigationBarHorizontalPadding = 20.dp
 private val NavigationBarBottomPadding = 8.dp
 
 /**
@@ -106,9 +106,8 @@ private fun FloatingNavItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Tab aktif sedikit lebih besar (scale 1.08f) dengan animasi spring halus
     val scale by animateFloatAsState(
-        targetValue = if (selected) 1.08f else 1.0f,
+        targetValue = if (selected && !isScan) 1.06f else 1.0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow,
@@ -116,22 +115,10 @@ private fun FloatingNavItem(
         label = "nav_scale",
     )
 
-    // Tombol scan 1,5x lebih besar dari tombol lain
-    val iconSize by animateDpAsState(
-        targetValue = if (isScan) {
-            if (selected) 30.dp else 26.dp
-        } else {
-            if (selected) 20.dp else 17.dp
-        },
-        animationSpec = tween(durationMillis = 180),
-        label = "nav_icon_size",
-    )
-
     val animatedPillColor by animateColorAsState(
         targetValue = when {
-            isScan && selected -> Accent
-            isScan -> Accent.copy(alpha = 0.18f)
-            selected -> Accent.copy(alpha = 0.16f)
+            isScan -> Accent
+            selected -> Accent.copy(alpha = 0.15f)
             else -> Color.Transparent
         },
         animationSpec = tween(180),
@@ -140,8 +127,7 @@ private fun FloatingNavItem(
 
     val animatedContentColor by animateColorAsState(
         targetValue = when {
-            isScan && selected -> Color.White
-            isScan -> Accent
+            isScan -> Color.White
             selected -> Accent
             else -> TextMuted
         },
@@ -151,7 +137,7 @@ private fun FloatingNavItem(
 
     val labelColor by animateColorAsState(
         targetValue = when {
-            isScan -> Accent
+            isScan && selected -> Accent
             selected -> Accent
             else -> TextMuted
         },
@@ -171,38 +157,51 @@ private fun FloatingNavItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        // Pill indikator di belakang icon (1,5x lebih besar jika scan)
-        Box(
-            modifier = Modifier
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                }
-                .clip(RoundedCornerShape(if (isScan) 16.dp else 12.dp))
-                .background(animatedPillColor)
-                .padding(
-                    horizontal = if (isScan) 18.dp else 12.dp,
-                    vertical = if (isScan) 6.dp else 4.dp,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = item.icon,
-                contentDescription = "Navigasi ke ${item.label}",
-                tint = animatedContentColor,
-                modifier = Modifier.size(iconSize),
-            )
+        if (isScan) {
+            // Aksi Tengah Scan: Tombol bulat terintegrasi (berbeda jelas dari tab lain)
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(Accent)
+                    .border(1.5.dp, Color.White.copy(alpha = if (selected) 0.6f else 0.2f), androidx.compose.foundation.shape.CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = item.icon,
+                    contentDescription = "Pindai QR unit",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+        } else {
+            // Tab Navigasi Standar
+            Box(
+                modifier = Modifier
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(animatedPillColor)
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = item.icon,
+                    contentDescription = "Navigasi ke ${item.label}",
+                    tint = animatedContentColor,
+                    modifier = Modifier.size(19.dp),
+                )
+            }
         }
         Spacer(modifier = Modifier.height(2.dp))
+        // Label dengan font size sama persis (10.sp) di seluruh item agar baseline selalu sejajar
         Text(
             text = item.label,
             color = labelColor,
-            fontSize = if (isScan) 11.5.sp else 10.sp,
-            fontWeight = if (isScan) {
-                if (selected) FontWeight.Bold else FontWeight.SemiBold
-            } else {
-                if (selected) FontWeight.SemiBold else FontWeight.Normal
-            },
+            fontSize = 10.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
             maxLines = 1,
         )
     }

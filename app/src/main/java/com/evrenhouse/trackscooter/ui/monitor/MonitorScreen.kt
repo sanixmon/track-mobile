@@ -22,6 +22,9 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -42,6 +45,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
+import com.evrenhouse.trackscooter.ui.theme.TrackScooterTheme
+import java.time.Duration
+import java.time.LocalDateTime
 import com.evrenhouse.trackscooter.data.Scooter
 import com.evrenhouse.trackscooter.data.ScooterStatus
 import com.evrenhouse.trackscooter.ui.common.ErrorState
@@ -74,7 +81,7 @@ fun MonitorScreen(
     val pagerState = rememberPagerState(initialPage = 0) { MonitorTab.entries.size }
     val currentTab by remember { derivedStateOf { MonitorTab.entries[pagerState.currentPage] } }
     var troubleScooter by remember { mutableStateOf<Scooter?>(null) }
-    var sortOrder by remember { mutableStateOf("newest") } // "newest" | "oldest"
+    var sortOrder by rememberSaveable { mutableStateOf("oldest") } // Default terlama dulu
 
     // 5-second ticker keeps rental duration updated (1:1 with web)
     var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -127,6 +134,45 @@ fun MonitorScreen(
         }
     }
 
+    // Unit Ready (terlama menganggur dihitung dari return/update terakhir)
+    val readyUnits = remember(outletFilteredScooters, outletFilteredActivityLog) {
+        val available = outletFilteredScooters.filter { it.status == ScooterStatus.AVAILABLE }
+        val now = LocalDateTime.now(DateUtils.WIB)
+        val logsByScooter = outletFilteredActivityLog.groupBy { it.scooterId }
+
+        available.map { s ->
+            val logs = (logsByScooter[s.id] ?: emptyList())
+                .mapNotNull { l ->
+                    val dt = DateUtils.parse(l.timestamp)
+                    if (dt != null) l to dt else null
+                }.sortedBy { it.second }
+
+            val lastReturn = logs.lastOrNull { it.first.action == "return" }
+            val baseTime = lastReturn?.second ?: DateUtils.parse(s.lastUpdated)
+
+            if (baseTime != null) {
+                val diffSecs = Duration.between(baseTime, now).seconds.coerceAtLeast(0)
+                val isReady = diffSecs >= 900 // 15 mins
+                val remainingSecs = (900 - diffSecs).coerceAtLeast(0)
+                StandbyUnitInfo(
+                    id = s.id,
+                    breakText = DateUtils.formatDuration(diffSecs),
+                    breakSeconds = diffSecs,
+                    isReady = isReady,
+                    remainingText = if (!isReady) DateUtils.formatDuration(remainingSecs) else null
+                )
+            } else {
+                StandbyUnitInfo(
+                    id = s.id,
+                    breakText = "-",
+                    breakSeconds = 0L,
+                    isReady = true,
+                    remainingText = null
+                )
+            }
+        }.sortedByDescending { it.breakSeconds }
+    }
+
     PullToRefreshBox(
         isRefreshing = state.refreshing,
         onRefresh = { viewModel.refresh() },
@@ -143,7 +189,8 @@ fun MonitorScreen(
                 LivePulseHeader(
                     isLiveConnected = state.isLiveConnected,
                     isReconnecting = state.isReconnecting,
-                    outletName = if (globalOutlet == "all") null else Outlets.labelOf(globalOutlet),
+                    selectedOutletId = globalOutlet,
+                    onOutletSelected = { viewModel.setSelectedOutlet(it) },
                 )
 
                 MonitorTabSelector(
@@ -190,45 +237,64 @@ fun MonitorScreen(
                                 ) {
                                     if (inUseScooters.isEmpty()) {
                                         item {
-                                            LiveSessionEmptyState(modifier = Modifier.padding(top = 16.dp))
+                                            LiveSessionEmptyState(modifier = Modifier.padding(top = 8.dp))
                                         }
                                     } else {
                                         item {
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
+                                                verticalAlignment = Alignment.CenterVertically,
                                             ) {
                                                 Text(
-                                                    text = "SESI SEWA BERJALAN (${inUseScooters.size} UNIT)",
-                                                    color = TextSubtle,
-                                                    fontSize = 11.sp,
+                                                    text = "Sesi Berjalan",
+                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                    fontSize = 13.sp,
                                                     fontWeight = FontWeight.Bold,
-                                                    letterSpacing = 1.sp,
                                                 )
 
-                                                if (inUseScooters.size > 1) {
+                                                // Kontrol urutan: Terlama (default) & Terbaru
+                                                var sortMenuExpanded by remember { mutableStateOf(false) }
+                                                Box {
                                                     Row(
                                                         verticalAlignment = Alignment.CenterVertically,
                                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                                                         modifier = Modifier
                                                             .clip(RoundedCornerShape(6.dp))
-                                                            .clickable {
-                                                                sortOrder = if (sortOrder == "newest") "oldest" else "newest"
-                                                            }
-                                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                            .clickable { sortMenuExpanded = true }
+                                                            .padding(horizontal = 8.dp, vertical = 4.dp),
                                                     ) {
-                                                        Icon(
-                                                            Icons.Filled.SwapVert,
-                                                            contentDescription = null,
-                                                            tint = TextMuted,
-                                                            modifier = Modifier.size(14.dp)
-                                                        )
                                                         Text(
-                                                            text = if (sortOrder == "newest") "Terbaru" else "Terlama",
+                                                            text = if (sortOrder == "oldest") "Terlama" else "Terbaru",
                                                             color = TextMuted,
-                                                            fontSize = 11.sp,
-                                                            fontWeight = FontWeight.SemiBold
+                                                            fontSize = 11.5.sp,
+                                                            fontWeight = FontWeight.SemiBold,
+                                                        )
+                                                        Icon(
+                                                            Icons.Filled.KeyboardArrowDown,
+                                                            contentDescription = "Ganti urutan sesi",
+                                                            tint = TextMuted,
+                                                            modifier = Modifier.size(16.dp),
+                                                        )
+                                                    }
+
+                                                    DropdownMenu(
+                                                        expanded = sortMenuExpanded,
+                                                        onDismissRequest = { sortMenuExpanded = false },
+                                                    ) {
+                                                        DropdownMenuItem(
+                                                            text = { Text("Terlama (Prioritas)") },
+                                                            onClick = {
+                                                                sortOrder = "oldest"
+                                                                sortMenuExpanded = false
+                                                            },
+                                                        )
+                                                        DropdownMenuItem(
+                                                            text = { Text("Terbaru") },
+                                                            onClick = {
+                                                                sortOrder = "newest"
+                                                                sortMenuExpanded = false
+                                                            },
                                                         )
                                                     }
                                                 }
@@ -247,9 +313,17 @@ fun MonitorScreen(
                                             )
                                         }
                                     }
+
+                                    // Section Unit Ready dipindahkan ke bawah daftar sesi berjalan di tab ini
+                                    item {
+                                        ReadyUnitsSection(
+                                            readyUnits = readyUnits,
+                                            onOpenDetail = onOpenDetail,
+                                            modifier = Modifier.padding(top = 8.dp),
+                                        )
+                                    }
                                 }
                             }
-
                             // ══════════════════════════════════════
                             // TAB 2: AKTIVITAS TERBARU (1:1 with web)
                             // ══════════════════════════════════════
@@ -301,4 +375,59 @@ fun MonitorScreen(
         )
     }
 
+
+// ── Previews ──────────────────────────────────────────────────────────
+
+@Preview(name = "Monitor Screen - Live Session (Light)", showBackground = true)
+@Composable
+private fun MonitorScreenLightPreview() {
+    val sampleScooters = listOf(
+        Scooter("SB-01", "sb", ScooterStatus.IN_USE, currentOutlet = "utara", lastUpdated = "2026-10-01T11:28:00Z"),
+        Scooter("SB-02", "sb", ScooterStatus.AVAILABLE, currentOutlet = "utara", lastUpdated = "2026-10-01T09:00:00Z"),
+        Scooter("FZ-05", "fz", ScooterStatus.AVAILABLE, currentOutlet = "utara", lastUpdated = "2026-10-01T08:30:00Z"),
+    )
+    TrackScooterTheme(isDark = false) {
+        Box(modifier = Modifier.fillMaxSize().background(Surface)) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                LivePulseHeader(
+                    isLiveConnected = true,
+                    isReconnecting = false,
+                    selectedOutletId = "utara",
+                    onOutletSelected = {},
+                )
+                LiveSessionCard(
+                    scooter = sampleScooters[0],
+                    nowMillis = System.currentTimeMillis(),
+                    onTroubleSwap = {},
+                )
+            }
+        }
+    }
+}
+
+@Preview(name = "Monitor Screen - Live Session (Dark)", showBackground = true)
+@Composable
+private fun MonitorScreenDarkPreview() {
+    val sampleScooters = listOf(
+        Scooter("SB-01", "sb", ScooterStatus.IN_USE, currentOutlet = "utara", lastUpdated = "2026-10-01T11:28:00Z"),
+        Scooter("SB-02", "sb", ScooterStatus.AVAILABLE, currentOutlet = "utara", lastUpdated = "2026-10-01T09:00:00Z"),
+    )
+    TrackScooterTheme(isDark = true) {
+        Box(modifier = Modifier.fillMaxSize().background(Surface)) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                LivePulseHeader(
+                    isLiveConnected = true,
+                    isReconnecting = false,
+                    selectedOutletId = "utara",
+                    onOutletSelected = {},
+                )
+                LiveSessionCard(
+                    scooter = sampleScooters[0],
+                    nowMillis = System.currentTimeMillis(),
+                    onTroubleSwap = {},
+                )
+            }
+        }
+    }
+}
 }

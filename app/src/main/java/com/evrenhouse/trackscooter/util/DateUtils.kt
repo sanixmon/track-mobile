@@ -118,9 +118,16 @@ object DateUtils {
 
     fun formatDuration(totalSecs: Long): String {
         val safeSecs = maxOf(0L, totalSecs)
-        val hrs = safeSecs / 3600
-        val mins = (safeSecs % 3600) / 60
-        return if (hrs > 0) "${hrs}j ${mins}m" else "${mins} mnt"
+        val days = safeSecs / 86400
+        val remainingAfterDays = safeSecs % 86400
+        val hrs = remainingAfterDays / 3600
+        val mins = (remainingAfterDays % 3600) / 60
+
+        return when {
+            days > 0 -> "${days} hari ${hrs} j"
+            hrs > 0 -> "${hrs} j ${mins} mnt"
+            else -> "${mins} mnt"
+        }
     }
 
     fun toEpochMilli(dt: java.time.LocalDateTime): Long =
