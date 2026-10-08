@@ -12,7 +12,7 @@ workflows:
   android-ci:
     name: TrackScooter Mobile CI
     max_build_duration: 30
-    instance_type: linux_x2
+    instance_type: mac_mini_m2
     environment:
       java: 17
       vars:
@@ -49,7 +49,7 @@ workflows:
   android-release:
     name: TrackScooter Mobile Release
     max_build_duration: 45
-    instance_type: linux_x2
+    instance_type: mac_mini_m2
     environment:
       groups:
         - keystore_credentials
@@ -83,11 +83,11 @@ workflows:
             export RESOLVED_KEYSTORE_PATH="$CM_KEYSTORE_PATH"
           # Priority 2: Base64-encoded keystore from CI secrets (RELEASE_KEYSTORE_BASE64 or CM_KEYSTORE)
           elif [ -n "$RELEASE_KEYSTORE_BASE64" ]; then
-            echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > keystore/release.jks
+            echo "$RELEASE_KEYSTORE_BASE64" | { base64 -d 2>/dev/null || base64 -D 2>/dev/null || base64 --decode; } > keystore/release.jks
             export RESOLVED_KEYSTORE_PATH="$CM_BUILD_DIR/keystore/release.jks"
             echo "Decoded keystore from RELEASE_KEYSTORE_BASE64 to $RESOLVED_KEYSTORE_PATH"
           elif [ -n "$CM_KEYSTORE" ]; then
-            echo "$CM_KEYSTORE" | base64 -d > keystore/release.jks
+            echo "$CM_KEYSTORE" | { base64 -d 2>/dev/null || base64 -D 2>/dev/null || base64 --decode; } > keystore/release.jks
             export RESOLVED_KEYSTORE_PATH="$CM_BUILD_DIR/keystore/release.jks"
             echo "Decoded keystore from CM_KEYSTORE to $RESOLVED_KEYSTORE_PATH"
           # Priority 3: Pre-existing keystore in repo
@@ -166,7 +166,11 @@ workflows:
           fi
 
           cd release-assets
-          sha256sum *.apk > checksums.txt
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum *.apk > checksums.txt
+          else
+            shasum -a 256 *.apk > checksums.txt
+          fi
           cd ..
 
           echo "Release assets generated successfully:"
