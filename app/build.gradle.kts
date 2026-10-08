@@ -46,8 +46,8 @@ android {
                 ?: project.findProperty("RELEASE_KEYSTORE_PATH") as String?
                 ?: "keystore/release.jks"
 
-            val resolvedFile = if (file(rawPath).isAbsolute) file(rawPath) else rootProject.file(rawPath)
-            storeFile = resolvedFile
+            val targetPath = if (file(rawPath).isAbsolute) file(rawPath) else rootProject.file(rawPath)
+            storeFile = targetPath.absoluteFile
             storePassword = System.getenv("CM_KEYSTORE_PASSWORD")
                 ?: System.getenv("RELEASE_KEYSTORE_PASSWORD")
                 ?: project.findProperty("RELEASE_KEYSTORE_PASSWORD") as String?
@@ -65,11 +65,28 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
+            )
+        }
+    }
+
+    packaging {
+        resources {
+            excludes += setOf(
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE",
+                "META-INF/LICENSE.txt",
+                "META-INF/license.txt",
+                "META-INF/NOTICE",
+                "META-INF/NOTICE.txt",
+                "META-INF/notice.txt",
+                "META-INF/ASL2.0",
+                "META-INF/*.kotlin_module"
             )
         }
     }

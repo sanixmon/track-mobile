@@ -19,3 +19,8 @@
 -keepclasseswithmembers class com.evrenhouse.trackscooter.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
+
+# ML Kit & CameraX
+-keep class com.google.mlkit.** { *; }
+-dontwarn com.google.mlkit.**
+-dontwarn androidx.camera.**
