@@ -19,11 +19,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -64,6 +65,7 @@ fun FloatingBottomBar(
     items: List<BottomNavItem>,
     currentDestination: NavDestination?,
     onNavigate: (BottomNavItem) -> Unit,
+    monitorBadgeCount: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -87,10 +89,12 @@ fun FloatingBottomBar(
             items.forEach { item ->
                 val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
                 val isScan = item.route == Routes.SCAN
+                val badge = if (item.route == Routes.MONITOR) monitorBadgeCount else 0
                 FloatingNavItem(
                     item = item,
                     selected = selected,
                     isScan = isScan,
+                    badgeCount = badge,
                     onClick = { onNavigate(item) },
                     modifier = Modifier.weight(if (isScan) 1.5f else 1f),
                 )
@@ -104,6 +108,7 @@ private fun FloatingNavItem(
     item: BottomNavItem,
     selected: Boolean,
     isScan: Boolean = false,
+    badgeCount: Int = 0,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -188,12 +193,32 @@ private fun FloatingNavItem(
                     .padding(horizontal = 12.dp, vertical = 4.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    imageVector = item.icon,
-                    contentDescription = "Navigasi ke ${item.label}",
-                    tint = animatedContentColor,
-                    modifier = Modifier.size(19.dp),
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = item.icon,
+                        contentDescription = "Navigasi ke ${item.label}",
+                        tint = animatedContentColor,
+                        modifier = Modifier.size(19.dp),
+                    )
+                    if (badgeCount > 0) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .offset(x = 8.dp, y = (-5).dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFEF4444))
+                                .padding(horizontal = 4.dp, vertical = 0.5.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = if (badgeCount > 99) "99+" else "$badgeCount",
+                                color = Color.White,
+                                fontSize = 8.5.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                }
             }
         }
         Spacer(modifier = Modifier.height(2.dp))

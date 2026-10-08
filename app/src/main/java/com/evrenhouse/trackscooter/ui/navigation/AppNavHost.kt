@@ -18,6 +18,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.evrenhouse.trackscooter.ui.common.AppUpdateDialog
+import com.evrenhouse.trackscooter.data.ScooterStatus
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -85,6 +86,19 @@ fun AppNavHost() {
         val appUpdate by dataViewModel.appUpdate.collectAsState()
         val appMode by dataViewModel.appMode.collectAsState()
         val bottomItems = if (appMode == ModePrefs.MANAJEMEN) manajemenItems else operasionalItems
+        val scootersDataState by dataViewModel.state.collectAsState()
+        val selectedOutletId by dataViewModel.selectedOutlet.collectAsState()
+        val monitorBadgeCount = remember(scootersDataState.scooters, selectedOutletId) {
+            val inUseList = if (selectedOutletId == "all") {
+                scootersDataState.scooters.filter { it.status == ScooterStatus.IN_USE }
+            } else {
+                scootersDataState.scooters.filter {
+                    (it.currentOutlet ?: com.evrenhouse.trackscooter.util.Outlets.getHomeOutletForType(it.type)) == selectedOutletId &&
+                        it.status == ScooterStatus.IN_USE
+                }
+            }
+            inUseList.size
+        }
         var hasAutoRedirected by rememberSaveable { mutableStateOf(false) }
         var switchingModeTarget by rememberSaveable { mutableStateOf<String?>(null) }
         val initialMode = rememberSaveable { dataViewModel.appMode.value }
@@ -167,6 +181,7 @@ fun AppNavHost() {
                     FloatingBottomBar(
                         items = bottomItems,
                         currentDestination = currentDestination,
+                        monitorBadgeCount = monitorBadgeCount,
                         onNavigate = { item ->
                             when (item.route) {
                                 Routes.MODE_MANAJEMEN -> {

@@ -96,7 +96,7 @@ class ScanViewModel(
         viewModelScope.launch {
             runCatching {
                 if (isReturn) {
-                    repository.returnScooter(scooter.id)
+                    repository.returnScooterIdempotent(scooter.id)
                 } else {
                     repository.checkoutScooter(scooter.id)
                 }
@@ -105,7 +105,7 @@ class ScanViewModel(
                 if (err is HttpException && err.code() in 502..504) {
                     delay(500)
                     if (isReturn) {
-                        repository.returnScooter(scooter.id)
+                        repository.returnScooterIdempotent(scooter.id)
                     } else {
                         repository.checkoutScooter(scooter.id)
                     }
@@ -123,6 +123,18 @@ class ScanViewModel(
                     toast = resultMessage(res)
                 )
             }.onFailure { err ->
+                if (isReturn) {
+                    val enqueued = repository.returnQueue.enqueue(scooter.id, scooter.currentOutlet)
+                    if (enqueued) {
+                        _state.value = _state.value.copy(
+                            busy = false,
+                            pendingScooter = null,
+                            scanning = true,
+                            toast = "Sinyal lemah: Pengembalian unit ${scooter.id} disimpan ke antrian dan akan dikirim otomatis saat online."
+                        )
+                        return@launch
+                    }
+                }
                 _state.value = _state.value.copy(
                     busy = false,
                     pendingScooter = null,

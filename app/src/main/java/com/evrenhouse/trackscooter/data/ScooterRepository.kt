@@ -38,8 +38,8 @@ sealed interface LocalDataUpdate {
 class ScooterRepository(
     private val api: ApiService = ApiClient.service,
     private val githubApi: GitHubApiService = ApiClient.githubService,
+    val returnQueue: OfflineReturnQueue = OfflineReturnQueue.getInstance(),
 ) {
-
     private val _localUpdates = MutableSharedFlow<LocalDataUpdate>(extraBufferCapacity = 16)
     val localUpdates: SharedFlow<LocalDataUpdate> = _localUpdates.asSharedFlow()
     @Volatile
@@ -198,6 +198,39 @@ class ScooterRepository(
     suspend fun returnScooter(id: String): ToggleResponse =
         withContext(Dispatchers.IO) { api.returnScooter(id) }
 
+    /**
+     * Idempotent return: if server returns 400 because scooter was already returned
+     * (e.g. from previous network timeout retry), treats as successful reconciliation.
+     */
+    suspend fun returnScooterIdempotent(id: String): ToggleResponse = withContext(Dispatchers.IO) {
+        try {
+            val res = api.returnScooter(id)
+            if (res.success) {
+                returnQueue.dequeue(id)
+                notifyScooterToggled(res)
+            }
+            res
+        } catch (e: HttpException) {
+            val errorBody = runCatching { e.response()?.errorBody()?.string() }.getOrNull().orEmpty()
+            if (e.code() == 400 && (
+                errorBody.contains("sudah berada di outlet", ignoreCase = true) ||
+                errorBody.contains("tidak sedang disewa", ignoreCase = true)
+            )) {
+                returnQueue.dequeue(id)
+                val reconciledScooter = getCachedScooter(id)?.copy(status = ScooterStatus.AVAILABLE)
+                val reconciled = ToggleResponse(
+                    success = true,
+                    action = "return",
+                    message = "Unit $id sudah berada di outlet (tersinkronisasi).",
+                    scooter = reconciledScooter
+                )
+                notifyScooterToggled(reconciled)
+                reconciled
+            } else {
+                throw e
+            }
+        }
+    }
     suspend fun getScooterTechnicalHistory(
         id: String,
         startDate: String? = null,

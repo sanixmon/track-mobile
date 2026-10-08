@@ -31,8 +31,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.DirectionsBike
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -240,6 +244,9 @@ fun LiveSessionCard(
     nowMillis: Long,
     onClick: (() -> Unit)? = null,
     onTroubleSwap: ((Scooter) -> Unit)? = null,
+    onReturn: ((Scooter) -> Unit)? = null,
+    isProcessing: Boolean = false,
+    isPendingOffline: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val dt = DateUtils.parse(scooter.lastUpdated)
@@ -299,10 +306,11 @@ fun LiveSessionCard(
                 }
             }
 
-            // Durasi sewa besar di kanan
+            // Durasi sewa besar di kanan (merah jika >= 1 jam, 1:1 web app)
+            val isOverHour = elapsedSecs >= 3600
             Text(
                 text = durationText,
-                color = Accent,
+                color = if (isOverHour) com.evrenhouse.trackscooter.ui.theme.Red else Accent,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
@@ -332,28 +340,95 @@ fun LiveSessionCard(
                     fontWeight = FontWeight.Medium,
                 )
             }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                if (isPendingOffline) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(com.evrenhouse.trackscooter.ui.theme.Warning.copy(alpha = 0.15f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Sync,
+                                contentDescription = null,
+                                tint = com.evrenhouse.trackscooter.ui.theme.Warning,
+                                modifier = Modifier.size(11.dp),
+                            )
+                            Text(
+                                text = "Menunggu Sinyal",
+                                color = com.evrenhouse.trackscooter.ui.theme.Warning,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+                }
 
-            if (onTroubleSwap != null) {
-                OutlinedButton(
-                    onClick = { onTroubleSwap(scooter) },
-                    shape = RoundedCornerShape(8.dp),
-                    border = BorderStroke(1.dp, Border),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextMuted),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    modifier = Modifier.defaultMinSize(minHeight = 36.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.SwapHoriz,
-                        contentDescription = "Tukar unit sewa",
-                        tint = TextMuted,
-                        modifier = Modifier.size(13.dp),
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = "Tukar Unit",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
+                if (onReturn != null) {
+                    Button(
+                        onClick = { onReturn(scooter) },
+                        enabled = !isProcessing,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isDark) Color(0xFF065F46) else Color(0xFFD1FAE5),
+                            contentColor = if (isDark) Color(0xFF34D399) else Color(0xFF047857),
+                            disabledContainerColor = Surface2,
+                            disabledContentColor = TextMuted,
+                        ),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.defaultMinSize(minHeight = 36.dp),
+                    ) {
+                        if (isProcessing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(13.dp),
+                                strokeWidth = 2.dp,
+                                color = TextMuted,
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Filled.CheckCircle,
+                                contentDescription = "Kembalikan unit sewa",
+                                modifier = Modifier.size(13.dp),
+                            )
+                        }
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = if (isProcessing) "Proses..." else "Kembalikan",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+
+                if (onTroubleSwap != null) {
+                    OutlinedButton(
+                        onClick = { onTroubleSwap(scooter) },
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, Border),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextMuted),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.defaultMinSize(minHeight = 36.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.SwapHoriz,
+                            contentDescription = "Tukar unit sewa",
+                            tint = TextMuted,
+                            modifier = Modifier.size(13.dp),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = "Tukar Unit",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
                 }
             }
         }

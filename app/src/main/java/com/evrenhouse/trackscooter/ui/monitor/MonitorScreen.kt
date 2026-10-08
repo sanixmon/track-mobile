@@ -20,15 +20,21 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -83,6 +89,9 @@ fun MonitorScreen(
     val pagerState = rememberPagerState(initialPage = 0) { MonitorTab.entries.size }
     val currentTab by remember { derivedStateOf { MonitorTab.entries[pagerState.currentPage] } }
     var troubleScooter by remember { mutableStateOf<Scooter?>(null) }
+    var returnConfirmScooter by remember { mutableStateOf<Scooter?>(null) }
+    val processingReturnIds by viewModel.processingReturnIds.collectAsState()
+    val pendingOfflineReturnIds by viewModel.pendingOfflineReturnIds.collectAsState()
     var sortOrder by rememberSaveable { mutableStateOf("oldest") } // Default terlama dulu
 
     // 5-second ticker keeps rental duration updated (1:1 with web)
@@ -307,11 +316,15 @@ fun MonitorScreen(
                                             items = inUseScooters,
                                             key = { "live_${it.id}" },
                                         ) { scooter ->
+                                            val cleanId = scooter.id.trim().uppercase()
                                             LiveSessionCard(
                                                 scooter = scooter,
                                                 nowMillis = nowMillis,
                                                 onClick = { onOpenDetail?.invoke(scooter.id) },
                                                 onTroubleSwap = { troubleScooter = it },
+                                                onReturn = { returnConfirmScooter = it },
+                                                isProcessing = processingReturnIds.contains(cleanId),
+                                                isPendingOffline = pendingOfflineReturnIds.contains(cleanId),
                                             )
                                         }
                                     }
@@ -374,6 +387,110 @@ fun MonitorScreen(
                     }
                 }
             },
+        )
+    }
+
+    // ── Dialog Konfirmasi Kembalikan Unit Langsung ──
+    returnConfirmScooter?.let { scooter ->
+        val dt = DateUtils.parse(scooter.lastUpdated)
+        val startMillis = dt?.atZone(DateUtils.WIB)?.toInstant()?.toEpochMilli() ?: nowMillis
+        val elapsedSecs = ((nowMillis - startMillis) / 1000).coerceAtLeast(0)
+        val durationText = DateUtils.formatDuration(elapsedSecs)
+        val keluarTime = if (dt != null) DateUtils.formatTime(dt) else "-"
+        val cleanId = scooter.id.trim().uppercase()
+        val isProcessing = processingReturnIds.contains(cleanId)
+
+        AlertDialog(
+            onDismissRequest = { if (!isProcessing) returnConfirmScooter = null },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.CheckCircle,
+                        contentDescription = null,
+                        tint = com.evrenhouse.trackscooter.ui.theme.Green,
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Text(
+                        text = "Kembalikan Unit ${scooter.id}?",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                    )
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "Konfirmasi unit telah kembali secara fisik ke outlet. Durasi sewa akan diselesaikan.",
+                        fontSize = 13.sp,
+                        color = TextMuted,
+                        lineHeight = 18.sp,
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Surface2)
+                            .border(1.dp, Border, RoundedCornerShape(10.dp))
+                            .padding(12.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column {
+                                Text("Jam Keluar", fontSize = 10.5.sp, color = TextSubtle, fontWeight = FontWeight.SemiBold)
+                                Text(keluarTime, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("Durasi Sewa", fontSize = 10.5.sp, color = TextSubtle, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    durationText,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (elapsedSecs >= 3600) com.evrenhouse.trackscooter.ui.theme.Red else Accent,
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.returnScooterDirect(scooter.id) { success, msg ->
+                            if (success) {
+                                sweetAlert.showSuccess(msg)
+                            } else {
+                                sweetAlert.showError(msg)
+                            }
+                        }
+                        returnConfirmScooter = null
+                    },
+                    enabled = !isProcessing,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = com.evrenhouse.trackscooter.ui.theme.Green,
+                        contentColor = Color.White,
+                    ),
+                ) {
+                    Text("Ya, Kembalikan Unit", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { returnConfirmScooter = null },
+                    enabled = !isProcessing,
+                    shape = RoundedCornerShape(8.dp),
+                ) {
+                    Text("Batal", fontSize = 13.sp)
+                }
+            },
+            containerColor = Surface,
+            shape = RoundedCornerShape(16.dp),
         )
     }
 }

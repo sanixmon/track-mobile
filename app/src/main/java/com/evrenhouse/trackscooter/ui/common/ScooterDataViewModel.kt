@@ -78,6 +78,10 @@ class ScooterDataViewModel(
     private val _isCheckingUpdate = MutableStateFlow(false)
     val isCheckingUpdate: StateFlow<Boolean> = _isCheckingUpdate.asStateFlow()
 
+    val pendingOfflineReturnIds: StateFlow<Set<String>> = repository.returnQueue.pendingIds
+
+    private val _processingReturnIds = MutableStateFlow<Set<String>>(emptySet())
+    val processingReturnIds: StateFlow<Set<String>> = _processingReturnIds.asStateFlow()
     fun checkForAppUpdate(forceRecheck: Boolean = false, onResult: ((AppUpdateInfo) -> Unit)? = null) {
         // Throttle: resume beruntun tidak perlu cek ulang terus.
         val now = System.currentTimeMillis()
@@ -167,6 +171,119 @@ class ScooterDataViewModel(
         res.success
     }.getOrDefault(false)
 
+    /**
+     * Atomic & idempotent return operation for a single unit.
+     * Guards against duplicate in-flight requests and enqueues to OfflineReturnQueue on connection failure.
+     */
+    fun returnScooterDirect(
+        scooterId: String,
+        onResult: ((success: Boolean, message: String) -> Unit)? = null,
+    ) {
+        val cleanId = scooterId.trim().uppercase()
+        if (_processingReturnIds.value.contains(cleanId)) return
+
+        _processingReturnIds.value = _processingReturnIds.value + cleanId
+        viewModelScope.launch {
+            try {
+                val res = repository.returnScooterIdempotent(cleanId)
+                if (res.success) {
+                    repository.notifyScooterToggled(res)
+                    onResult?.invoke(true, res.message ?: "Unit $cleanId berhasil dikembalikan.")
+                } else {
+                    onResult?.invoke(false, res.message ?: "Gagal mengembalikan unit $cleanId")
+                }
+            } catch (e: Exception) {
+                Log.w("ScooterDataVM", "Direct return failed for $cleanId, queuing offline", e)
+                val enqueued = repository.returnQueue.enqueue(
+                    cleanId,
+                    _selectedOutlet.value.takeIf { it != "all" }
+                )
+                if (enqueued) {
+                    // Optimistic local update: mark as available in current UI state
+                    val updatedScooters = _state.value.scooters.map { s ->
+                        if (s.id.equals(cleanId, ignoreCase = true)) s.copy(status = ScooterStatus.AVAILABLE) else s
+                    }
+                    _state.value = _state.value.copy(scooters = updatedScooters)
+                    onResult?.invoke(
+                        true,
+                        "Sinyal lemah: Pengembalian unit $cleanId disimpan ke antrian offline dan akan dikirim otomatis saat online."
+                    )
+                } else {
+                    onResult?.invoke(false, e.toUserMessage())
+                }
+            } finally {
+                _processingReturnIds.value = _processingReturnIds.value - cleanId
+            }
+        }
+    }
+
+    /**
+     * Bulk return all active sessions in the target outlet (Closing Gatekeeper).
+     * Processes each unit independently and reports aggregate results.
+     */
+    fun bulkReturnOutlet(
+        outletId: String,
+        onComplete: ((successCount: Int, failedCount: Int) -> Unit)? = null,
+    ) {
+        viewModelScope.launch {
+            val inUseUnits = _state.value.scooters.filter { s ->
+                s.status == ScooterStatus.IN_USE &&
+                    (outletId == "all" || (s.currentOutlet ?: com.evrenhouse.trackscooter.util.Outlets.getHomeOutletForType(s.type)) == outletId)
+            }
+
+            if (inUseUnits.isEmpty()) {
+                onComplete?.invoke(0, 0)
+                return@launch
+            }
+
+            var successCount = 0
+            var failedCount = 0
+
+            for (unit in inUseUnits) {
+                val cleanId = unit.id.trim().uppercase()
+                _processingReturnIds.value = _processingReturnIds.value + cleanId
+                try {
+                    val res = repository.returnScooterIdempotent(cleanId)
+                    if (res.success) {
+                        successCount++
+                        repository.notifyScooterToggled(res)
+                    } else {
+                        failedCount++
+                    }
+                } catch (e: Exception) {
+                    Log.w("ScooterDataVM", "Bulk return failed for $cleanId, queuing offline", e)
+                    val enqueued = repository.returnQueue.enqueue(cleanId, unit.currentOutlet)
+                    if (enqueued) {
+                        successCount++ // Counted as handled via queue
+                    } else {
+                        failedCount++
+                    }
+                } finally {
+                    _processingReturnIds.value = _processingReturnIds.value - cleanId
+                }
+            }
+
+            refresh(silent = true)
+            onComplete?.invoke(successCount, failedCount)
+        }
+    }
+
+    /**
+     * Drains pending items from the offline queue.
+     */
+    fun drainOfflineQueue() {
+        viewModelScope.launch {
+            if (repository.returnQueue.pendingIds.value.isNotEmpty()) {
+                val (success, _) = repository.returnQueue.drain { id ->
+                    repository.returnScooterIdempotent(id)
+                }
+                if (success > 0) {
+                    refresh(silent = true)
+                }
+            }
+        }
+    }
+
     fun refresh(silent: Boolean = false) {
         viewModelScope.launch {
             if (!silent && _state.value.scooters.isNotEmpty()) {
@@ -182,6 +299,7 @@ class ScooterDataViewModel(
                         refreshing = false,
                         error = null,
                     )
+                    drainOfflineQueue()
                 }
                 .onFailure { err ->
                     _state.value = _state.value.copy(

@@ -30,6 +30,9 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Store
+import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -365,6 +368,88 @@ fun ReportScreen(
                                     color = if (progressPercent == 100) Green else Accent,
                                     modifier = Modifier.weight(1f),
                                 )
+                            }
+                        }
+
+                        // ── Peringatan Unit Belum Selesai Sewa (Closing Barrier) ──
+                        val inUseCount = outletScooters.count { it.status == ScooterStatus.IN_USE }
+                        if (inUseCount > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(com.evrenhouse.trackscooter.ui.theme.Red.copy(alpha = 0.12f))
+                                    .border(1.dp, com.evrenhouse.trackscooter.ui.theme.Red.copy(alpha = 0.45f), RoundedCornerShape(14.dp))
+                                    .padding(14.dp),
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.WarningAmber,
+                                            contentDescription = null,
+                                            tint = com.evrenhouse.trackscooter.ui.theme.Red,
+                                            modifier = Modifier.size(20.dp),
+                                        )
+                                        Text(
+                                            text = "Peringatan Closing: $inUseCount Unit Masih Disewa!",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = com.evrenhouse.trackscooter.ui.theme.Red,
+                                        )
+                                    }
+                                    Text(
+                                        text = "Terdapat $inUseCount unit berstatus 'Unit Diluar' di outlet ini. Pastikan seluruh unit dikembalikan sebelum closing agar argo durasi operasional tidak terus bertambah.",
+                                        fontSize = 12.sp,
+                                        color = TextPrimary,
+                                        lineHeight = 17.sp,
+                                    )
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Button(
+                                            onClick = {
+                                                sweetAlert.showConfirm(
+                                                    title = "Kembalikan Semua Sesi?",
+                                                    message = "Semua $inUseCount unit berstatus 'Unit Diluar' di outlet ini akan diselesaikan secara serentak. Unit offline akan otomatis diantrikan.",
+                                                    confirmText = "Ya, Selesaikan Semua",
+                                                    cancelText = "Batal",
+                                                    isDanger = true,
+                                                    onConfirm = {
+                                                        viewModel.bulkReturnOutlet(selectedOutlet) { success, failed ->
+                                                            if (failed == 0) {
+                                                                sweetAlert.showSuccess("Semua $success unit berhasil diselesaikan!")
+                                                            } else {
+                                                                sweetAlert.showWarning("$success unit selesai, $failed unit masuk antrian offline.")
+                                                            }
+                                                        }
+                                                    },
+                                                )
+                                            },
+                                            shape = RoundedCornerShape(8.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = com.evrenhouse.trackscooter.ui.theme.Red,
+                                                contentColor = Color.White,
+                                            ),
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.CheckCircle,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(14.dp),
+                                            )
+                                            Spacer(Modifier.width(6.dp))
+                                            Text(
+                                                text = "Selesaikan Semua Sesi ($inUseCount)",
+                                                fontSize = 11.5.sp,
+                                                fontWeight = FontWeight.Bold,
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
 
