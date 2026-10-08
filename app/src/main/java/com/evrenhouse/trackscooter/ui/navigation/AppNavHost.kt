@@ -21,6 +21,9 @@ import com.evrenhouse.trackscooter.ui.common.AppUpdateDialog
 import com.evrenhouse.trackscooter.data.ScooterStatus
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import com.evrenhouse.trackscooter.ui.common.UnifiedOutletPicker
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assignment
@@ -268,8 +271,17 @@ fun AppNavHost() {
                     ScooterDetailScreen(scooterId = id, onBack = { navController.popBackStack() })
                 }
             }
-        }
 
+            // ── Floating Unified Outlet Picker (1:1 with Web UnifiedOutletPicker.jsx) ──
+            if (showBottomBar) {
+                UnifiedOutletPicker(
+                    viewModel = dataViewModel,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 16.dp, bottom = 12.dp),
+                )
+            }
+        }
         // Splash screen transisi penuh layar 2 detik saat berganti mode
         switchingModeTarget?.let { targetMode ->
             ModeTransitionSplash(

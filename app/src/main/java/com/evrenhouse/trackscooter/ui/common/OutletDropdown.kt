@@ -9,11 +9,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ElectricScooter
@@ -60,7 +63,8 @@ fun OutletDropdown(
     modifier: Modifier = Modifier,
     outlets: List<Outlet> = Outlets.ALL_OUTLETS,
     getOutletCount: ((String) -> Int)? = null,
-    labelPrefix: String = "Outlet:"
+    labelPrefix: String = "Outlet:",
+    compact: Boolean = false,
 ) {
     var expanded by remember { mutableStateOf(false) }
     val currentOutlet = remember(selectedOutletId, outlets) {
@@ -70,16 +74,56 @@ fun OutletDropdown(
 
     Box(modifier = modifier) {
         // Trigger Button
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .background(Surface)
-                .border(1.dp, if (expanded) Accent else Border, RoundedCornerShape(12.dp))
-                .clickable { expanded = !expanded }
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        if (compact) {
+            // Floating Circular Trigger Button (1:1 with Web UnifiedOutletPicker)
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .shadow(elevation = 6.dp, shape = CircleShape)
+                    .clip(CircleShape)
+                    .background(Surface)
+                    .border(1.5.dp, if (expanded) Accent else Border, CircleShape)
+                    .clickable { expanded = !expanded },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = getOutletIcon(currentOutlet.id),
+                    contentDescription = "Outlet: ${currentOutlet.label}",
+                    tint = Accent,
+                    modifier = Modifier.size(20.dp),
+                )
+
+                if (currentCount != null) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = 2.dp, y = (-2).dp)
+                            .clip(CircleShape)
+                            .background(Accent)
+                            .padding(horizontal = 4.dp, vertical = 1.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = if (currentCount > 99) "99+" else "$currentCount",
+                            color = Color.White,
+                            fontSize = 8.5.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontFamily = FontFamily.Monospace,
+                        )
+                    }
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Surface)
+                    .border(1.dp, if (expanded) Accent else Border, RoundedCornerShape(12.dp))
+                    .clickable { expanded = !expanded }
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
             Icon(
                 imageVector = getOutletIcon(currentOutlet.id),
                 contentDescription = null,
@@ -125,6 +169,7 @@ fun OutletDropdown(
                 tint = TextMuted,
                 modifier = Modifier.size(16.dp)
             )
+        }
         }
 
         // Dropdown Menu
