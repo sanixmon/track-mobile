@@ -38,8 +38,8 @@ sealed interface LocalDataUpdate {
 class ScooterRepository(
     private val api: ApiService = ApiClient.service,
     private val githubApi: GitHubApiService = ApiClient.githubService,
-    val returnQueue: OfflineReturnQueue = OfflineReturnQueue.getInstance(),
 ) {
+    val returnQueue: OfflineReturnQueue by lazy { OfflineReturnQueue.getInstance() }
     private val _localUpdates = MutableSharedFlow<LocalDataUpdate>(extraBufferCapacity = 16)
     val localUpdates: SharedFlow<LocalDataUpdate> = _localUpdates.asSharedFlow()
     @Volatile

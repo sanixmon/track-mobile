@@ -233,9 +233,11 @@ class OfflineReturnQueue(
         @Volatile
         private var instance: OfflineReturnQueue? = null
 
-        fun getInstance(context: Context = TrackScooterApp.instance): OfflineReturnQueue {
+        fun getInstance(context: Context? = null): OfflineReturnQueue {
             return instance ?: synchronized(this) {
-                instance ?: OfflineReturnQueue(context.applicationContext).also { instance = it }
+                instance ?: OfflineReturnQueue(
+                    context = context?.applicationContext ?: runCatching { TrackScooterApp.instance }.getOrNull()
+                ).also { instance = it }
             }
         }
     }
