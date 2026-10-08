@@ -36,16 +36,19 @@ VERSION_BUILD=22
 
 ## Build & Rilis Otomatis
 
-- **Auto Releases** (`.github/workflows/release.yml`): Setiap push tag atau trigger manual di GitHub Actions akan otomatis mengompilasi APK (signed release & debug) dan mempublikasikannya ke tab Releases di repository ini sekaligus mendistribusikannya ke repository publik [sanixmon/track-releases](https://github.com/sanixmon/track-releases) agar pengguna dapat mengunduh APK tanpa login/autentikasi.
-- **Continuous Integration** (`.github/workflows/android.yml`): Setiap push/PR ke `main` otomatis memvalidasi build dan mengunggah artifact APK.
-Build lokal:
+- **Codemagic CI** (`codemagic.yaml`):
+  - **Continuous Integration (`android-ci`)**: Setiap push/PR ke branch `main` otomatis menjalankan unit test (`testDebugUnitTest`), mengompilasi APK debug, dan menyimpan artifact APK serta hasil test report.
+  - **Release Pipeline (`android-release`)**: Dipicu saat push tag `v*` (misal `v2.8.1`) atau manual build di dashboard Codemagic. Menjalankan penandatanganan release APK resmi (`signingConfig release`), pengemasan multi-nama artifact (`track-scooter-vX.Y.Z-release.apk`, `track-scooter.apk`), pembuatan `checksums.txt` (SHA-256), publikasi release ke GitHub Releases, dan sinkronisasi ke repo distribusi publik [sanixmon/track-releases](https://github.com/sanixmon/track-releases).
+- **GitHub Actions** (`.github/workflows/`):
+  - Tersedia workflow fallback `android.yml` dan `release.yml` dengan konfigurasi identik.
+
+Build lokal (memerlukan JDK 17 dan Android SDK):
 ```bash
 ./gradlew assembleDebug          # APK debug
 ./gradlew assembleRelease        # APK release
 ```
 
 Hasil di `app/build/outputs/apk/`.
-
 ## Sistem Auto-Update & Sinkronisasi Versi
 
 Aplikasi secara otomatis memeriksa ketersediaan pembaruan saat pertama kali dibuka:

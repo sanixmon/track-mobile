@@ -1,0 +1,222 @@
+# ==============================================================================
+# Codemagic CI/CD Configuration for TrackScooter Mobile
+# Documentation: https://docs.codemagic.io/
+# Schema: https://codemagic.io/codemagic-schema.json
+# ==============================================================================
+
+workflows:
+  # ----------------------------------------------------------------------------
+  # 1. Android CI Workflow (Debug Build & Unit Tests)
+  # Triggered on: push & pull request to 'main'
+  # ----------------------------------------------------------------------------
+  android-ci:
+    name: TrackScooter Mobile CI
+    max_build_duration: 30
+    instance_type: linux_x2
+    environment:
+      java: 17
+      vars:
+        PACKAGE_NAME: "com.evrenhouse.trackscooter"
+    cache:
+      cache_paths:
+        - $HOME/.gradle/caches
+        - $HOME/.gradle/wrapper
+    triggering:
+      events:
+        - push
+        - pull_request
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
+      cancel_previous_builds: true
+    scripts:
+      - name: Grant gradlew execute permission
+        script: chmod +x gradlew
+      - name: Run unit tests
+        script: ./gradlew testDebugUnitTest --no-daemon --stacktrace
+        test_report: "app/build/test-results/**/*.xml"
+      - name: Build Debug APK
+        script: ./gradlew assembleDebug --no-daemon --stacktrace
+    artifacts:
+      - app/build/outputs/apk/debug/*.apk
+      - app/build/reports/tests/**
+
+  # ----------------------------------------------------------------------------
+  # 2. Android Release Workflow (Signed Release APK & Distribution)
+  # Triggered on: Git tag push 'v*' (e.g. v2.8.1) or manual run in Codemagic UI
+  # ----------------------------------------------------------------------------
+  android-release:
+    name: TrackScooter Mobile Release
+    max_build_duration: 45
+    instance_type: linux_x2
+    environment:
+      groups:
+        - keystore_credentials
+        - github_credentials
+      vars:
+        PACKAGE_NAME: "com.evrenhouse.trackscooter"
+      java: 17
+    cache:
+      cache_paths:
+        - $HOME/.gradle/caches
+        - $HOME/.gradle/wrapper
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: "v*"
+          include: true
+      cancel_previous_builds: false
+    scripts:
+      - name: Grant gradlew execute permission
+        script: chmod +x gradlew
+      - name: Prepare signing keystore & resolve version tag
+        script: |
+          set -e
+          echo "==> Preparing release signing keystore..."
+          mkdir -p keystore
+
+          # Priority 1: Codemagic native code signing file path
+          if [ -n "$CM_KEYSTORE_PATH" ] && [ -f "$CM_KEYSTORE_PATH" ]; then
+            echo "Using Codemagic keystore at: $CM_KEYSTORE_PATH"
+            export RESOLVED_KEYSTORE_PATH="$CM_KEYSTORE_PATH"
+          # Priority 2: Base64-encoded keystore from CI secrets (RELEASE_KEYSTORE_BASE64 or CM_KEYSTORE)
+          elif [ -n "$RELEASE_KEYSTORE_BASE64" ]; then
+            echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > keystore/release.jks
+            export RESOLVED_KEYSTORE_PATH="$CM_BUILD_DIR/keystore/release.jks"
+            echo "Decoded keystore from RELEASE_KEYSTORE_BASE64 to $RESOLVED_KEYSTORE_PATH"
+          elif [ -n "$CM_KEYSTORE" ]; then
+            echo "$CM_KEYSTORE" | base64 -d > keystore/release.jks
+            export RESOLVED_KEYSTORE_PATH="$CM_BUILD_DIR/keystore/release.jks"
+            echo "Decoded keystore from CM_KEYSTORE to $RESOLVED_KEYSTORE_PATH"
+          # Priority 3: Pre-existing keystore in repo
+          elif [ -f "keystore/release.jks" ]; then
+            export RESOLVED_KEYSTORE_PATH="$CM_BUILD_DIR/keystore/release.jks"
+            echo "Using existing keystore at $RESOLVED_KEYSTORE_PATH"
+          else
+            echo "Notice: No keystore secret provided. Fallback to keystore/release.jks"
+            export RESOLVED_KEYSTORE_PATH="$CM_BUILD_DIR/keystore/release.jks"
+          fi
+
+          echo "RELEASE_KEYSTORE_PATH=$RESOLVED_KEYSTORE_PATH" >> "$CM_ENV"
+
+          # Export credentials to $CM_ENV for subsequent build steps
+          if [ -n "$RELEASE_KEYSTORE_PASSWORD" ]; then
+            echo "RELEASE_KEYSTORE_PASSWORD=$RELEASE_KEYSTORE_PASSWORD" >> "$CM_ENV"
+          elif [ -n "$CM_KEYSTORE_PASSWORD" ]; then
+            echo "RELEASE_KEYSTORE_PASSWORD=$CM_KEYSTORE_PASSWORD" >> "$CM_ENV"
+          fi
+
+          if [ -n "$RELEASE_KEY_ALIAS" ]; then
+            echo "RELEASE_KEY_ALIAS=$RELEASE_KEY_ALIAS" >> "$CM_ENV"
+          elif [ -n "$CM_KEY_ALIAS" ]; then
+            echo "RELEASE_KEY_ALIAS=$CM_KEY_ALIAS" >> "$CM_ENV"
+          fi
+
+          if [ -n "$RELEASE_KEY_PASSWORD" ]; then
+            echo "RELEASE_KEY_PASSWORD=$RELEASE_KEY_PASSWORD" >> "$CM_ENV"
+          elif [ -n "$CM_KEY_PASSWORD" ]; then
+            echo "RELEASE_KEY_PASSWORD=$CM_KEY_PASSWORD" >> "$CM_ENV"
+          fi
+
+          # Determine Tag (CM_TAG when triggered by tag webhook, or version.properties fallback)
+          if [ -n "$CM_TAG" ]; then
+            RESOLVED_TAG="$CM_TAG"
+          else
+            if [ -f "version.properties" ]; then
+              V_MAJ=$(grep 'VERSION_MAJOR=' version.properties | cut -d'=' -f2 | tr -d '[:space:]')
+              V_MIN=$(grep 'VERSION_MINOR=' version.properties | cut -d'=' -f2 | tr -d '[:space:]')
+              V_PAT=$(grep 'VERSION_PATCH=' version.properties | cut -d'=' -f2 | tr -d '[:space:]')
+              RESOLVED_TAG="v${V_MAJ}.${V_MIN}.${V_PAT}"
+            else
+              RESOLVED_TAG="v2.8.1"
+            fi
+          fi
+
+          echo "RESOLVED_TAG=$RESOLVED_TAG" >> "$CM_ENV"
+          echo "Resolved Release Tag: $RESOLVED_TAG"
+      - name: Run unit tests
+        script: ./gradlew testDebugUnitTest --no-daemon --stacktrace
+        test_report: "app/build/test-results/**/*.xml"
+      - name: Build Release & Debug APKs
+        script: |
+          set -e
+          echo "==> Building Release & Debug APKs for $RESOLVED_TAG..."
+          ./gradlew assembleRelease assembleDebug --no-daemon --stacktrace
+      - name: Package Release Assets & Generate Checksums
+        script: |
+          set -e
+          echo "==> Packaging release assets for $RESOLVED_TAG..."
+          mkdir -p release-assets
+
+          RELEASE_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n1)
+          if [ -n "$RELEASE_APK" ] && [ -f "$RELEASE_APK" ]; then
+            cp "$RELEASE_APK" "release-assets/track-scooter-${RESOLVED_TAG}-release.apk"
+            cp "$RELEASE_APK" "release-assets/track-scooter-${RESOLVED_TAG}.apk"
+            cp "$RELEASE_APK" "release-assets/track-scooter.apk"
+          else
+            echo "Error: Release APK not found in app/build/outputs/apk/release"
+            exit 1
+          fi
+
+          DEBUG_APK=$(find app/build/outputs/apk/debug -name "*.apk" | head -n1)
+          if [ -n "$DEBUG_APK" ] && [ -f "$DEBUG_APK" ]; then
+            cp "$DEBUG_APK" "release-assets/track-scooter-${RESOLVED_TAG}-debug.apk"
+          fi
+
+          cd release-assets
+          sha256sum *.apk > checksums.txt
+          cd ..
+
+          echo "Release assets generated successfully:"
+          ls -lh release-assets/
+      - name: Publish to GitHub Releases
+        script: |
+          set -e
+          TOKEN="${GITHUB_TOKEN:-$GH_TOKEN}"
+          if [ -z "$TOKEN" ]; then
+            echo "Notice: GITHUB_TOKEN is not configured. Skipping GitHub Release publication."
+            exit 0
+          fi
+
+          export GITHUB_TOKEN="$TOKEN"
+          TITLE="Release ${RESOLVED_TAG}"
+
+          echo "Publishing ${RESOLVED_TAG} to GitHub Releases..."
+          if gh release view "$RESOLVED_TAG" >/dev/null 2>&1; then
+            echo "Release $RESOLVED_TAG already exists. Uploading/updating assets..."
+            gh release upload "$RESOLVED_TAG" release-assets/* --clobber
+          else
+            echo "Creating new GitHub release $RESOLVED_TAG..."
+            gh release create "$RESOLVED_TAG" release-assets/* \
+              --title "$TITLE" \
+              --generate-notes
+          fi
+          echo "GitHub Release completed successfully."
+      - name: Publish to Public Distribution Repo (sanixmon/track-releases)
+        script: |
+          set -e
+          if [ -z "$GH_RELEASE_TOKEN" ]; then
+            echo "Notice: GH_RELEASE_TOKEN is not configured; skipping public distribution repo publication."
+            exit 0
+          fi
+
+          export GH_TOKEN="$GH_RELEASE_TOKEN"
+          TITLE="Release ${RESOLVED_TAG}"
+
+          echo "Publishing release $RESOLVED_TAG to public distribution repo sanixmon/track-releases..."
+          if gh release view "$RESOLVED_TAG" -R sanixmon/track-releases >/dev/null 2>&1; then
+            echo "Release $RESOLVED_TAG already exists on public repo. Uploading/updating assets..."
+            gh release upload "$RESOLVED_TAG" release-assets/* -R sanixmon/track-releases --clobber
+          else
+            echo "Creating release $RESOLVED_TAG on public repo sanixmon/track-releases..."
+            gh release create "$RESOLVED_TAG" release-assets/* \
+              -R sanixmon/track-releases \
+              --title "$TITLE" \
+              --generate-notes
+          fi
+          echo "Successfully published to public repo sanixmon/track-releases."
+    artifacts:
+      - release-assets/*
+      - app/build/outputs/apk/**/*.apk

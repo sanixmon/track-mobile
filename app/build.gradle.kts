@@ -41,19 +41,23 @@ android {
     }
     signingConfigs {
         create("release") {
-            val rawPath = System.getenv("RELEASE_KEYSTORE_PATH")
+            val rawPath = System.getenv("CM_KEYSTORE_PATH")
+                ?: System.getenv("RELEASE_KEYSTORE_PATH")
                 ?: project.findProperty("RELEASE_KEYSTORE_PATH") as String?
                 ?: "keystore/release.jks"
 
             val resolvedFile = if (file(rawPath).isAbsolute) file(rawPath) else rootProject.file(rawPath)
             storeFile = resolvedFile
-            storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
+            storePassword = System.getenv("CM_KEYSTORE_PASSWORD")
+                ?: System.getenv("RELEASE_KEYSTORE_PASSWORD")
                 ?: project.findProperty("RELEASE_KEYSTORE_PASSWORD") as String?
                 ?: "TrackScooter2026!"
-            keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+            keyAlias = System.getenv("CM_KEY_ALIAS")
+                ?: System.getenv("RELEASE_KEY_ALIAS")
                 ?: project.findProperty("RELEASE_KEY_ALIAS") as String?
                 ?: "trackscooter"
-            keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+            keyPassword = System.getenv("CM_KEY_PASSWORD")
+                ?: System.getenv("RELEASE_KEY_PASSWORD")
                 ?: project.findProperty("RELEASE_KEY_PASSWORD") as String?
                 ?: "TrackScooter2026!"
         }
