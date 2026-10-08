@@ -29,6 +29,13 @@ data class QueuedReturnItem(
     val lastError: String? = null,
 )
 
+private object SafeLog {
+    fun d(tag: String, msg: String) { runCatching { Log.d(tag, msg) } }
+    fun i(tag: String, msg: String) { runCatching { Log.i(tag, msg) } }
+    fun w(tag: String, msg: String, t: Throwable? = null) { runCatching { Log.w(tag, msg, t) } }
+    fun e(tag: String, msg: String, t: Throwable? = null) { runCatching { Log.e(tag, msg, t) } }
+}
+
 /**
  * Thread-safe, atomic, persistent offline queue for scooter return actions.
  * Guarantees that no return request is lost when connection drops.
@@ -64,12 +71,12 @@ class OfflineReturnQueue(
                     val content = queueFile.readText()
                     val items = json.decodeFromString<List<QueuedReturnItem>>(content)
                     _pendingIds.value = items.map { it.scooterId.uppercase() }.toSet()
-                    Log.d(TAG, "Loaded ${items.size} pending returns from offline queue")
+                    SafeLog.d(TAG, "Loaded ${items.size} pending returns from offline queue")
                 } else {
                     _pendingIds.value = emptySet()
                 }
             }.onFailure { err ->
-                Log.w(TAG, "Failed to load offline return queue, resetting file", err)
+                SafeLog.w(TAG, "Failed to load offline return queue, resetting file", err)
                 _pendingIds.value = emptySet()
             }
         }
@@ -84,7 +91,7 @@ class OfflineReturnQueue(
             runCatching {
                 val currentItems = readItemsInternal().toMutableList()
                 if (currentItems.any { it.scooterId.equals(cleanId, ignoreCase = true) }) {
-                    Log.d(TAG, "Unit $cleanId already present in offline queue")
+                    SafeLog.d(TAG, "Unit $cleanId already present in offline queue")
                     return@withContext true
                 }
 
@@ -101,10 +108,10 @@ class OfflineReturnQueue(
                 currentItems.add(newItem)
                 writeItemsInternal(currentItems)
                 _pendingIds.value = currentItems.map { it.scooterId.uppercase() }.toSet()
-                Log.i(TAG, "Enqueued return for unit $cleanId (total: ${currentItems.size})")
+                SafeLog.i(TAG, "Enqueued return for unit $cleanId (total: ${currentItems.size})")
                 true
             }.getOrElse { err ->
-                Log.e(TAG, "Failed to enqueue return for unit $cleanId", err)
+                SafeLog.e(TAG, "Failed to enqueue return for unit $cleanId", err)
                 false
             }
         }
@@ -122,11 +129,11 @@ class OfflineReturnQueue(
                 if (removed) {
                     writeItemsInternal(currentItems)
                     _pendingIds.value = currentItems.map { it.scooterId.uppercase() }.toSet()
-                    Log.i(TAG, "Dequeued return for unit $cleanId (remaining: ${currentItems.size})")
+                    SafeLog.i(TAG, "Dequeued return for unit $cleanId (remaining: ${currentItems.size})")
                 }
                 removed
             }.getOrElse { err ->
-                Log.e(TAG, "Failed to dequeue return for unit $cleanId", err)
+                SafeLog.e(TAG, "Failed to dequeue return for unit $cleanId", err)
                 false
             }
         }
@@ -159,8 +166,7 @@ class OfflineReturnQueue(
             val items = readItemsInternal()
             if (items.isEmpty()) return@withContext Pair(0, 0)
 
-            Log.i(TAG, "Starting queue drain for ${items.size} pending items...")
-            val remainingItems = mutableListOf<QueuedReturnItem>()
+            SafeLog.i(TAG, "Starting queue drain for ${items.size} pending items...")
             var successCount = 0
             var failureCount = 0
 
@@ -169,7 +175,7 @@ class OfflineReturnQueue(
                     val response = executeReturn(item.scooterId)
                     if (response.success) {
                         successCount++
-                        Log.i(TAG, "Successfully drained return for unit ${item.scooterId}")
+                        SafeLog.i(TAG, "Successfully drained return for unit ${item.scooterId}")
                     } else {
                         failureCount++
                         remainingItems.add(
@@ -181,7 +187,7 @@ class OfflineReturnQueue(
                     }
                 } catch (e: Exception) {
                     failureCount++
-                    Log.w(TAG, "Failed to drain return for unit ${item.scooterId}: ${e.message}")
+                    SafeLog.w(TAG, "Failed to drain return for unit ${item.scooterId}: ${e.message}")
                     remainingItems.add(
                         item.copy(
                             retryCount = item.retryCount + 1,
