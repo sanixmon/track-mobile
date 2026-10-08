@@ -167,9 +167,9 @@ class OfflineReturnQueue(
             if (items.isEmpty()) return@withContext Pair(0, 0)
 
             SafeLog.i(TAG, "Starting queue drain for ${items.size} pending items...")
+            val remainingItems = mutableListOf<QueuedReturnItem>()
             var successCount = 0
             var failureCount = 0
-
             for (item in items) {
                 try {
                     val response = executeReturn(item.scooterId)
