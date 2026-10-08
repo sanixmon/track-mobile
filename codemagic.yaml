@@ -53,7 +53,6 @@ workflows:
     environment:
       groups:
         - keystore_credentials
-        - github_credentials
       vars:
         PACKAGE_NAME: "com.evrenhouse.trackscooter"
       java: 17
