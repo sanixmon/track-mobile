@@ -394,54 +394,11 @@ fun ReportScreen(
                                         )
                                     }
                                     Text(
-                                        text = "Terdapat $inUseCount unit berstatus 'Unit Diluar' di outlet ini. Pastikan seluruh unit dikembalikan sebelum closing agar argo durasi operasional tidak terus bertambah.",
+                                        text = "Terdapat $inUseCount unit berstatus 'Unit Diluar' di outlet ini. Buka tab Live Monitor untuk mengonfirmasi pengembalian unit sebelum closing agar durasi operasional tidak terus bertambah.",
                                         fontSize = 12.sp,
                                         color = TextPrimary,
                                         lineHeight = 17.sp,
                                     )
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Button(
-                                            onClick = {
-                                                sweetAlert.showConfirm(
-                                                    title = "Kembalikan Semua Sesi?",
-                                                    message = "Semua $inUseCount unit berstatus 'Unit Diluar' di outlet ini akan diselesaikan secara serentak. Unit offline akan otomatis diantrikan.",
-                                                    confirmText = "Ya, Selesaikan Semua",
-                                                    cancelText = "Batal",
-                                                    isDanger = true,
-                                                    onConfirm = {
-                                                        viewModel.bulkReturnOutlet(selectedOutlet) { success, failed ->
-                                                            if (failed == 0) {
-                                                                sweetAlert.showSuccess("Semua $success unit berhasil diselesaikan!")
-                                                            } else {
-                                                                sweetAlert.showWarning("$success unit selesai, $failed unit masuk antrian offline.")
-                                                            }
-                                                        }
-                                                    },
-                                                )
-                                            },
-                                            shape = RoundedCornerShape(8.dp),
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = com.evrenhouse.trackscooter.ui.theme.Red,
-                                                contentColor = Color.White,
-                                            ),
-                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Filled.CheckCircle,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(14.dp),
-                                            )
-                                            Spacer(Modifier.width(6.dp))
-                                            Text(
-                                                text = "Selesaikan Semua Sesi ($inUseCount)",
-                                                fontSize = 11.5.sp,
-                                                fontWeight = FontWeight.Bold,
-                                            )
-                                        }
-                                    }
                                 }
                             }
                         }

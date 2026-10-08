@@ -35,11 +35,23 @@ import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.filled.Monitor
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import com.evrenhouse.trackscooter.ui.theme.Accent
+import com.evrenhouse.trackscooter.ui.theme.Surface
+import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -105,6 +117,7 @@ fun AppNavHost() {
         }
         var hasAutoRedirected by rememberSaveable { mutableStateOf(false) }
         var switchingModeTarget by rememberSaveable { mutableStateOf<String?>(null) }
+        var pendingModeSwitch by rememberSaveable { mutableStateOf<String?>(null) }
         val initialMode = rememberSaveable { dataViewModel.appMode.value }
         val startDestination = if (initialMode == ModePrefs.MANAJEMEN) Routes.MANAGE else Routes.SCAN
 
@@ -189,10 +202,10 @@ fun AppNavHost() {
                         onNavigate = { item ->
                             when (item.route) {
                                 Routes.MODE_MANAJEMEN -> {
-                                    switchingModeTarget = ModePrefs.MANAJEMEN
+                                    pendingModeSwitch = ModePrefs.MANAJEMEN
                                 }
                                 Routes.MODE_OPERASIONAL -> {
-                                    switchingModeTarget = ModePrefs.OPERASIONAL
+                                    pendingModeSwitch = ModePrefs.OPERASIONAL
                                 }
                                 else -> navigateTab(item.route)
                             }
@@ -298,6 +311,61 @@ fun AppNavHost() {
                 onFinished = {
                     switchingModeTarget = null
                 },
+            )
+        }
+
+        // Dialog Konfirmasi sebelum Beralih Mode Operasional <-> Manajemen
+        pendingModeSwitch?.let { targetMode ->
+            val isToManajemen = targetMode == ModePrefs.MANAJEMEN
+            AlertDialog(
+                onDismissRequest = { pendingModeSwitch = null },
+                title = {
+                    Text(
+                        text = if (isToManajemen) "Beralih ke Mode Manajemen?" else "Beralih ke Mode Operasional?",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                    )
+                },
+                text = {
+                    Text(
+                        text = if (isToManajemen) {
+                            "Mode Manajemen digunakan untuk administrasi inventaris, kelola unit, dan data analitik lanjutan."
+                        } else {
+                            "Mode Operasional digunakan untuk aktivitas lapangan: pindai QR sewa, monitor armada, dan closing harian."
+                        },
+                        color = TextMuted,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp,
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            val target = pendingModeSwitch
+                            pendingModeSwitch = null
+                            if (target != null) {
+                                switchingModeTarget = target
+                            }
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Accent,
+                            contentColor = Color.White,
+                        ),
+                    ) {
+                        Text("Ya, Beralih Mode", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(
+                        onClick = { pendingModeSwitch = null },
+                        shape = RoundedCornerShape(8.dp),
+                    ) {
+                        Text("Batal", fontSize = 13.sp)
+                    }
+                },
+                containerColor = Surface,
+                shape = RoundedCornerShape(16.dp),
             )
         }
     }

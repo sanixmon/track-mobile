@@ -130,7 +130,7 @@ workflows:
               V_PAT=$(grep 'VERSION_PATCH=' version.properties | cut -d'=' -f2 | tr -d '[:space:]')
               RESOLVED_TAG="v${V_MAJ}.${V_MIN}.${V_PAT}"
             else
-              RESOLVED_TAG="v2.8.1"
+              RESOLVED_TAG="v2.9.0"
             fi
           fi
 

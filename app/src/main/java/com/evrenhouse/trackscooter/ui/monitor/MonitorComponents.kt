@@ -96,15 +96,11 @@ fun LivePulseHeader(
     val isDark = LocalThemeIsDark.current
     val isDisconnected = !isLiveConnected && !isReconnecting
 
-    Column(
+    Row(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
             Text(
                 text = "Monitor",
                 color = TextPrimary,
@@ -151,8 +147,6 @@ fun LivePulseHeader(
                     )
                 }
             }
-        }
-
     }
 }
 

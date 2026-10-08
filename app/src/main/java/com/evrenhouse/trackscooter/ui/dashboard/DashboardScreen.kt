@@ -98,34 +98,31 @@ fun DashboardScreen(
     ) {
         // Header
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Dashboard", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                val isDark = LocalThemeIsDark.current
+                val toggleTheme = LocalThemeToggle.current
+
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Surface)
+                        .border(1.dp, Border, RoundedCornerShape(10.dp))
+                        .clickable { toggleTheme() },
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Text("Dashboard", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    val isDark = LocalThemeIsDark.current
-                    val toggleTheme = LocalThemeToggle.current
-
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Surface)
-                            .border(1.dp, Border, RoundedCornerShape(10.dp))
-                            .clickable { toggleTheme() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (isDark) Icons.Filled.LightMode else Icons.Filled.DarkMode,
-                            contentDescription = if (isDark) "Beralih ke Mode Terang" else "Beralih ke Mode Gelap",
-                            tint = if (isDark) Warning else Accent,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = if (isDark) Icons.Filled.LightMode else Icons.Filled.DarkMode,
+                        contentDescription = if (isDark) "Beralih ke Mode Terang" else "Beralih ke Mode Gelap",
+                        tint = if (isDark) Warning else Accent,
+                        modifier = Modifier.size(20.dp),
+                    )
                 }
-
             }
         }
 

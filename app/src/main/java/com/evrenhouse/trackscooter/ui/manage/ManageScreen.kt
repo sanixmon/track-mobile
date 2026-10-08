@@ -252,35 +252,27 @@ fun ManageScreen(
         ) {
             // Header: Judul (jumlah unit hanya tampil sekali "170 unit total") & Outlet Dropdown + Aksi Data
             item {
-                Column(
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, top = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Text("Kelola", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                            Text(
-                                text = "· ${data.scooters.size} unit total",
-                                color = TextSubtle,
-                                fontSize = 12.5.sp,
-                                fontWeight = FontWeight.Medium,
-                            )
-                        }
+                        Text("Kelola", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = "· ${data.scooters.size} unit total",
+                            color = TextSubtle,
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
                     }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        // Compact Data Actions Dropdown
+                    // Compact Data Actions Dropdown
                         Box {
                             OutlinedButton(
                                 onClick = { dataMenuExpanded = !dataMenuExpanded },
@@ -413,7 +405,6 @@ fun ManageScreen(
                                 )
                             }
                         }
-                    }
                 }
             }
             // 2. STICKY HEADER: Search bar ~48dp, tombol filter & urutkan, dan quick status filter chips
