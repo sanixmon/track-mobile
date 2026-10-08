@@ -48,7 +48,6 @@ import com.evrenhouse.trackscooter.ui.theme.TrackScooterTheme
 import com.evrenhouse.trackscooter.ui.common.CompactDropdown
 import com.evrenhouse.trackscooter.ui.common.ErrorState
 import com.evrenhouse.trackscooter.ui.common.FilledAction
-import com.evrenhouse.trackscooter.ui.common.OutletDropdown
 import com.evrenhouse.trackscooter.util.Outlets
 import com.evrenhouse.trackscooter.ui.common.LoadingState
 import com.evrenhouse.trackscooter.ui.common.DashboardSkeleton
@@ -127,14 +126,6 @@ fun DashboardScreen(
                     }
                 }
 
-                OutletDropdown(
-                    selectedOutletId = activeOutlet,
-                    onOutletSelected = { viewModel.setSelectedOutlet(it) },
-                    getOutletCount = { outletId ->
-                        if (outletId == "all") state.scooters.size
-                        else state.scooters.count { (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == outletId }
-                    }
-                )
             }
         }
 

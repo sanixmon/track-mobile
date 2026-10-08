@@ -200,8 +200,6 @@ fun MonitorScreen(
                 LivePulseHeader(
                     isLiveConnected = state.isLiveConnected,
                     isReconnecting = state.isReconnecting,
-                    selectedOutletId = globalOutlet,
-                    onOutletSelected = { viewModel.setSelectedOutlet(it) },
                 )
 
                 MonitorTabSelector(
@@ -512,8 +510,6 @@ private fun MonitorScreenLightPreview() {
                 LivePulseHeader(
                     isLiveConnected = true,
                     isReconnecting = false,
-                    selectedOutletId = "utara",
-                    onOutletSelected = {},
                 )
                 LiveSessionCard(
                     scooter = sampleScooters[0],
@@ -538,8 +534,6 @@ private fun MonitorScreenDarkPreview() {
                 LivePulseHeader(
                     isLiveConnected = true,
                     isReconnecting = false,
-                    selectedOutletId = "utara",
-                    onOutletSelected = {},
                 )
                 LiveSessionCard(
                     scooter = sampleScooters[0],

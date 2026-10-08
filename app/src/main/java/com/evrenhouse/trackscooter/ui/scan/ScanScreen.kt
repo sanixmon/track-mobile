@@ -66,7 +66,6 @@ import com.evrenhouse.trackscooter.data.Scooter
 import com.evrenhouse.trackscooter.data.ScooterStatus
 import com.evrenhouse.trackscooter.ui.common.AppViewModelFactory
 import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
-import com.evrenhouse.trackscooter.ui.common.OutletDropdown
 import com.evrenhouse.trackscooter.ui.common.OutlinedAction
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
 import com.evrenhouse.trackscooter.ui.common.repository
@@ -244,23 +243,6 @@ fun ScanScreen(
 
                 ScanSubTab.BY_ID -> {
                     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                        // Outlet Dropdown Filter
-                        OutletDropdown(
-                            selectedOutletId = globalOutlet,
-                            onOutletSelected = { dataViewModel.setSelectedOutlet(it) },
-                            getOutletCount = { outletId ->
-                                if (outletId == "all") {
-                                    dataState.scooters.count { it.status == ScooterStatus.AVAILABLE }
-                                } else {
-                                    dataState.scooters.count {
-                                        (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == outletId &&
-                                        it.status == ScooterStatus.AVAILABLE
-                                    }
-                                }
-                            },
-                            labelPrefix = "Filter Outlet:",
-                        )
-
                         // Search by Unit ID
                         OutlinedTextField(
                             value = searchQuery,

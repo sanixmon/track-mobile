@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.sp
 import com.evrenhouse.trackscooter.ui.common.ErrorState
 import com.evrenhouse.trackscooter.ui.common.LoadingState
 import com.evrenhouse.trackscooter.ui.common.DashboardSkeleton
-import com.evrenhouse.trackscooter.ui.common.OutletDropdown
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
 import com.evrenhouse.trackscooter.ui.dashboard.FleetStatCards
 import com.evrenhouse.trackscooter.ui.dashboard.MaintenanceSection
@@ -104,14 +103,6 @@ fun ManageDashboardScreen(viewModel: ScooterDataViewModel) {
                     }
                 }
 
-                OutletDropdown(
-                    selectedOutletId = activeOutlet,
-                    onOutletSelected = { viewModel.setSelectedOutlet(it) },
-                    getOutletCount = { outletId ->
-                        if (outletId == "all") state.scooters.size
-                        else state.scooters.count { (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == outletId }
-                    }
-                )
             }
         }
 

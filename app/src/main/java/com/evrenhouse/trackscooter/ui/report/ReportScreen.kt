@@ -62,7 +62,6 @@ import com.evrenhouse.trackscooter.data.ScooterRepository
 import com.evrenhouse.trackscooter.data.ScooterStatus
 import com.evrenhouse.trackscooter.data.toUserMessage
 import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
-import com.evrenhouse.trackscooter.ui.common.OutletDropdown
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
 import com.evrenhouse.trackscooter.ui.common.repository
 import com.evrenhouse.trackscooter.ui.scan.CameraScanner
@@ -283,19 +282,12 @@ fun ReportScreen(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
-                        // ── Filter Outlet & Date Picker (Sejajar) ──
+                        // ── Date Picker (1:1 Web DailyReportPage) ──
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.End,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            OutletDropdown(
-                                selectedOutletId = selectedOutlet,
-                                onOutletSelected = { viewModel.setSelectedOutlet(it) },
-                                labelPrefix = "Filter Outlet:",
-                                modifier = Modifier.weight(1f),
-                            )
-
                             Row(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(10.dp))

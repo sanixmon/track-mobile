@@ -94,7 +94,6 @@ import com.evrenhouse.trackscooter.ui.common.AppViewModelFactory
 import com.evrenhouse.trackscooter.ui.common.ErrorState
 import com.evrenhouse.trackscooter.ui.common.LoadingState
 import com.evrenhouse.trackscooter.ui.common.ManageSkeleton
-import com.evrenhouse.trackscooter.ui.common.OutletDropdown
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
 import com.evrenhouse.trackscooter.ui.common.TroubleSwapDialog
 import com.evrenhouse.trackscooter.util.Outlets
@@ -278,16 +277,9 @@ fun ManageScreen(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        OutletDropdown(
-                            selectedOutletId = activeOutlet,
-                            onOutletSelected = { viewModel.setSelectedOutlet(it) },
-                            getOutletCount = null, // Hilangkan duplikasi angka, angka total hanya di FilterChip "Semua"
-                            modifier = Modifier.weight(1f),
-                        )
-
                         // Compact Data Actions Dropdown
                         Box {
                             OutlinedButton(

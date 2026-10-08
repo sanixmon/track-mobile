@@ -62,7 +62,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.evrenhouse.trackscooter.data.ActivityLogEntry
 import com.evrenhouse.trackscooter.data.Scooter
-import com.evrenhouse.trackscooter.ui.common.OutletDropdown
 import com.evrenhouse.trackscooter.ui.theme.Accent
 import com.evrenhouse.trackscooter.ui.theme.AccentSubtle
 import com.evrenhouse.trackscooter.ui.theme.Border
@@ -92,8 +91,6 @@ enum class MonitorTab(val label: String, val icon: ImageVector) {
 fun LivePulseHeader(
     isLiveConnected: Boolean,
     isReconnecting: Boolean,
-    selectedOutletId: String,
-    onOutletSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val isDark = LocalThemeIsDark.current
@@ -156,13 +153,6 @@ fun LivePulseHeader(
             }
         }
 
-        // Chip outlet sama persis dengan Dashboard/Kelola (karena semua angka di layar ini milik outlet terpilih)
-        OutletDropdown(
-            selectedOutletId = selectedOutletId,
-            onOutletSelected = onOutletSelected,
-            getOutletCount = null,
-            modifier = Modifier.fillMaxWidth(),
-        )
     }
 }
 
