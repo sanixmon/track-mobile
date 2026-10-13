@@ -187,7 +187,6 @@ class ScooterDataViewModel(
             try {
                 val res = repository.returnScooterIdempotent(cleanId)
                 if (res.success) {
-                    repository.notifyScooterToggled(res)
                     onResult?.invoke(true, res.message ?: "Unit $cleanId berhasil dikembalikan.")
                 } else {
                     onResult?.invoke(false, res.message ?: "Gagal mengembalikan unit $cleanId")
@@ -246,7 +245,6 @@ class ScooterDataViewModel(
                     val res = repository.returnScooterIdempotent(cleanId)
                     if (res.success) {
                         successCount++
-                        repository.notifyScooterToggled(res)
                     } else {
                         failedCount++
                     }

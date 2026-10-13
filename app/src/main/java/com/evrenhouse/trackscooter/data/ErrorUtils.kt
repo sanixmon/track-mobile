@@ -1,15 +1,19 @@
 package com.evrenhouse.trackscooter.data
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.ResponseBody
 import retrofit2.HttpException
 import retrofit2.Response
 import java.io.IOException
+import java.net.SocketTimeoutException
 
 /** Convert a thrown exception into a short, user-facing Indonesian message. */
 fun Throwable.toUserMessage(): String = when (this) {
+    is TimeoutCancellationException, is SocketTimeoutException ->
+        "Waktu tunggu koneksi ke server habis. Periksa sinyal internet dan coba lagi."
     is IOException -> "Tidak dapat terhubung ke server API. Periksa koneksi internet."
     is HttpException -> {
         when (code()) {
@@ -25,7 +29,8 @@ fun Throwable.toUserMessage(): String = when (this) {
 
 fun HttpException.errorBodyMessage(): String? = runCatching {
     val raw = response()?.errorBody()?.string() ?: return null
-    Json { ignoreUnknownKeys = true }.decodeFromString<ApiError>(raw).error
+    val decoded = Json { ignoreUnknownKeys = true }.decodeFromString<ApiError>(raw)
+    decoded.error?.takeIf { it.isNotBlank() } ?: decoded.message?.takeIf { it.isNotBlank() }
 }.getOrNull()
 
 /** Helper to read a raw (streamed) response body safely. */

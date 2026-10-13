@@ -127,4 +127,33 @@ class OfflineReturnQueueTest {
         assertTrue(queue.isPending("SD-01"))
         assertEquals(1, queue.getAll().first().retryCount)
     }
+
+    @Test
+    fun testDrainCallingDequeueInsideCallbackDoesNotDeadlock() = runTest(testDispatcher) {
+        val queue = OfflineReturnQueue(
+            storageDir = storageDir,
+            scope = testScope,
+        )
+
+        queue.enqueue("SD-01", "utara")
+        queue.enqueue("SD-02", "utara")
+
+        // Mirrors ScooterDataViewModel.drainOfflineQueue -> ScooterRepository.returnScooterIdempotent
+        // which calls queue.dequeue(id) inside the drain callback.
+        val (success, failed) = queue.drain { id ->
+            queue.dequeue(id)
+            ToggleResponse(
+                success = true,
+                action = "return",
+                message = "Unit $id berhasil dikembalikan",
+                scooter = Scooter(id = id, type = "sd", status = ScooterStatus.AVAILABLE)
+            )
+        }
+
+        assertEquals(2, success)
+        assertEquals(0, failed)
+        assertEquals(0, queue.getAll().size)
+        assertFalse(queue.isPending("SD-01"))
+        assertFalse(queue.isPending("SD-02"))
+    }
 }

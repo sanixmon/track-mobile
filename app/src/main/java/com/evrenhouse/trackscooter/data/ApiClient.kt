@@ -21,10 +21,10 @@ object ApiClient {
 
     private val okHttp: OkHttpClient by lazy {
         val builder = OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
-            .addInterceptor(RetryOn5xxInterceptor())
+            .connectTimeout(8, TimeUnit.SECONDS)
+            .readTimeout(12, TimeUnit.SECONDS)
+            .writeTimeout(12, TimeUnit.SECONDS)
+            .addInterceptor(RetryOn5xxInterceptor(maxRetries = 1))
 
         if (BuildConfig.DEBUG) {
             val logging = HttpLoggingInterceptor().apply {
@@ -66,7 +66,7 @@ object ApiClient {
 }
 
 /** Interceptor to retry on transient upstream 502/503/504 errors with exponential backoff */
-private class RetryOn5xxInterceptor(private val maxRetries: Int = 2) : Interceptor {
+private class RetryOn5xxInterceptor(private val maxRetries: Int = 1) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
         var response = chain.proceed(request)
@@ -75,7 +75,7 @@ private class RetryOn5xxInterceptor(private val maxRetries: Int = 2) : Intercept
         while (!response.isSuccessful && response.code in 502..504 && attempt < maxRetries) {
             attempt++
             response.close()
-            val backoffMs = (350L * attempt).coerceAtMost(1200L)
+            val backoffMs = (250L * attempt).coerceAtMost(500L)
             try {
                 Thread.sleep(backoffMs)
             } catch (_: InterruptedException) {

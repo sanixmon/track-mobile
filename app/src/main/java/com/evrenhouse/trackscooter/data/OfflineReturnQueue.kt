@@ -18,6 +18,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.time.LocalDateTime
+import java.util.concurrent.atomic.AtomicBoolean
 
 @Serializable
 data class QueuedReturnItem(
@@ -47,6 +48,7 @@ class OfflineReturnQueue(
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO),
 ) {
     private val mutex = Mutex()
+    private val isDraining = AtomicBoolean(false)
     private val json = Json {
         ignoreUnknownKeys = true
         prettyPrint = false
@@ -161,45 +163,71 @@ class OfflineReturnQueue(
      */
     suspend fun drain(
         executeReturn: suspend (String) -> ToggleResponse,
-    ): Pair<Int, Int> = mutex.withLock {
-        withContext(Dispatchers.IO) {
-            val items = readItemsInternal()
-            if (items.isEmpty()) return@withContext Pair(0, 0)
+    ): Pair<Int, Int> {
+        if (!isDraining.compareAndSet(false, true)) {
+            return Pair(0, 0)
+        }
+        return try {
+            withContext(Dispatchers.IO) {
+                val items = mutex.withLock { readItemsInternal() }
+                if (items.isEmpty()) return@withContext Pair(0, 0)
 
-            SafeLog.i(TAG, "Starting queue drain for ${items.size} pending items...")
-            val remainingItems = mutableListOf<QueuedReturnItem>()
-            var successCount = 0
-            var failureCount = 0
-            for (item in items) {
-                try {
-                    val response = executeReturn(item.scooterId)
-                    if (response.success) {
-                        successCount++
-                        SafeLog.i(TAG, "Successfully drained return for unit ${item.scooterId}")
-                    } else {
-                        failureCount++
-                        remainingItems.add(
-                            item.copy(
-                                retryCount = item.retryCount + 1,
-                                lastError = response.message ?: "Server rejected return",
+                SafeLog.i(TAG, "Starting queue drain for ${items.size} pending items...")
+                val succeededIds = mutableSetOf<String>()
+                val failedUpdates = mutableMapOf<String, Pair<Int, String>>()
+                var successCount = 0
+                var failureCount = 0
+
+                for (item in items) {
+                    val key = item.scooterId.trim().uppercase()
+                    try {
+                        val response = executeReturn(item.scooterId)
+                        if (response.success) {
+                            successCount++
+                            succeededIds.add(key)
+                            SafeLog.i(TAG, "Successfully drained return for unit ${item.scooterId}")
+                        } else {
+                            failureCount++
+                            failedUpdates[key] = Pair(
+                                item.retryCount + 1,
+                                response.message ?: "Server rejected return",
                             )
+                        }
+                    } catch (e: Exception) {
+                        failureCount++
+                        SafeLog.w(TAG, "Failed to drain return for unit ${item.scooterId}: ${e.message}")
+                        failedUpdates[key] = Pair(
+                            item.retryCount + 1,
+                            e.message ?: "Network error",
                         )
                     }
-                } catch (e: Exception) {
-                    failureCount++
-                    SafeLog.w(TAG, "Failed to drain return for unit ${item.scooterId}: ${e.message}")
-                    remainingItems.add(
-                        item.copy(
-                            retryCount = item.retryCount + 1,
-                            lastError = e.message ?: "Network error",
-                        )
-                    )
                 }
-            }
 
-            writeItemsInternal(remainingItems)
-            _pendingIds.value = remainingItems.map { it.scooterId.uppercase() }.toSet()
-            Pair(successCount, failureCount)
+                mutex.withLock {
+                    val currentItems = readItemsInternal()
+                    val reconciledItems = currentItems.mapNotNull { current ->
+                        val key = current.scooterId.trim().uppercase()
+                        if (succeededIds.contains(key)) {
+                            null
+                        } else {
+                            val failure = failedUpdates[key]
+                            if (failure != null) {
+                                current.copy(
+                                    retryCount = failure.first,
+                                    lastError = failure.second,
+                                )
+                            } else {
+                                current
+                            }
+                        }
+                    }
+                    writeItemsInternal(reconciledItems)
+                    _pendingIds.value = reconciledItems.map { it.scooterId.uppercase() }.toSet()
+                }
+                Pair(successCount, failureCount)
+            }
+        } finally {
+            isDraining.set(false)
         }
     }
 

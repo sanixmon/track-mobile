@@ -51,6 +51,17 @@ class ScooterRepository(
         _cachedScooters.find { it.id.equals(id.trim(), ignoreCase = true) }
 
     fun notifyScooterToggled(response: ToggleResponse) {
+        val updated = response.scooter
+        if (updated != null) {
+            val list = _cachedScooters.toMutableList()
+            val idx = list.indexOfFirst { it.id.equals(updated.id, ignoreCase = true) }
+            if (idx != -1) {
+                list[idx] = updated
+            } else {
+                list.add(updated)
+            }
+            _cachedScooters = list
+        }
         _localUpdates.tryEmit(LocalDataUpdate.Toggled(response))
     }
 
@@ -195,9 +206,66 @@ class ScooterRepository(
     suspend fun checkoutScooter(id: String): ToggleResponse =
         withContext(Dispatchers.IO) { api.checkoutScooter(id) }
 
+    /**
+     * Idempotent checkout: handles maintenance confirmation and reconciles HTTP 400
+     * if a previous attempt already checked out the scooter before a network blip.
+     */
+    suspend fun checkoutScooterIdempotent(
+        id: String,
+        forceMaintenance: Boolean = false,
+    ): ToggleResponse = withContext(Dispatchers.IO) {
+        val cleanId = id.trim().uppercase()
+        try {
+            val res = if (forceMaintenance) {
+                api.toggleScooter(cleanId, ToggleRequest(forceMaintenance = true))
+            } else {
+                val initial = api.checkoutScooter(cleanId)
+                if (initial.requiresConfirmation) {
+                    api.toggleScooter(cleanId, ToggleRequest(forceMaintenance = true))
+                } else {
+                    initial
+                }
+            }
+            if (res.success) {
+                notifyScooterToggled(res)
+            }
+            res
+        } catch (e: HttpException) {
+            val errorBody = runCatching { e.response()?.errorBody()?.string() }.getOrNull().orEmpty()
+            if (e.code() == 400 && (
+                errorBody.contains("sudah disewa", ignoreCase = true) ||
+                errorBody.contains("sedang disewa", ignoreCase = true) ||
+                errorBody.contains("sudah berada di luar", ignoreCase = true)
+            )) {
+                val reconciledScooter = (getCachedScooter(cleanId)
+                    ?: Scooter(id = cleanId, type = "sd", status = ScooterStatus.IN_USE))
+                    .copy(status = ScooterStatus.IN_USE)
+                val reconciled = ToggleResponse(
+                    success = true,
+                    action = "checkout",
+                    message = "Unit $cleanId sudah berstatus disewa (tersinkronisasi).",
+                    scooter = reconciledScooter,
+                )
+                notifyScooterToggled(reconciled)
+                reconciled
+            } else if (e.code() == 400 && (
+                errorBody.contains("perbaikan", ignoreCase = true) ||
+                errorBody.contains("maintenance", ignoreCase = true) ||
+                errorBody.contains("kendala", ignoreCase = true)
+            )) {
+                val res = api.toggleScooter(cleanId, ToggleRequest(forceMaintenance = true))
+                if (res.success) {
+                    notifyScooterToggled(res)
+                }
+                res
+            } else {
+                throw e
+            }
+        }
+    }
+
     suspend fun returnScooter(id: String): ToggleResponse =
         withContext(Dispatchers.IO) { api.returnScooter(id) }
-
     /**
      * Idempotent return: if server returns 400 because scooter was already returned
      * (e.g. from previous network timeout retry), treats as successful reconciliation.

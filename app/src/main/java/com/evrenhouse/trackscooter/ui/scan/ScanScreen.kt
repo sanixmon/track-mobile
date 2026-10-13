@@ -68,6 +68,7 @@ import com.evrenhouse.trackscooter.ui.common.AppViewModelFactory
 import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
 import com.evrenhouse.trackscooter.ui.common.OutlinedAction
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
+import com.evrenhouse.trackscooter.ui.common.SweetAlertType
 import com.evrenhouse.trackscooter.ui.common.repository
 import com.evrenhouse.trackscooter.ui.theme.Accent
 import com.evrenhouse.trackscooter.ui.theme.Border
@@ -134,14 +135,13 @@ fun ScanScreen(
 
 
     // Alert events
-    LaunchedEffect(state.toast) {
-        state.toast?.let {
-            if (it.contains("berhasil", ignoreCase = true) || it.contains("check", ignoreCase = true) || it.contains("sukses", ignoreCase = true)) {
-                sweetAlert.showSuccess(it)
-            } else if (it.contains("gagal", ignoreCase = true) || it.contains("tidak", ignoreCase = true) || it.contains("salah", ignoreCase = true)) {
-                sweetAlert.showError(it)
-            } else {
-                sweetAlert.showInfo(it)
+    LaunchedEffect(state.toastId, state.toast) {
+        state.toast?.let { msg ->
+            when (state.toastType) {
+                SweetAlertType.SUCCESS -> sweetAlert.showSuccess(msg)
+                SweetAlertType.ERROR -> sweetAlert.showError(msg)
+                SweetAlertType.WARNING -> sweetAlert.showWarning(msg)
+                else -> sweetAlert.showInfo(msg)
             }
             viewModel.consumeToast()
         }
@@ -418,10 +418,7 @@ fun ScanScreen(
             scooter = scooter,
             breakText = state.pendingBreakText,
             submitting = state.busy,
-            onConfirm = {
-                viewModel.confirmScan()
-                dataViewModel.refresh(silent = true)
-            },
+            onConfirm = { viewModel.confirmScan() },
             onDismiss = { viewModel.dismissConfirmation() },
         )
     }

@@ -102,7 +102,7 @@ fun ScanConfirmDialog(
     }
 
     BasicAlertDialog(
-        onDismissRequest = { if (!submitting) onDismiss() }
+        onDismissRequest = { onDismiss() }
     ) {
         Column(
             modifier = Modifier
@@ -177,7 +177,6 @@ fun ScanConfirmDialog(
 
                 IconButton(
                     onClick = onDismiss,
-                    enabled = !submitting,
                     modifier = Modifier.size(28.dp)
                 ) {
                     Icon(
@@ -363,6 +362,14 @@ fun ScanConfirmDialog(
                 }
             }
 
+            if (submitting) {
+                Text(
+                    text = "Menghubungi server... Modal akan tertutup otomatis.",
+                    color = TextMuted,
+                    fontSize = 11.sp,
+                )
+            }
+
             // Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -370,7 +377,6 @@ fun ScanConfirmDialog(
             ) {
                 OutlinedButton(
                     onClick = onDismiss,
-                    enabled = !submitting,
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),

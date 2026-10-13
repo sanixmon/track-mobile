@@ -203,6 +203,7 @@ data class ScooterTechnicalHistoryResponse(
 @Serializable
 data class ApiError(
     @SerialName("error") val error: String? = null,
+    @SerialName("message") val message: String? = null,
 )
 
 data class DashboardData(
