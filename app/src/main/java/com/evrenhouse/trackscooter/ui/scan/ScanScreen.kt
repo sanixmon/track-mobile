@@ -104,14 +104,17 @@ fun ScanScreen(
     val pagerState = rememberPagerState(initialPage = 0) { ScanSubTab.entries.size }
     val currentSubTab by remember { derivedStateOf { ScanSubTab.entries[pagerState.currentPage] } }
     var searchQuery by rememberSaveable { mutableStateOf("") }
-    // Ready scooters (ScooterStatus.AVAILABLE) filtered by global outlet
-    val outletFilteredReadyScooters by remember(dataState.scooters, globalOutlet) {
+    var byIdStatusFilter by rememberSaveable { mutableStateOf("available") } // "available" (Ready) | "in_use" (Disewa)
+
+    // Scooters filtered by global outlet
+    val outletFilteredScooters by remember(dataState.scooters, globalOutlet) {
         derivedStateOf {
-            val list = dataState.scooters.filter { s ->
-                val isReady = s.status == ScooterStatus.AVAILABLE
-                val matchesOutlet = if (globalOutlet == "all") true
-                else (s.currentOutlet ?: Outlets.getHomeOutletForType(s.type)) == globalOutlet
-                isReady && matchesOutlet
+            val list = if (globalOutlet == "all") {
+                dataState.scooters
+            } else {
+                dataState.scooters.filter {
+                    (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == globalOutlet
+                }
             }
             list.sortedWith(
                 compareBy<Scooter> { it.id.filter { ch -> !ch.isDigit() } }
@@ -120,14 +123,28 @@ fun ScanScreen(
         }
     }
 
-    // Ready scooters filtered by search query
-    val displayReadyScooters by remember(outletFilteredReadyScooters, searchQuery) {
+    val readyScooters by remember(outletFilteredScooters) {
         derivedStateOf {
-            if (searchQuery.isBlank()) {
-                outletFilteredReadyScooters
+            outletFilteredScooters.filter { it.status == ScooterStatus.AVAILABLE }
+        }
+    }
+
+    val inUseScooters by remember(outletFilteredScooters) {
+        derivedStateOf {
+            outletFilteredScooters.filter { it.status == ScooterStatus.IN_USE }
+        }
+    }
+
+    // List displayed in By ID based on status filter & search query
+    val displayScooters by remember(outletFilteredScooters, readyScooters, inUseScooters, byIdStatusFilter, searchQuery) {
+        derivedStateOf {
+            val q = searchQuery.trim()
+            if (q.isBlank()) {
+                if (byIdStatusFilter == "available") readyScooters else inUseScooters
             } else {
-                outletFilteredReadyScooters.filter {
-                    it.id.contains(searchQuery.trim(), ignoreCase = true)
+                // Saat mencari ID, cari dari seluruh armada outlet aktif (ready maupun in_use)
+                outletFilteredScooters.filter {
+                    it.id.contains(q, ignoreCase = true)
                 }
             }
         }
@@ -207,7 +224,7 @@ fun ScanScreen(
                                 .padding(horizontal = 6.dp, vertical = 1.dp),
                         ) {
                             Text(
-                                text = outletFilteredReadyScooters.size.toString(),
+                                text = readyScooters.size.toString(),
                                 color = if (isSelected) Color.White else Green,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
@@ -273,12 +290,86 @@ fun ScanScreen(
                             ),
                         )
 
-                        // Header Ready Summary
+                        // Toggle Status (Ready vs Disewa) saat tidak sedang mengetik pencarian
+                        if (searchQuery.isBlank()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Surface2, RoundedCornerShape(10.dp))
+                                    .border(1.dp, Border, RoundedCornerShape(10.dp))
+                                    .padding(3.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                // Tab 1: Unit Ready (Sewa)
+                                val isReadyTab = byIdStatusFilter == "available"
+                                Row(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isReadyTab) Accent else Color.Transparent)
+                                        .clickable { byIdStatusFilter = "available" }
+                                        .padding(vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center,
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(7.dp)
+                                            .background(if (isReadyTab) Color.White else Green, CircleShape),
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        text = "Ready (${readyScooters.size})",
+                                        color = if (isReadyTab) Color.White else TextPrimary,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isReadyTab) FontWeight.Bold else FontWeight.Medium,
+                                    )
+                                }
+
+                                // Tab 2: Unit Disewa (Pengembalian)
+                                val isInUseTab = byIdStatusFilter == "in_use"
+                                Row(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isInUseTab) Accent else Color.Transparent)
+                                        .clickable { byIdStatusFilter = "in_use" }
+                                        .padding(vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center,
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(7.dp)
+                                            .background(if (isInUseTab) Color.White else Color(0xFF38BDF8), CircleShape),
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        text = "Disewa (${inUseScooters.size})",
+                                        color = if (isInUseTab) Color.White else TextPrimary,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isInUseTab) FontWeight.Bold else FontWeight.Medium,
+                                    )
+                                }
+                            }
+                        }
+
+                        // Header Summary & Guidance
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            val titleText = when {
+                                searchQuery.isNotBlank() -> "HASIL PENCARIAN (${displayScooters.size})"
+                                byIdStatusFilter == "available" -> "UNIT READY (${readyScooters.size})"
+                                else -> "UNIT SEDANG DISEWA (${inUseScooters.size})"
+                            }
+                            val subtitleText = when {
+                                searchQuery.isNotBlank() -> "Ketuk unit untuk proses"
+                                byIdStatusFilter == "available" -> "Ketuk unit untuk proses sewa"
+                                else -> "Ketuk unit untuk pengembalian"
+                            }
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -286,10 +377,15 @@ fun ScanScreen(
                                 Box(
                                     modifier = Modifier
                                         .size(8.dp)
-                                        .background(Green, CircleShape),
+                                        .background(
+                                            if (searchQuery.isNotBlank()) Accent
+                                            else if (byIdStatusFilter == "available") Green
+                                            else Color(0xFF38BDF8),
+                                            CircleShape,
+                                        ),
                                 )
                                 Text(
-                                    text = "UNIT READY (${displayReadyScooters.size})",
+                                    text = titleText,
                                     color = TextSubtle,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
@@ -298,14 +394,14 @@ fun ScanScreen(
                             }
 
                             Text(
-                                text = "Ketuk unit untuk proses sewa",
+                                text = subtitleText,
                                 color = TextMuted,
                                 fontSize = 11.sp,
                             )
                         }
 
-                        // List / FlowRow of Ready Scooters
-                        if (displayReadyScooters.isEmpty()) {
+                        // List / Uniform 3-Column Grid of Scooters
+                        if (displayScooters.isEmpty()) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -325,63 +421,78 @@ fun ScanScreen(
                                         tint = TextSubtle,
                                         modifier = Modifier.size(28.dp),
                                     )
+                                    val emptyMsg = when {
+                                        searchQuery.isNotBlank() -> "Tidak ada unit dengan ID \"$searchQuery\"."
+                                        byIdStatusFilter == "available" -> if (globalOutlet == "all") "Tidak ada unit ready saat ini." else "Tidak ada unit ready di ${Outlets.labelOf(globalOutlet)}."
+                                        else -> if (globalOutlet == "all") "Tidak ada unit yang sedang disewa." else "Tidak ada unit yang sedang disewa dari ${Outlets.labelOf(globalOutlet)}."
+                                    }
                                     Text(
-                                        text = if (searchQuery.isNotBlank()) "Tidak ada unit ready dengan ID \"$searchQuery\""
-                                        else if (globalOutlet == "all") "Tidak ada unit ready saat ini."
-                                        else "Tidak ada unit ready di ${Outlets.labelOf(globalOutlet)}.",
+                                        text = emptyMsg,
                                         color = TextMuted,
                                         fontSize = 12.sp,
                                     )
                                 }
                             }
                         } else {
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 val isDark = LocalThemeIsDark.current
-                                displayReadyScooters.forEach { s ->
-                                    val isSelected = searchQuery.equals(s.id, ignoreCase = true)
-                                    val nameColor = if (isSelected) Accent else ScooterColors.getScooterNameColor(s.type, s.id, s.currentOutlet, isDark)
-                                    val outletName = Outlets.shortLabelOf(s.currentOutlet ?: Outlets.getHomeOutletForType(s.type))
-
+                                val rows = displayScooters.chunked(3)
+                                rows.forEach { rowItems ->
                                     Row(
-                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(10.dp))
-                                            .background(if (isSelected) Accent.copy(alpha = 0.2f) else Surface)
-                                            .border(1.dp, if (isSelected) Accent else Border, RoundedCornerShape(10.dp))
-                                            .clickable(enabled = state.scanning && !state.busy) {
-                                                viewModel.onScanned(s.id)
-                                            }
-                                            .padding(horizontal = 12.dp, vertical = 9.dp),
                                     ) {
-                                        Column {
-                                            Text(
-                                                text = s.id,
-                                                color = nameColor,
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                fontFamily = FontFamily.Monospace,
-                                            )
-                                            Spacer(Modifier.height(3.dp))
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        rowItems.forEach { s ->
+                                            val isSelected = searchQuery.equals(s.id, ignoreCase = true)
+                                            val nameColor = if (isSelected) Accent else ScooterColors.getScooterNameColor(s.type, s.id, s.currentOutlet, isDark)
+                                            val outletName = Outlets.shortLabelOf(s.currentOutlet ?: Outlets.getHomeOutletForType(s.type))
+                                            val isAvailable = s.status == ScooterStatus.AVAILABLE
+
+                                            Column(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .clip(RoundedCornerShape(10.dp))
+                                                    .background(if (isSelected) Accent.copy(alpha = 0.2f) else Surface)
+                                                    .border(1.dp, if (isSelected) Accent else Border, RoundedCornerShape(10.dp))
+                                                    .clickable(enabled = state.scanning && !state.busy) {
+                                                        viewModel.onScanned(s.id)
+                                                    }
+                                                    .padding(horizontal = 10.dp, vertical = 9.dp),
                                             ) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(6.dp)
-                                                        .background(Green, CircleShape),
-                                                )
                                                 Text(
-                                                    text = outletName,
-                                                    color = TextSubtle,
-                                                    fontSize = 10.sp,
-                                                    fontWeight = FontWeight.Medium,
+                                                    text = s.id,
+                                                    color = nameColor,
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontFamily = FontFamily.Monospace,
+                                                    maxLines = 1,
                                                 )
+                                                Spacer(Modifier.height(3.dp))
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                ) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(6.dp)
+                                                            .background(
+                                                                if (isAvailable) Green else Color(0xFF38BDF8),
+                                                                CircleShape,
+                                                            ),
+                                                    )
+                                                    Text(
+                                                        text = if (isAvailable) outletName else "Disewa",
+                                                        color = TextSubtle,
+                                                        fontSize = 10.sp,
+                                                        fontWeight = FontWeight.Medium,
+                                                        maxLines = 1,
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        if (rowItems.size < 3) {
+                                            repeat(3 - rowItems.size) {
+                                                Spacer(modifier = Modifier.weight(1f))
                                             }
                                         }
                                     }

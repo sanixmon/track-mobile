@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -78,29 +79,39 @@ fun OutletDropdown(
         if (compact) {
             // Floating Circular Trigger Button (1:1 with Web UnifiedOutletPicker)
             Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .shadow(elevation = 6.dp, shape = CircleShape)
-                    .clip(CircleShape)
-                    .background(Surface)
-                    .border(1.5.dp, if (expanded) Accent else Border, CircleShape)
-                    .clickable { expanded = !expanded },
+                modifier = Modifier.size(52.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    imageVector = getOutletIcon(currentOutlet.id),
-                    contentDescription = "Outlet: ${currentOutlet.label}",
-                    tint = Accent,
-                    modifier = Modifier.size(20.dp),
-                )
+                // Circular Button Surface
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .shadow(elevation = 6.dp, shape = CircleShape)
+                        .clip(CircleShape)
+                        .background(Surface)
+                        .border(1.5.dp, if (expanded) Accent else Border, CircleShape)
+                        .clickable { expanded = !expanded },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = getOutletIcon(currentOutlet.id),
+                        contentDescription = "Outlet: ${currentOutlet.label}",
+                        tint = Accent,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
 
+                // Floating Badge di luar button clipping agar tidak terpotong CircleShape
                 if (currentCount != null) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .offset(x = 2.dp, y = (-2).dp)
+                            .offset(x = 1.dp, y = (-1).dp)
+                            .defaultMinSize(minWidth = 18.dp, minHeight = 18.dp)
+                            .shadow(2.dp, CircleShape)
                             .clip(CircleShape)
                             .background(Accent)
+                            .border(1.5.dp, Surface, CircleShape)
                             .padding(horizontal = 4.dp, vertical = 1.dp),
                         contentAlignment = Alignment.Center,
                     ) {

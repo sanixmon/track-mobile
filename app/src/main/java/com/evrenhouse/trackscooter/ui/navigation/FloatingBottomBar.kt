@@ -188,13 +188,20 @@ private fun FloatingNavItem(
                     .graphicsLayer {
                         scaleX = scale
                         scaleY = scale
-                    }
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(animatedPillColor)
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                    },
                 contentAlignment = Alignment.Center,
             ) {
-                Box(contentAlignment = Alignment.Center) {
+                // Pill background layer terpotong RoundedCornerShape tanpa meng-clip badge di atasnya
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(animatedPillColor),
+                )
+                Box(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
                     Icon(
                         imageVector = item.icon,
                         contentDescription = "Navigasi ke ${item.label}",
@@ -205,10 +212,11 @@ private fun FloatingNavItem(
                         Box(
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
-                                .offset(x = 8.dp, y = (-5).dp)
+                                .offset(x = 8.dp, y = (-4).dp)
+                                .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp)
                                 .clip(CircleShape)
                                 .background(Color(0xFFEF4444))
-                                .padding(horizontal = 4.dp, vertical = 0.5.dp),
+                                .padding(horizontal = 3.5.dp, vertical = 0.5.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
