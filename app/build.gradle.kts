@@ -21,7 +21,7 @@ val appVersionName = "${versionProps.getProperty("VERSION_MAJOR") ?: "2"}.${vers
 // Default API base URL = production. Override per build, e.g.
 //   ./gradlew assembleDebug -PAPI_BASE_URL=http://192.168.1.10:3005
 val apiBaseUrl: String = (project.findProperty("API_BASE_URL") as String?)?.trim()?.takeIf { it.isNotEmpty() }
-    ?: "https://qr.evrenhouse.online"
+    ?: "https://qr.sanxmon.my.id"
 
 android {
     namespace = "com.evrenhouse.trackscooter"
