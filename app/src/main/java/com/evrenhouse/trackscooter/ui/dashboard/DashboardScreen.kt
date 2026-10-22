@@ -2,67 +2,74 @@ package com.evrenhouse.trackscooter.ui.dashboard
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.LightMode
-import com.evrenhouse.trackscooter.ui.theme.LocalThemeIsDark
-import com.evrenhouse.trackscooter.ui.theme.LocalThemeToggle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.tooling.preview.Preview
 import com.evrenhouse.trackscooter.data.Scooter
 import com.evrenhouse.trackscooter.data.ScooterStatus
-import com.evrenhouse.trackscooter.ui.theme.TrackScooterTheme
-import com.evrenhouse.trackscooter.ui.common.CompactDropdown
-import com.evrenhouse.trackscooter.ui.common.ErrorState
-import com.evrenhouse.trackscooter.ui.common.FilledAction
-import com.evrenhouse.trackscooter.util.Outlets
-import com.evrenhouse.trackscooter.ui.common.LoadingState
-import com.evrenhouse.trackscooter.ui.common.DashboardSkeleton
-import com.evrenhouse.trackscooter.ui.common.OutlinedAction
+import com.evrenhouse.trackscooter.data.toUserMessage
+import com.evrenhouse.trackscooter.ui.common.LocalSweetAlert
 import com.evrenhouse.trackscooter.ui.common.ScooterDataViewModel
-import com.evrenhouse.trackscooter.ui.common.SectionCard
-import com.evrenhouse.trackscooter.ui.common.SectionTitle
+import com.evrenhouse.trackscooter.ui.common.TroubleSwapDialog
+import com.evrenhouse.trackscooter.ui.common.UnitActionBottomSheet
+import com.evrenhouse.trackscooter.ui.common.UnitCard
 import com.evrenhouse.trackscooter.ui.theme.Accent
 import com.evrenhouse.trackscooter.ui.theme.Border
-import com.evrenhouse.trackscooter.ui.theme.Red
+import com.evrenhouse.trackscooter.ui.theme.InputCornerRadius
+import com.evrenhouse.trackscooter.ui.theme.LocalThemeIsDark
 import com.evrenhouse.trackscooter.ui.theme.Surface
+import com.evrenhouse.trackscooter.ui.theme.Surface2
+import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
-import com.evrenhouse.trackscooter.ui.theme.Warning
-import com.evrenhouse.trackscooter.util.StatusLabels
+import com.evrenhouse.trackscooter.ui.theme.bounceClickable
+import com.evrenhouse.trackscooter.util.Outlets
+import com.evrenhouse.trackscooter.util.ScooterColors
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     viewModel: ScooterDataViewModel,
@@ -70,182 +77,323 @@ fun DashboardScreen(
     onGoScan: () -> Unit,
 ) {
     val state by viewModel.state.collectAsState()
-    val context = LocalContext.current
-
     val activeOutlet by viewModel.selectedOutlet.collectAsState()
+    val isDark = LocalThemeIsDark.current
+    val sweetAlert = LocalSweetAlert.current
+    val scope = rememberCoroutineScope()
 
+    var selectedFilter by rememberSaveable { mutableStateOf<String?>(null) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedScooterForAction by remember { mutableStateOf<Scooter?>(null) }
+    var swapScooter by remember { mutableStateOf<Scooter?>(null) }
+    var isRefreshing by remember { mutableStateOf(false) }
+
+    // Outlet-filtered scooters
     val outletFilteredScooters by remember(state.scooters, activeOutlet) {
         derivedStateOf {
             if (activeOutlet == "all") state.scooters
-            else state.scooters.filter { (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == activeOutlet }
+            else state.scooters.filter {
+                (it.currentOutlet ?: Outlets.getHomeOutletForType(it.type)) == activeOutlet
+            }
         }
     }
 
-    val outletFilteredActivityLog by remember(state.activityLog, outletFilteredScooters, activeOutlet) {
+    // Fleet stats calculation
+    val stats = remember(outletFilteredScooters) {
+        val total = outletFilteredScooters.size
+        val ready = outletFilteredScooters.count { it.status == ScooterStatus.AVAILABLE }
+        val inUse = outletFilteredScooters.count { it.status == ScooterStatus.IN_USE }
+        val maintLuar = outletFilteredScooters.count {
+            it.status == ScooterStatus.MAINTENANCE && it.activeMaintenance?.location == "luar"
+        }
+        val maintOutlet = outletFilteredScooters.count {
+            it.status == ScooterStatus.MAINTENANCE && it.activeMaintenance?.location != "luar"
+        }
+        FleetStats(
+            total = total,
+            ready = ready,
+            inUse = inUse,
+            maintLuar = maintLuar,
+            maintOutlet = maintOutlet,
+        )
+    }
+
+    // Filtered scooter list for inline display
+    val displayedScooters by remember(outletFilteredScooters, selectedFilter, searchQuery) {
         derivedStateOf {
-            if (activeOutlet == "all") state.activityLog
-            else {
-                val outletScooterIds = outletFilteredScooters.map { it.id }.toSet()
-                state.activityLog.filter { outletScooterIds.contains(it.scooterId) }
+            outletFilteredScooters.filter { scooter ->
+                val matchesFilter = when (selectedFilter) {
+                    "available" -> scooter.status == ScooterStatus.AVAILABLE
+                    "in-use" -> scooter.status == ScooterStatus.IN_USE
+                    "maint-luar" -> scooter.status == ScooterStatus.MAINTENANCE && scooter.activeMaintenance?.location == "luar"
+                    "maint-outlet" -> scooter.status == ScooterStatus.MAINTENANCE && scooter.activeMaintenance?.location != "luar"
+                    else -> true
+                }
+                val matchesSearch = if (searchQuery.isBlank()) true else {
+                    scooter.id.contains(searchQuery.trim(), ignoreCase = true) ||
+                        scooter.type.contains(searchQuery.trim(), ignoreCase = true)
+                }
+                matchesFilter && matchesSearch
             }
         }
     }
 
-    LazyColumn(
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            scope.launch {
+                isRefreshing = true
+                viewModel.refresh()
+                isRefreshing = false
+            }
+        },
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        // Header
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("Dashboard", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                val isDark = LocalThemeIsDark.current
-                val toggleTheme = LocalThemeToggle.current
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            // 1. Interactive Fleet Gauge Card
+            item {
+                InteractiveFleetGauge(
+                    stats = stats,
+                    selectedFilter = selectedFilter,
+                    onSelectFilter = { selectedFilter = it },
+                )
+            }
 
-                Box(
+            // 2. Type breakdown horizontal pill row
+            item {
+                Row(
                     modifier = Modifier
-                        .size(38.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Surface)
-                        .border(1.dp, Border, RoundedCornerShape(10.dp))
-                        .clickable { toggleTheme() },
-                    contentAlignment = Alignment.Center,
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Icon(
-                        imageVector = if (isDark) Icons.Filled.LightMode else Icons.Filled.DarkMode,
-                        contentDescription = if (isDark) "Beralih ke Mode Terang" else "Beralih ke Mode Gelap",
-                        tint = if (isDark) Warning else Accent,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-            }
-        }
-
-        when {
-            state.error != null && state.scooters.isEmpty() -> {
-                item {
-                    ErrorState(message = state.error ?: "", onRetry = { viewModel.refresh() })
-                }
-            }
-            state.loading && state.scooters.isEmpty() -> {
-                item {
-                    DashboardSkeleton()
-                }
-            }
-            else -> {
-                // Realtime sync warning banner
-                state.error?.let { err ->
-                    item {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Red.copy(alpha = 0.10f), RoundedCornerShape(12.dp))
-                                .border(1.dp, Red.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("Sinkronisasi Realtime Terganggu", color = Red, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                                Text(err, color = Red, fontSize = 11.sp)
+                    val types = listOf("sd", "sj", "sb", "sjb", "sm", "sjm")
+                    types.forEach { typeKey ->
+                        val count = outletFilteredScooters.count { it.type.lowercase() == typeKey }
+                        if (count > 0 || activeOutlet == "all") {
+                            val style = ScooterColors.STYLES[typeKey]
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(
+                                        style?.accent?.copy(alpha = if (isDark) 0.18f else 0.10f)
+                                            ?: (if (isDark) Surface2 else Color(0xFFF1F5F9))
+                                    )
+                                    .border(
+                                        1.dp,
+                                        style?.accent?.copy(alpha = 0.4f) ?: Border.copy(alpha = 0.5f),
+                                        RoundedCornerShape(12.dp),
+                                    )
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = typeKey.uppercase(),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = style?.accent ?: TextPrimary,
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "$count",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = TextPrimary,
+                                    )
+                                }
                             }
-                            FilledAction(text = "Coba Lagi", onClick = { viewModel.refresh() }, color = Red)
                         }
                     }
                 }
+            }
 
-                // ── Ringkasan Per Outlet (Saat Semua Outlet Aktif 1:1 Web) ──
-                if (activeOutlet == "all") {
-                    item {
-                        OutletSummaryCards(
-                            scooters = state.scooters,
-                            onSelectOutlet = { viewModel.setSelectedOutlet(it) }
-                        )
+            // 3. Search & Section Header
+            item {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = when (selectedFilter) {
+                                    "available" -> "Armada Ready"
+                                    "in-use" -> "Armada Disewa"
+                                    "maint-luar" -> "Maintenance Luar"
+                                    "maint-outlet" -> "Maintenance Outlet"
+                                    else -> "Semua Unit"
+                                },
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(if (isDark) Surface2 else Color(0xFFE2E8F0))
+                                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                            ) {
+                                Text(
+                                    text = "${displayedScooters.size}",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextMuted,
+                                )
+                            }
+                        }
+
+                        if (selectedFilter != null) {
+                            Text(
+                                text = "Reset Filter",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Accent,
+                                modifier = Modifier.bounceClickable { selectedFilter = null },
+                            )
+                        }
                     }
-                }
 
-                // ── 4 Unified Stat Cards (1:1 dengan Web App) ──
-                item {
-                    FleetStatCards(scooters = outletFilteredScooters)
-                }
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                // ── Log Recent (Tabel Sesi Sewa Hari Ini 1:1 Web) ──
-                item {
-                    RecentLogTableCard(
-                        activityLog = outletFilteredActivityLog,
-                        scooters = outletFilteredScooters,
-                        onSelect = onOpenDetail
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = {
+                            Text("Cari ID skuter (misal: 01)...", fontSize = 13.sp, color = TextMuted)
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Search, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
+                        },
+                        trailingIcon = {
+                            if (searchQuery.isNotBlank()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Hapus", tint = TextMuted, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        },
+                        shape = RoundedCornerShape(InputCornerRadius),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Surface,
+                            unfocusedContainerColor = Surface,
+                            focusedBorderColor = Accent,
+                            unfocusedBorderColor = Border.copy(alpha = 0.7f),
+                        ),
+                        singleLine = true,
                     )
                 }
+            }
 
-                // ── Ringkasan per Jenis (6 Tipe Armada 1:1 Web) ──
+            // 4. Inline Unit List
+            if (displayedScooters.isEmpty()) {
                 item {
-                    TypeSummaryCard(outletFilteredScooters)
-                }
-
-                // ── Tabel Perbaikan Berjalan ──
-                val activeRepairs = state.maintenanceRecords.filter { rec ->
-                    val isRepair = rec.status == "repair"
-                    val matchesOutlet = if (activeOutlet == "all") true
-                    else {
-                        val bike = state.scooters.find { it.id == rec.scooterId }
-                        val cur = bike?.currentOutlet ?: Outlets.getHomeOutletForType(rec.scooterType ?: bike?.type ?: "sd")
-                        cur == activeOutlet
-                    }
-                    isRepair && matchesOutlet
-                }
-                if (activeRepairs.isNotEmpty()) {
-                    item {
-                        MaintenanceSection(
-                            viewModel = viewModel,
-                            records = activeRepairs,
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = if (searchQuery.isNotBlank()) "Unit '$searchQuery' tidak ditemukan" else "Tidak ada unit dalam status ini",
+                            color = TextMuted,
+                            fontSize = 13.sp,
                         )
                     }
                 }
+            } else {
+                items(displayedScooters, key = { it.id }) { scooter ->
+                    UnitCard(
+                        scooter = scooter,
+                        onClick = { selectedScooterForAction = it },
+                    )
+                }
+            }
+
+            // Spacer for floating bottom bar clearance
+            item {
+                Spacer(modifier = Modifier.height(80.dp))
             }
         }
     }
-}
 
-// ── Previews ──────────────────────────────────────────────────────────
-
-@Preview(name = "Dashboard Screen - Light", showBackground = true)
-@Composable
-private fun DashboardScreenLightPreview() {
-    val sampleScooters = listOf(
-        Scooter("SB-01", "sb", ScooterStatus.AVAILABLE, currentOutlet = "utara"),
-        Scooter("SB-02", "sb", ScooterStatus.IN_USE, currentOutlet = "utara"),
-        Scooter("FZ-05", "fz", ScooterStatus.MAINTENANCE, currentOutlet = "utara"),
-    )
-    TrackScooterTheme(isDark = false) {
-        Box(modifier = Modifier.fillMaxSize().background(Surface)) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                FleetStatCards(scooters = sampleScooters)
-                TypeSummaryCard(scooters = sampleScooters)
-            }
-        }
+    // Unit Action Bottom Sheet
+    selectedScooterForAction?.let { scooter ->
+        UnitActionBottomSheet(
+            scooter = scooter,
+            onDismissRequest = { selectedScooterForAction = null },
+            onDetailClick = { id ->
+                selectedScooterForAction = null
+                onOpenDetail(id)
+            },
+            onStartRentClick = {
+                selectedScooterForAction = null
+                onGoScan()
+            },
+            onReturnClick = { id ->
+                selectedScooterForAction = null
+                onGoScan()
+            },
+            onSwapClick = {
+                selectedScooterForAction = null
+                swapScooter = scooter
+            },
+            onResolveMaintenanceClick = { id ->
+                selectedScooterForAction = null
+                val maintId = scooter.activeMaintenance?.id
+                if (maintId != null) {
+                    scope.launch {
+                        runCatching {
+                            viewModel.completeMaintenance(maintId)
+                        }.onSuccess {
+                            sweetAlert.showSuccess("Sukses", "Maintenance unit $id berhasil diselesaikan")
+                            viewModel.refresh()
+                        }.onFailure { err ->
+                            sweetAlert.showError("Gagal", err.toUserMessage())
+                        }
+                    }
+                }
+            },
+        )
     }
-}
 
-@Preview(name = "Dashboard Screen - Dark", showBackground = true)
-@Composable
-private fun DashboardScreenDarkPreview() {
-    val sampleScooters = listOf(
-        Scooter("SB-01", "sb", ScooterStatus.AVAILABLE, currentOutlet = "utara"),
-        Scooter("SB-02", "sb", ScooterStatus.IN_USE, currentOutlet = "utara"),
-        Scooter("FZ-05", "fz", ScooterStatus.MAINTENANCE, currentOutlet = "utara"),
-    )
-    TrackScooterTheme(isDark = true) {
-        Box(modifier = Modifier.fillMaxSize().background(Surface)) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                FleetStatCards(scooters = sampleScooters)
-                TypeSummaryCard(scooters = sampleScooters)
-            }
+    // Trouble swap dialog
+    swapScooter?.let { scooter ->
+        val availableScooters = remember(outletFilteredScooters) {
+            outletFilteredScooters.filter { it.status == ScooterStatus.AVAILABLE }
         }
+        var isSubmittingSwap by remember { mutableStateOf(false) }
+
+        TroubleSwapDialog(
+            scooter = scooter,
+            availableScooters = availableScooters,
+            onDismiss = { swapScooter = null },
+            submitting = isSubmittingSwap,
+            onConfirm = { replacementId, note, issue, markBroken ->
+                scope.launch {
+                    isSubmittingSwap = true
+                    val success = viewModel.swapScooter(
+                        scooterId = scooter.id,
+                        replacementId = replacementId,
+                        note = note,
+                        issue = issue,
+                        markBroken = markBroken,
+                    )
+                    isSubmittingSwap = false
+                    if (success) {
+                        sweetAlert.showSuccess("Sukses", "Tukar unit ${scooter.id} -> $replacementId berhasil")
+                        swapScooter = null
+                        viewModel.refresh()
+                    } else {
+                        sweetAlert.showError("Gagal", "Gagal menukar unit $replacementId")
+                    }
+                }
+            },
+        )
     }
 }

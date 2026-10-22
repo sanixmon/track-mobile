@@ -15,7 +15,7 @@ private val DarkColors = darkColorScheme(
     primary = Accent,
     onPrimary = Color.White,
     primaryContainer = AccentSubtle,
-    onPrimaryContainer = Accent,
+    onPrimaryContainer = AccentLight,
     secondary = Green,
     onSecondary = Color.White,
     secondaryContainer = GreenSubtle,
@@ -79,6 +79,7 @@ fun TrackScooterTheme(
         MaterialTheme(
             colorScheme = colorScheme,
             typography = Typography,
+            shapes = SuperappShapes,
             content = content,
         )
     }

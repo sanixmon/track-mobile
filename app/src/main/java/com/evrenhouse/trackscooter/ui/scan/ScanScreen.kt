@@ -87,7 +87,7 @@ enum class ScanSubTab(val label: String, val icon: ImageVector) {
     BY_ID("By ID", Icons.Filled.Tag),
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun ScanScreen(
     dataViewModel: ScooterDataViewModel = viewModel(factory = AppViewModelFactory(repository())),
@@ -523,9 +523,9 @@ fun ScanScreen(
         Spacer(Modifier.height(24.dp))
     }
 
-    // Universal Scan Confirmation Modal
+    // Universal Scan Confirmation Bottom Sheet
     state.pendingScooter?.let { scooter ->
-        ScanConfirmDialog(
+        ScanConfirmBottomSheet(
             scooter = scooter,
             breakText = state.pendingBreakText,
             submitting = state.busy,

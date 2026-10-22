@@ -249,12 +249,12 @@ fun LiveSessionCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(com.evrenhouse.trackscooter.ui.theme.CardCornerRadius))
             .background(Surface)
-            .border(1.dp, Border, RoundedCornerShape(14.dp))
+            .border(1.dp, Border.copy(alpha = 0.6f), RoundedCornerShape(com.evrenhouse.trackscooter.ui.theme.CardCornerRadius))
             .let { if (onClick != null) it.clickable(onClick = onClick) else it }
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         // Baris 1: ID di kiri (onSurface, monospace), durasi sewa besar di kanan
         Row(

@@ -391,105 +391,25 @@ fun MonitorScreen(
 
     // ── Dialog Konfirmasi Kembalikan Unit Langsung ──
     returnConfirmScooter?.let { scooter ->
-        val dt = DateUtils.parse(scooter.lastUpdated)
-        val startMillis = dt?.atZone(DateUtils.WIB)?.toInstant()?.toEpochMilli() ?: nowMillis
-        val elapsedSecs = ((nowMillis - startMillis) / 1000).coerceAtLeast(0)
-        val durationText = DateUtils.formatDuration(elapsedSecs)
-        val keluarTime = if (dt != null) DateUtils.formatTime(dt) else "-"
         val cleanId = scooter.id.trim().uppercase()
         val isProcessing = processingReturnIds.contains(cleanId)
 
-        AlertDialog(
-            onDismissRequest = { if (!isProcessing) returnConfirmScooter = null },
-            title = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.CheckCircle,
-                        contentDescription = null,
-                        tint = com.evrenhouse.trackscooter.ui.theme.Green,
-                        modifier = Modifier.size(22.dp),
-                    )
-                    Text(
-                        text = "Kembalikan Unit ${scooter.id}?",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 17.sp,
-                    )
-                }
+        com.evrenhouse.trackscooter.ui.scan.ScanConfirmBottomSheet(
+            scooter = scooter,
+            submitting = isProcessing,
+            onDismiss = {
+                if (!isProcessing) returnConfirmScooter = null
             },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = "Konfirmasi unit telah kembali secara fisik ke outlet. Durasi sewa akan diselesaikan.",
-                        fontSize = 13.sp,
-                        color = TextMuted,
-                        lineHeight = 18.sp,
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Surface2)
-                            .border(1.dp, Border, RoundedCornerShape(10.dp))
-                            .padding(12.dp),
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column {
-                                Text("Jam Keluar", fontSize = 10.5.sp, color = TextSubtle, fontWeight = FontWeight.SemiBold)
-                                Text(keluarTime, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text("Durasi Sewa", fontSize = 10.5.sp, color = TextSubtle, fontWeight = FontWeight.SemiBold)
-                                Text(
-                                    durationText,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (elapsedSecs >= 3600) com.evrenhouse.trackscooter.ui.theme.Red else Accent,
-                                )
-                            }
-                        }
+            onConfirm = {
+                viewModel.returnScooterDirect(scooter.id) { success, msg ->
+                    if (success) {
+                        sweetAlert.showSuccess(msg)
+                    } else {
+                        sweetAlert.showError(msg)
                     }
                 }
+                returnConfirmScooter = null
             },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.returnScooterDirect(scooter.id) { success, msg ->
-                            if (success) {
-                                sweetAlert.showSuccess(msg)
-                            } else {
-                                sweetAlert.showError(msg)
-                            }
-                        }
-                        returnConfirmScooter = null
-                    },
-                    enabled = !isProcessing,
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = com.evrenhouse.trackscooter.ui.theme.Green,
-                        contentColor = Color.White,
-                    ),
-                ) {
-                    Text("Ya, Kembalikan Unit", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                }
-            },
-            dismissButton = {
-                OutlinedButton(
-                    onClick = { returnConfirmScooter = null },
-                    enabled = !isProcessing,
-                    shape = RoundedCornerShape(8.dp),
-                ) {
-                    Text("Batal", fontSize = 13.sp)
-                }
-            },
-            containerColor = Surface,
-            shape = RoundedCornerShape(16.dp),
         )
     }
 }
