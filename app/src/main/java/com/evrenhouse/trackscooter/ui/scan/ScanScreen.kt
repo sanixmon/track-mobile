@@ -1,5 +1,6 @@
 package com.evrenhouse.trackscooter.ui.scan
-
+import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -92,6 +93,7 @@ enum class ScanSubTab(val label: String, val icon: ImageVector) {
 fun ScanScreen(
     dataViewModel: ScooterDataViewModel = viewModel(factory = AppViewModelFactory(repository())),
     viewModel: ScanViewModel = viewModel(factory = AppViewModelFactory(repository())),
+    onBack: (() -> Unit)? = null,
 ) {
     val state by viewModel.state.collectAsState()
     val dataState by dataViewModel.state.collectAsState()
@@ -171,9 +173,30 @@ fun ScanScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        // ── Header ──
-        Text("Scan", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        BackHandler(enabled = onBack != null) {
+            onBack?.invoke()
+        }
 
+        // ── Header ──
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (onBack != null) {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Kembali ke Beranda",
+                        tint = TextPrimary,
+                    )
+                }
+                Spacer(modifier = Modifier.width(6.dp))
+            }
+            Text("Scan QR", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        }
         // ── 2 Sub Tab Selector (Sub Tab 1: Scan, Sub Tab 2: By ID) ──
         Row(
             modifier = Modifier

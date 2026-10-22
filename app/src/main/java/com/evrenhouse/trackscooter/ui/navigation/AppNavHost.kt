@@ -144,12 +144,14 @@ fun AppNavHost() {
         val showChrome = !isDetailScreen
 
         fun navigateTab(route: String) {
+            if (currentDestination?.route == route) return
             navController.navigate(route) {
-                popUpTo(navController.graph.findStartDestination().id) {
-                    saveState = true
+                popUpTo(Routes.DASHBOARD) {
+                    inclusive = false
+                    saveState = false
                 }
                 launchSingleTop = true
-                restoreState = true
+                restoreState = false
             }
         }
 
@@ -171,8 +173,15 @@ fun AppNavHost() {
                         monitorBadgeCount = monitorBadgeCount,
                         onTabSelected = { route -> navigateTab(route) },
                         onScanClick = {
-                            navController.navigate(Routes.SCAN) {
-                                launchSingleTop = true
+                            if (currentDestination?.route != Routes.SCAN) {
+                                navController.navigate(Routes.SCAN) {
+                                    popUpTo(Routes.DASHBOARD) {
+                                        inclusive = false
+                                        saveState = false
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = false
+                                }
                             }
                         },
                     )
@@ -227,7 +236,10 @@ fun AppNavHost() {
                         )
                     }
                     composable(Routes.SCAN) {
-                        ScanScreen(dataViewModel = dataViewModel)
+                        ScanScreen(
+                            dataViewModel = dataViewModel,
+                            onBack = { navigateTab(Routes.DASHBOARD) },
+                        )
                     }
                     composable(Routes.REPORT) {
                         ReportScreen(

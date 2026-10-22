@@ -21,7 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assessment
-import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Monitor
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Tune
@@ -59,7 +59,7 @@ data class SuperappTabItem(
 )
 
 val PrimaryTabs = listOf(
-    SuperappTabItem(Routes.DASHBOARD, "Beranda", Icons.Default.Dashboard),
+    SuperappTabItem(Routes.DASHBOARD, "Beranda", Icons.Default.Home),
     SuperappTabItem(Routes.MONITOR, "Monitor", Icons.Default.Monitor),
     SuperappTabItem(Routes.REPORT, "Laporan", Icons.Default.Assessment),
     SuperappTabItem(Routes.MANAGE, "Kelola", Icons.Default.Tune),
