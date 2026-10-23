@@ -342,19 +342,12 @@ fun MonitorScreen(
                             // TAB 2: AKTIVITAS TERBARU (1:1 with web)
                             // ══════════════════════════════════════
                             MonitorTab.ACTIVITY -> {
-                                LazyColumn(
+                                ActivityFeedPanel(
+                                    activityLog = outletFilteredActivityLog,
+                                    scooters = outletFilteredScooters,
+                                    onOpenDetail = { id -> onOpenDetail?.invoke(id) },
                                     modifier = Modifier.fillMaxSize(),
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                                ) {
-                                    item {
-                                        ActivityFeedPanel(
-                                            activityLog = outletFilteredActivityLog,
-                                            scooters = outletFilteredScooters,
-                                            onOpenDetail = { id -> onOpenDetail?.invoke(id) }
-                                        )
-                                    }
-                                }
+                                )
                             }
                         }
                     }

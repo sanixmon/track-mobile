@@ -94,6 +94,7 @@ object DateUtils {
     fun formatWeekdayFull(date: java.time.LocalDate): String = weekdayFull.format(date)
 
     fun formatTime(dt: java.time.LocalDateTime): String = timeHm.format(dt)
+    fun formatTimeSec(dt: java.time.LocalDateTime): String = timeHms.format(dt)
 
     fun formatPill(date: java.time.LocalDate): String = shortPill.format(date)
 

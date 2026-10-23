@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -34,6 +35,9 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -467,22 +471,19 @@ data class StandbyUnitInfo(
     val remainingText: String? = null,
 )
 
-/** Satu perjalanan sewa: keluar → masuk (atau → jalan) */
-data class TripChip(
+/** Satu sesi sewa lengkap: checkout (keluar) → return (masuk/selesai) atau masih berjalan */
+data class RentalTripSession(
     val id: String,
-    val keluarTime: String,     // "HH:mm"
-    val masukTime: String?,     // "HH:mm" atau null jika masih berjalan
-    val masihKeluar: Boolean,
-    val durasiSecs: Long,       // 0 jika masih berjalan
-)
-
-/** Satu baris unit: semua trip hari ini dirangkum */
-data class UnitLogRow(
     val scooterId: String,
     val scooterType: String,
-    val trips: List<TripChip>,
-    val masihKeluar: Boolean,   // true jika trip terakhir belum kembali
-    val totalDurasiSecs: Long,
+    val keluarDt: LocalDateTime,
+    val masukDt: LocalDateTime?,
+    val keluarTimeStr: String,
+    val masukTimeStr: String?,
+    val keluarFullTimeStr: String,
+    val masukFullTimeStr: String?,
+    val durasiSecs: Long,
+    val isOngoing: Boolean,
     val lastEventDt: LocalDateTime,
 )
 
@@ -668,7 +669,274 @@ fun ReadyUnitRow(
     }
 }
 
-/** ── Activity Feed Panel — format per unit, chip keluar→masuk (1:1 web) ── */
+/**
+ * Kartu Sesi Sewa Accordion (Single-Open).
+ * Menampilkan ringkasan unit & waktu pada posisi tertutup, dan timeline mini 2 titik pada posisi terbuka.
+ */
+@Composable
+fun TripSessionCard(
+    session: RentalTripSession,
+    isExpanded: Boolean,
+    onToggleExpand: () -> Unit,
+    onOpenDetail: ((String) -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    val isDark = LocalThemeIsDark.current
+    val amberColor = if (isDark) Warning else Color(0xFFD97706)
+    val greenColor = if (isDark) Color(0xFF4ADE80) else Color(0xFF16A34A)
+    val nameColor = remember(session.scooterType, session.scooterId, isDark) {
+        ScooterColors.getScooterNameColor(session.scooterType, session.scooterId, null, isDark)
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Surface)
+            .border(1.dp, Border, RoundedCornerShape(12.dp))
+            .clickable(onClick = onToggleExpand)
+            .animateContentSize(animationSpec = tween(220))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        // Baris Header: Nama Unit + Ringkasan Jam + Badge Status Pill Minimalis + Chevron
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Text(
+                    text = session.scooterId,
+                    color = nameColor,
+                    fontSize = 14.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                )
+                val summaryText = if (session.isOngoing) {
+                    "${session.keluarTimeStr} → jalan"
+                } else {
+                    val durasiText = DateUtils.formatDuration(session.durasiSecs)
+                    "${session.keluarTimeStr} → ${session.masukTimeStr ?: "-"} • $durasiText"
+                }
+                Text(
+                    text = summaryText,
+                    color = TextMuted,
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                val badgeBg = if (session.isOngoing) {
+                    amberColor.copy(alpha = if (isDark) 0.18f else 0.12f)
+                } else {
+                    greenColor.copy(alpha = if (isDark) 0.18f else 0.12f)
+                }
+                val badgeText = if (session.isOngoing) amberColor else greenColor
+                val badgeLabel = if (session.isOngoing) "Berjalan" else "Selesai"
+
+                Box(
+                    modifier = Modifier
+                        .background(badgeBg, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 7.dp, vertical = 2.5.dp),
+                ) {
+                    Text(
+                        text = badgeLabel,
+                        color = badgeText,
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+
+                Icon(
+                    imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                    contentDescription = if (isExpanded) "Tutup rincian" else "Buka rincian",
+                    tint = TextMuted,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+
+        // Panel Detail Accordion (Expanded State)
+        if (isExpanded) {
+            HorizontalDivider(color = Border.copy(alpha = 0.5f), thickness = 0.5.dp)
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // Timeline Mini 2 Titik Vertikal
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(0.dp),
+                ) {
+                    // Titik 1: Waktu Keluar
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.width(20.dp),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(top = 3.dp)
+                                    .size(8.dp)
+                                    .background(amberColor, CircleShape),
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .width(1.5.dp)
+                                    .height(26.dp)
+                                    .background(Border),
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 1.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = "Waktu Keluar",
+                                color = TextMuted,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            Text(
+                                text = "${session.keluarFullTimeStr} WIB",
+                                color = TextPrimary,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                fontFamily = FontFamily.Monospace,
+                            )
+                        }
+                    }
+
+                    // Titik 2: Waktu Kembali
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.width(20.dp),
+                        ) {
+                            if (session.isOngoing) {
+                                Box(
+                                    modifier = Modifier
+                                        .padding(top = 2.dp)
+                                        .size(8.dp)
+                                        .border(1.5.dp, amberColor, CircleShape),
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .padding(top = 2.dp)
+                                        .size(8.dp)
+                                        .background(greenColor, CircleShape),
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 0.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = "Waktu Kembali",
+                                color = TextMuted,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            val kembaliText = if (session.isOngoing) "Sedang berjalan" else "${session.masukFullTimeStr ?: "-"} WIB"
+                            val kembaliColor = if (session.isOngoing) amberColor else TextPrimary
+                            Text(
+                                text = kembaliText,
+                                color = kembaliColor,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                fontFamily = if (session.isOngoing) FontFamily.Default else FontFamily.Monospace,
+                            )
+                        }
+                    }
+                }
+
+                // Total Durasi
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Surface2, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 7.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Total Durasi",
+                        color = TextMuted,
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    val durasiLabel = if (session.isOngoing) "Sedang berjalan" else DateUtils.formatDuration(session.durasiSecs)
+                    Text(
+                        text = durasiLabel,
+                        color = TextPrimary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                }
+
+                // Tombol Aksi: Buka Detail Skuter
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Accent.copy(alpha = if (isDark) 0.16f else 0.10f))
+                        .border(1.dp, Accent.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                        .clickable { onOpenDetail?.invoke(session.scooterId) }
+                        .padding(vertical = 8.dp, horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Buka Detail Skuter ${session.scooterId}",
+                        color = Accent,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Filled.ChevronRight,
+                        contentDescription = null,
+                        tint = Accent,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Activity Feed Panel — Kronologis Sesi Sewa (Paired Trip Session).
+ * Bersih tanpa filter/search/header tambahan, diurutkan murni berdasarkan aktivitas terbaru.
+ */
 @Composable
 fun ActivityFeedPanel(
     activityLog: List<ActivityLogEntry>,
@@ -679,11 +947,9 @@ fun ActivityFeedPanel(
     val today = remember { DateUtils.today() }
     val todayStr = remember(today) { DateUtils.localDateKey(today) }
 
-    // Group logs per unit → list TripChip (1:1 web groupSessionsByUnit)
-    val unitRows: List<UnitLogRow> = remember(activityLog, todayStr, scooters) {
+    val tripSessions: List<RentalTripSession> = remember(activityLog, todayStr, scooters) {
         val allowedIds = scooters.map { it.id }.toSet()
 
-        // Collect per-unit, today only
         val perUnit = mutableMapOf<String, MutableList<Pair<ActivityLogEntry, LocalDateTime>>>()
         for (l in activityLog) {
             if (allowedIds.isNotEmpty() && !allowedIds.contains(l.scooterId)) continue
@@ -692,303 +958,141 @@ fun ActivityFeedPanel(
             perUnit.getOrPut(l.scooterId) { mutableListOf() }.add(l to dt)
         }
 
-        val rows = mutableListOf<UnitLogRow>()
+        val sessions = mutableListOf<RentalTripSession>()
+        val nowWib = LocalDateTime.now(DateUtils.WIB)
+
         for ((scooterId, logs) in perUnit) {
             logs.sortBy { it.second }
             val scooterType = logs.firstOrNull()?.first?.scooterType ?: ""
 
-            val trips = mutableListOf<TripChip>()
             var pendingCheckout: Pair<ActivityLogEntry, LocalDateTime>? = null
-            var totalDurasiSecs = 0L
 
             for ((entry, dt) in logs) {
                 when (entry.action) {
                     "checkout" -> {
+                        if (pendingCheckout != null) {
+                            val durasi = Duration.between(pendingCheckout.second, dt).seconds.coerceAtLeast(0)
+                            sessions.add(
+                                RentalTripSession(
+                                    id = pendingCheckout.first.id,
+                                    scooterId = scooterId,
+                                    scooterType = scooterType,
+                                    keluarDt = pendingCheckout.second,
+                                    masukDt = null,
+                                    keluarTimeStr = DateUtils.formatTime(pendingCheckout.second),
+                                    masukTimeStr = null,
+                                    keluarFullTimeStr = DateUtils.formatTimeSec(pendingCheckout.second),
+                                    masukFullTimeStr = null,
+                                    durasiSecs = durasi,
+                                    isOngoing = true,
+                                    lastEventDt = pendingCheckout.second,
+                                )
+                            )
+                        }
                         pendingCheckout = entry to dt
                     }
                     "return" -> {
-                        val keluarTime = pendingCheckout?.second?.let { DateUtils.formatTime(it) } ?: "-"
-                        val masukTime = DateUtils.formatTime(dt)
-                        val durasi = if (pendingCheckout != null)
-                            Duration.between(pendingCheckout!!.second, dt).seconds.coerceAtLeast(0)
-                        else 0L
-                        totalDurasiSecs += durasi
-                        trips.add(TripChip(
-                            id = entry.id,
-                            keluarTime = keluarTime,
-                            masukTime = masukTime,
-                            masihKeluar = false,
-                            durasiSecs = durasi,
-                        ))
-                        pendingCheckout = null
+                        if (pendingCheckout != null) {
+                            val keluarTime = pendingCheckout.second
+                            val durasi = Duration.between(keluarTime, dt).seconds.coerceAtLeast(0)
+                            sessions.add(
+                                RentalTripSession(
+                                    id = "${pendingCheckout.first.id}_${entry.id}",
+                                    scooterId = scooterId,
+                                    scooterType = scooterType,
+                                    keluarDt = keluarTime,
+                                    masukDt = dt,
+                                    keluarTimeStr = DateUtils.formatTime(keluarTime),
+                                    masukTimeStr = DateUtils.formatTime(dt),
+                                    keluarFullTimeStr = DateUtils.formatTimeSec(keluarTime),
+                                    masukFullTimeStr = DateUtils.formatTimeSec(dt),
+                                    durasiSecs = durasi,
+                                    isOngoing = false,
+                                    lastEventDt = dt,
+                                )
+                            )
+                            pendingCheckout = null
+                        } else {
+                            sessions.add(
+                                RentalTripSession(
+                                    id = entry.id,
+                                    scooterId = scooterId,
+                                    scooterType = scooterType,
+                                    keluarDt = dt,
+                                    masukDt = dt,
+                                    keluarTimeStr = DateUtils.formatTime(dt),
+                                    masukTimeStr = DateUtils.formatTime(dt),
+                                    keluarFullTimeStr = DateUtils.formatTimeSec(dt),
+                                    masukFullTimeStr = DateUtils.formatTimeSec(dt),
+                                    durasiSecs = 0L,
+                                    isOngoing = false,
+                                    lastEventDt = dt,
+                                )
+                            )
+                        }
                     }
                 }
             }
-            // Trip yang masih berjalan (checkout tanpa return)
-            val stillOut = pendingCheckout
-            if (stillOut != null) {
-                trips.add(TripChip(
-                    id = stillOut.first.id,
-                    keluarTime = DateUtils.formatTime(stillOut.second),
-                    masukTime = null,
-                    masihKeluar = true,
-                    durasiSecs = 0L,
-                ))
-            }
 
-            if (trips.isEmpty()) continue
-            val masihKeluar = trips.last().masihKeluar
-            val lastDt = logs.maxOf { it.second }
-            rows.add(UnitLogRow(
-                scooterId = scooterId,
-                scooterType = scooterType,
-                trips = trips,
-                masihKeluar = masihKeluar,
-                totalDurasiSecs = totalDurasiSecs,
-                lastEventDt = lastDt,
-            ))
-        }
-        // Berjalan dulu, lalu urut terbaru
-        rows.sortWith(compareByDescending<UnitLogRow> { it.masihKeluar }.thenByDescending { it.lastEventDt })
-        rows as List<UnitLogRow>
-    }
-
-    // Filter: semua | keluar (masih berjalan) | kembali (sudah selesai)
-    var selectedFilter by rememberSaveable { mutableStateOf("all") }
-    val filteredRows: List<UnitLogRow> = remember(unitRows, selectedFilter) {
-        when (selectedFilter) {
-            "keluar"  -> unitRows.filter { it.masihKeluar }
-            "kembali" -> unitRows.filter { !it.masihKeluar }
-            else      -> unitRows
-        }
-    }
-
-    val isDark = LocalThemeIsDark.current
-    val amberText = if (isDark) Warning else Color(0xFFB45309)
-    val greenText = if (isDark) Color(0xFF4ADE80) else Color(0xFF15803D)
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(Surface)
-            .border(1.dp, Border, RoundedCornerShape(14.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        // ── Header
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = "AKTIVITAS TERBARU HARI INI",
-                color = TextSubtle,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp,
-            )
-            Text(
-                text = "${unitRows.size} aktivitas",
-                color = TextMuted,
-                fontSize = 11.sp,
-            )
-        }
-
-        // ── Filter chips
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            ActivityFilterChip("Semua", unitRows.size,        selectedFilter == "all",     { selectedFilter = "all" })
-            ActivityFilterChip("Berjalan", unitRows.count { it.masihKeluar },  selectedFilter == "keluar",   { selectedFilter = "keluar"  }, activeColor = amberText)
-            ActivityFilterChip("Selesai",  unitRows.count { !it.masihKeluar }, selectedFilter == "kembali",  { selectedFilter = "kembali" }, activeColor = greenText)
-        }
-
-        HorizontalDivider(color = Border.copy(alpha = 0.5f), thickness = 0.5.dp)
-
-        if (filteredRows.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "Tidak ada aktivitas untuk filter ini.",
-                    color = TextMuted, fontSize = 12.sp,
+            if (pendingCheckout != null) {
+                val durasi = Duration.between(pendingCheckout.second, nowWib).seconds.coerceAtLeast(0)
+                sessions.add(
+                    RentalTripSession(
+                        id = pendingCheckout.first.id,
+                        scooterId = scooterId,
+                        scooterType = scooterType,
+                        keluarDt = pendingCheckout.second,
+                        masukDt = null,
+                        keluarTimeStr = DateUtils.formatTime(pendingCheckout.second),
+                        masukTimeStr = null,
+                        keluarFullTimeStr = DateUtils.formatTimeSec(pendingCheckout.second),
+                        masukFullTimeStr = null,
+                        durasiSecs = durasi,
+                        isOngoing = true,
+                        lastEventDt = pendingCheckout.second,
+                    )
                 )
             }
-        } else {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                filteredRows.forEach { row ->
-                    val nameColor = remember(row.scooterType, row.scooterId, isDark) {
-                        ScooterColors.getScooterNameColor(row.scooterType, row.scooterId, null, isDark)
-                    }
-                    val statusColor = if (row.masihKeluar) amberText else greenText
-                    val statusLabel = if (row.masihKeluar) "Berjalan" else "Selesai"
-                    val totalLabel = if (row.totalDurasiSecs > 0)
-                        DateUtils.formatDuration(row.totalDurasiSecs) else null
-                    val tripCount = row.trips.size
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { onOpenDetail?.invoke(row.scooterId) }
-                            .padding(vertical = 10.dp, horizontal = 4.dp),
-                        verticalAlignment = Alignment.Top,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        // Kiri: ID + badge trip count + chips keluar→masuk
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(5.dp),
-                        ) {
-                            // Baris 1: ID + badge "2x keluar"
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Text(
-                                    text = row.scooterId,
-                                    color = nameColor,
-                                    fontSize = 13.5.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace,
-                                )
-                                // Badge jumlah trip
-                                Box(
-                                    modifier = Modifier
-                                        .background(AccentSubtle, RoundedCornerShape(4.dp))
-                                        .padding(horizontal = 6.dp, vertical = 1.5.dp),
-                                ) {
-                                    Text(
-                                        text = "${tripCount}x keluar",
-                                        color = Accent,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                }
-                                // Badge status (Berjalan / Selesai)
-                                Box(
-                                    modifier = Modifier
-                                        .background(statusColor.copy(alpha = 0.12f), RoundedCornerShape(4.dp))
-                                        .padding(horizontal = 6.dp, vertical = 1.5.dp),
-                                ) {
-                                    Text(
-                                        text = statusLabel,
-                                        color = statusColor,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                }
-                            }
-
-                            // Baris 2: chips trip  HH:mm→HH:mm  •  HH:mm→jalan
-                            Row(
-                                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                row.trips.forEachIndexed { idx, trip ->
-                                    if (idx > 0) {
-                                        Text("•", color = TextSubtle, fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold)
-                                    }
-                                    // Chip: "HH:mm→HH:mm" atau "HH:mm→jalan"
-                                    val chipText = "${trip.keluarTime}→${if (trip.masihKeluar) "jalan" else (trip.masukTime ?: "-")}"
-                                    val chipBg   = if (trip.masihKeluar) amberText.copy(alpha = 0.10f) else Surface2
-                                    val chipBorder = if (trip.masihKeluar) amberText.copy(alpha = 0.30f) else Border
-                                    val chipText2 = if (trip.masihKeluar) amberText else TextSubtle
-                                    Box(
-                                        modifier = Modifier
-                                            .background(chipBg, RoundedCornerShape(5.dp))
-                                            .border(0.5.dp, chipBorder, RoundedCornerShape(5.dp))
-                                            .padding(horizontal = 7.dp, vertical = 3.dp),
-                                    ) {
-                                        Text(
-                                            text = chipText,
-                                            color = chipText2,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = FontFamily.Monospace,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        // Kanan: total durasi
-                        if (totalLabel != null) {
-                            Box(
-                                modifier = Modifier
-                                    .padding(start = 10.dp)
-                                    .background(Surface2, RoundedCornerShape(6.dp))
-                                    .border(0.5.dp, Border, RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                            ) {
-                                Text(
-                                    text = totalLabel,
-                                    color = TextPrimary,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace,
-                                )
-                            }
-                        }
-                    }
-
-                    HorizontalDivider(color = Border.copy(alpha = 0.35f), thickness = 0.5.dp)
-                }
-            }
         }
+
+        sessions.sortByDescending { it.lastEventDt }
+        sessions
     }
-}
 
-@Composable
-private fun ActivityFilterChip(
-    label: String,
-    count: Int,
-    selected: Boolean,
-    onClick: () -> Unit,
-    activeColor: Color = Accent,
-) {
-    val isDark = LocalThemeIsDark.current
-    val bg = if (selected) activeColor.copy(alpha = if (isDark) 0.18f else 0.12f) else Surface2
-    val border = if (selected) activeColor else Border
-    val text = if (selected) activeColor else TextMuted
+    var expandedSessionId by rememberSaveable { mutableStateOf<String?>(null) }
 
-    Row(
-        modifier = Modifier
-            .defaultMinSize(minHeight = 32.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(bg)
-            .border(1.dp, border, RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
-    ) {
-        Text(
-            text = label,
-            color = text,
-            fontSize = 11.5.sp,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-        )
+    if (tripSessions.isEmpty()) {
         Box(
-            modifier = Modifier
-                .background(if (selected) activeColor.copy(alpha = 0.2f) else Surface3, RoundedCornerShape(6.dp))
-                .padding(horizontal = 5.dp, vertical = 1.dp),
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(vertical = 48.dp),
+            contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = "$count",
-                color = text,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
+                text = "Belum ada aktivitas sewa hari ini",
+                color = TextMuted,
+                fontSize = 13.sp,
             )
+        }
+    } else {
+        LazyColumn(
+            modifier = modifier,
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            items(tripSessions, key = { it.id }) { session ->
+                TripSessionCard(
+                    session = session,
+                    isExpanded = expandedSessionId == session.id,
+                    onToggleExpand = {
+                        expandedSessionId = if (expandedSessionId == session.id) null else session.id
+                    },
+                    onOpenDetail = onOpenDetail,
+                )
+            }
+            item {
+                Spacer(modifier = Modifier.height(72.dp))
+            }
         }
     }
 }
@@ -1026,6 +1130,35 @@ private fun ReadyUnitsSectionPreview() {
     TrackScooterTheme(isDark = false) {
         Box(modifier = Modifier.padding(16.dp)) {
             ReadyUnitsSection(readyUnits = sampleReady)
+        }
+    }
+}
+
+@Preview(name = "Trip Session Card", showBackground = true)
+@Composable
+private fun TripSessionCardPreview() {
+    val sampleSession = RentalTripSession(
+        id = "demo-1",
+        scooterId = "SD-02",
+        scooterType = "sd",
+        keluarDt = LocalDateTime.now().minusMinutes(45),
+        masukDt = LocalDateTime.now(),
+        keluarTimeStr = "14:15",
+        masukTimeStr = "15:00",
+        keluarFullTimeStr = "14:15:22",
+        masukFullTimeStr = "15:00:10",
+        durasiSecs = 2700L,
+        isOngoing = false,
+        lastEventDt = LocalDateTime.now(),
+    )
+    TrackScooterTheme(isDark = false) {
+        Box(modifier = Modifier.padding(16.dp)) {
+            TripSessionCard(
+                session = sampleSession,
+                isExpanded = true,
+                onToggleExpand = {},
+                onOpenDetail = {},
+            )
         }
     }
 }
