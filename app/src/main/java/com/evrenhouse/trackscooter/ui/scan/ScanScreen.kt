@@ -39,6 +39,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.tooling.preview.Preview
+import com.evrenhouse.trackscooter.ui.theme.TrackScooterTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -80,6 +83,8 @@ import com.evrenhouse.trackscooter.ui.theme.Surface2
 import com.evrenhouse.trackscooter.ui.theme.TextMuted
 import com.evrenhouse.trackscooter.ui.theme.TextPrimary
 import com.evrenhouse.trackscooter.ui.theme.TextSubtle
+import com.evrenhouse.trackscooter.ui.monitor.RentalTripUtils
+import com.evrenhouse.trackscooter.ui.theme.Warning
 import com.evrenhouse.trackscooter.util.Outlets
 import com.evrenhouse.trackscooter.util.ScooterColors
 
@@ -268,15 +273,16 @@ fun ScanScreen(
             when (ScanSubTab.entries[page]) {
                 ScanSubTab.SCAN -> {
                     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        ScanRecentLogCard(
+                            activityLog = dataState.activityLog,
+                            scooters = outletFilteredScooters,
+                            onSelect = { viewModel.onScanned(it) },
+                        )
+
                         CameraScanner(
                             isProcessing = state.busy || !state.scanning,
                             onScan = { viewModel.onScanned(it) },
                             onError = { sweetAlert.showError(it) },
-                        )
-
-                        ScanRecentLogCard(
-                            activityLog = dataState.activityLog,
-                            onSelect = { viewModel.onScanned(it) },
                         )
                     }
                 }
@@ -561,17 +567,25 @@ fun ScanScreen(
 @Composable
 fun ScanRecentLogCard(
     activityLog: List<ActivityLogEntry>,
+    scooters: List<Scooter>? = null,
     onSelect: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    var showAll by remember { mutableStateOf(false) }
+    val today = remember { DateUtils.today() }
+    val todayStr = remember(today) { DateUtils.localDateKey(today) }
 
-    val recentLogs = remember(activityLog) {
-        activityLog.filter { it.action == "checkout" || it.action == "return" }
-            .sortedByDescending { it.timestamp }
+    val allSessions = remember(activityLog, todayStr, scooters) {
+        RentalTripUtils.buildSessions(activityLog, scooters, todayStr)
     }
 
-    val displayedLogs = if (showAll) recentLogs else recentLogs.take(2)
+    var visibleCount by rememberSaveable { mutableStateOf(4) }
+    val currentLimit = visibleCount.coerceAtLeast(4)
+    val displayedSessions = allSessions.take(currentLimit)
+    val hasMore = allSessions.size > displayedSessions.size
+    val canReset = displayedSessions.size > 4 && !hasMore
+
+    val isDark = LocalThemeIsDark.current
+    val amberColor = if (isDark) Warning else Color(0xFFD97706)
 
     Column(
         modifier = modifier
@@ -580,105 +594,130 @@ fun ScanRecentLogCard(
             .background(Surface)
             .border(1.dp, Border, RoundedCornerShape(14.dp)),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+        if (allSessions.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 18.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Filled.History, contentDescription = null, tint = Accent, modifier = Modifier.size(16.dp))
-                Text("LOG RECENT SEWA & SELESAI", color = TextSubtle, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-            }
-            if (recentLogs.size > 2) {
                 Text(
-                    text = if (showAll) "Tutup" else "Lihat semua (${recentLogs.size})",
-                    color = Accent,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clickable { showAll = !showAll },
+                    text = "Belum ada aktivitas sewa hari ini.",
+                    color = TextMuted,
+                    fontSize = 12.sp,
                 )
             }
-        }
-
-        if (recentLogs.isEmpty()) {
-            Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                Text("Belum ada riwayat aktivitas sewa.", color = TextMuted, fontSize = 12.sp)
-            }
         } else {
-            displayedLogs.forEachIndexed { index, log ->
+            displayedSessions.forEachIndexed { index, session ->
                 if (index > 0) {
-                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Border))
+                    HorizontalDivider(color = Border.copy(alpha = 0.5f), thickness = 0.5.dp)
                 }
-                val isCheckout = log.action == "checkout"
-                val timeStr = remember(log.timestamp) {
-                    val dt = DateUtils.parse(log.timestamp)
-                    if (dt != null) DateUtils.formatTime(dt) else log.timestamp
+
+                val nameColor = remember(session.scooterType, session.scooterId, isDark) {
+                    ScooterColors.getScooterNameColor(session.scooterType, session.scooterId, null, isDark)
                 }
-                val isDark = LocalThemeIsDark.current
-                val nameColor = ScooterColors.getScooterNameColor(log.scooterType, log.scooterId, null, isDark)
 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .let { if (onSelect != null) it.clickable { onSelect(log.scooterId) } else it }
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                        .let { if (onSelect != null) it.clickable { onSelect(session.scooterId) } else it }
+                        .padding(horizontal = 14.dp, vertical = 11.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    // Nomor Unit
+                    Text(
+                        text = session.scooterId,
+                        color = nameColor,
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                    )
+
+                    // Jam Mulai → Jam Selesai
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        // Badge Sewa / Selesai
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    if (isCheckout) Accent.copy(alpha = 0.15f) else Green.copy(alpha = 0.15f),
-                                    RoundedCornerShape(6.dp),
-                                )
-                                .padding(horizontal = 8.dp, vertical = 3.dp),
-                        ) {
+                        Text(
+                            text = session.keluarTimeStr,
+                            color = TextMuted,
+                            fontSize = 12.sp,
+                            fontFamily = FontFamily.Monospace,
+                        )
+                        Text(
+                            text = "→",
+                            color = TextSubtle,
+                            fontSize = 12.sp,
+                        )
+                        if (session.isOngoing) {
                             Text(
-                                text = if (isCheckout) "Sewa" else "Selesai",
-                                color = if (isCheckout) Accent else Green,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-
-                        // ID & Jenis
-                        Column {
-                            Text(
-                                text = log.scooterId,
-                                color = nameColor,
-                                fontSize = 13.sp,
+                                text = "jalan",
+                                color = amberColor,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = FontFamily.Monospace,
                             )
-                            if (log.scooterType.isNotBlank()) {
-                                Text(
-                                    text = TypeLabels.of(log.scooterType),
-                                    color = TextMuted,
-                                    fontSize = 10.5.sp,
-                                 )
-                            }
+                        } else {
+                            Text(
+                                text = session.masukTimeStr ?: "-",
+                                color = TextMuted,
+                                fontSize = 12.sp,
+                                fontFamily = FontFamily.Monospace,
+                            )
                         }
                     }
+                }
+            }
 
-                    // Timestamp
+            // Tombol More (+4) / Tutup kembali (4)
+            if (hasMore || canReset) {
+                HorizontalDivider(color = Border.copy(alpha = 0.5f), thickness = 0.5.dp)
+
+                val remaining = allSessions.size - displayedSessions.size
+                val nextChunk = remaining.coerceAtMost(4)
+                val buttonText = if (hasMore) {
+                    "Muat lebih banyak (+$nextChunk)"
+                } else {
+                    "Tutup kembali (4)"
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            if (hasMore) {
+                                visibleCount += 4
+                            } else {
+                                visibleCount = 4
+                            }
+                        }
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
                     Text(
-                        text = timeStr,
-                        color = TextMuted,
-                        fontSize = 11.sp,
-                        fontFamily = FontFamily.Monospace,
+                        text = buttonText,
+                        color = Accent,
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             }
+        }
+    }
+}
+
+@Preview(name = "Scan Recent Log Card", showBackground = true)
+@Composable
+private fun ScanRecentLogCardPreview() {
+    val sampleLogs = listOf(
+        ActivityLogEntry("1", "SD-02", "sd", "checkout", "2026-10-23T14:15:00Z"),
+        ActivityLogEntry("2", "SD-02", "sd", "return", "2026-10-23T15:00:00Z"),
+        ActivityLogEntry("3", "FZ-05", "fz", "checkout", "2026-10-23T15:15:00Z"),
+    )
+    TrackScooterTheme(isDark = false) {
+        Box(modifier = Modifier.padding(16.dp)) {
+            ScanRecentLogCard(activityLog = sampleLogs)
         }
     }
 }

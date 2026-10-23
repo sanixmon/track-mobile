@@ -487,6 +487,123 @@ data class RentalTripSession(
     val lastEventDt: LocalDateTime,
 )
 
+object RentalTripUtils {
+    fun buildSessions(
+        activityLog: List<ActivityLogEntry>,
+        scooters: List<Scooter>?,
+        todayStr: String = DateUtils.localDateKey(DateUtils.today()),
+    ): List<RentalTripSession> {
+        val allowedIds = scooters?.map { it.id }?.toSet() ?: emptySet()
+        val perUnit = mutableMapOf<String, MutableList<Pair<ActivityLogEntry, LocalDateTime>>>()
+        for (l in activityLog) {
+            if (allowedIds.isNotEmpty() && !allowedIds.contains(l.scooterId)) continue
+            if (DateUtils.dateKey(l.timestamp) != todayStr) continue
+            val dt = DateUtils.parse(l.timestamp) ?: continue
+            perUnit.getOrPut(l.scooterId) { mutableListOf() }.add(l to dt)
+        }
+
+        val sessions = mutableListOf<RentalTripSession>()
+        val nowWib = LocalDateTime.now(DateUtils.WIB)
+
+        for ((scooterId, logs) in perUnit) {
+            logs.sortBy { it.second }
+            val scooterType = logs.firstOrNull()?.first?.scooterType ?: ""
+            var pendingCheckout: Pair<ActivityLogEntry, LocalDateTime>? = null
+
+            for ((entry, dt) in logs) {
+                when (entry.action) {
+                    "checkout" -> {
+                        if (pendingCheckout != null) {
+                            val durasi = Duration.between(pendingCheckout.second, dt).seconds.coerceAtLeast(0)
+                            sessions.add(
+                                RentalTripSession(
+                                    id = pendingCheckout.first.id,
+                                    scooterId = scooterId,
+                                    scooterType = scooterType,
+                                    keluarDt = pendingCheckout.second,
+                                    masukDt = null,
+                                    keluarTimeStr = DateUtils.formatTime(pendingCheckout.second),
+                                    masukTimeStr = null,
+                                    keluarFullTimeStr = DateUtils.formatTimeSec(pendingCheckout.second),
+                                    masukFullTimeStr = null,
+                                    durasiSecs = durasi,
+                                    isOngoing = true,
+                                    lastEventDt = pendingCheckout.second,
+                                )
+                            )
+                        }
+                        pendingCheckout = entry to dt
+                    }
+                    "return" -> {
+                        if (pendingCheckout != null) {
+                            val keluarTime = pendingCheckout.second
+                            val durasi = Duration.between(keluarTime, dt).seconds.coerceAtLeast(0)
+                            sessions.add(
+                                RentalTripSession(
+                                    id = "${pendingCheckout.first.id}_${entry.id}",
+                                    scooterId = scooterId,
+                                    scooterType = scooterType,
+                                    keluarDt = keluarTime,
+                                    masukDt = dt,
+                                    keluarTimeStr = DateUtils.formatTime(keluarTime),
+                                    masukTimeStr = DateUtils.formatTime(dt),
+                                    keluarFullTimeStr = DateUtils.formatTimeSec(keluarTime),
+                                    masukFullTimeStr = DateUtils.formatTimeSec(dt),
+                                    durasiSecs = durasi,
+                                    isOngoing = false,
+                                    lastEventDt = dt,
+                                )
+                            )
+                            pendingCheckout = null
+                        } else {
+                            sessions.add(
+                                RentalTripSession(
+                                    id = entry.id,
+                                    scooterId = scooterId,
+                                    scooterType = scooterType,
+                                    keluarDt = dt,
+                                    masukDt = dt,
+                                    keluarTimeStr = DateUtils.formatTime(dt),
+                                    masukTimeStr = DateUtils.formatTime(dt),
+                                    keluarFullTimeStr = DateUtils.formatTimeSec(dt),
+                                    masukFullTimeStr = DateUtils.formatTimeSec(dt),
+                                    durasiSecs = 0L,
+                                    isOngoing = false,
+                                    lastEventDt = dt,
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (pendingCheckout != null) {
+                val durasi = Duration.between(pendingCheckout.second, nowWib).seconds.coerceAtLeast(0)
+                sessions.add(
+                    RentalTripSession(
+                        id = pendingCheckout.first.id,
+                        scooterId = scooterId,
+                        scooterType = scooterType,
+                        keluarDt = pendingCheckout.second,
+                        masukDt = null,
+                        keluarTimeStr = DateUtils.formatTime(pendingCheckout.second),
+                        masukTimeStr = null,
+                        keluarFullTimeStr = DateUtils.formatTimeSec(pendingCheckout.second),
+                        masukFullTimeStr = null,
+                        durasiSecs = durasi,
+                        isOngoing = true,
+                        lastEventDt = pendingCheckout.second,
+                    )
+                )
+            }
+        }
+
+        sessions.sortByDescending { it.lastEventDt }
+        return sessions
+    }
+}
+
+
 /** ── Section Unit Ready (Pindah ke bawah daftar Sesi Berjalan) ── */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -948,115 +1065,7 @@ fun ActivityFeedPanel(
     val todayStr = remember(today) { DateUtils.localDateKey(today) }
 
     val tripSessions: List<RentalTripSession> = remember(activityLog, todayStr, scooters) {
-        val allowedIds = scooters.map { it.id }.toSet()
-
-        val perUnit = mutableMapOf<String, MutableList<Pair<ActivityLogEntry, LocalDateTime>>>()
-        for (l in activityLog) {
-            if (allowedIds.isNotEmpty() && !allowedIds.contains(l.scooterId)) continue
-            if (DateUtils.dateKey(l.timestamp) != todayStr) continue
-            val dt = DateUtils.parse(l.timestamp) ?: continue
-            perUnit.getOrPut(l.scooterId) { mutableListOf() }.add(l to dt)
-        }
-
-        val sessions = mutableListOf<RentalTripSession>()
-        val nowWib = LocalDateTime.now(DateUtils.WIB)
-
-        for ((scooterId, logs) in perUnit) {
-            logs.sortBy { it.second }
-            val scooterType = logs.firstOrNull()?.first?.scooterType ?: ""
-
-            var pendingCheckout: Pair<ActivityLogEntry, LocalDateTime>? = null
-
-            for ((entry, dt) in logs) {
-                when (entry.action) {
-                    "checkout" -> {
-                        if (pendingCheckout != null) {
-                            val durasi = Duration.between(pendingCheckout.second, dt).seconds.coerceAtLeast(0)
-                            sessions.add(
-                                RentalTripSession(
-                                    id = pendingCheckout.first.id,
-                                    scooterId = scooterId,
-                                    scooterType = scooterType,
-                                    keluarDt = pendingCheckout.second,
-                                    masukDt = null,
-                                    keluarTimeStr = DateUtils.formatTime(pendingCheckout.second),
-                                    masukTimeStr = null,
-                                    keluarFullTimeStr = DateUtils.formatTimeSec(pendingCheckout.second),
-                                    masukFullTimeStr = null,
-                                    durasiSecs = durasi,
-                                    isOngoing = true,
-                                    lastEventDt = pendingCheckout.second,
-                                )
-                            )
-                        }
-                        pendingCheckout = entry to dt
-                    }
-                    "return" -> {
-                        if (pendingCheckout != null) {
-                            val keluarTime = pendingCheckout.second
-                            val durasi = Duration.between(keluarTime, dt).seconds.coerceAtLeast(0)
-                            sessions.add(
-                                RentalTripSession(
-                                    id = "${pendingCheckout.first.id}_${entry.id}",
-                                    scooterId = scooterId,
-                                    scooterType = scooterType,
-                                    keluarDt = keluarTime,
-                                    masukDt = dt,
-                                    keluarTimeStr = DateUtils.formatTime(keluarTime),
-                                    masukTimeStr = DateUtils.formatTime(dt),
-                                    keluarFullTimeStr = DateUtils.formatTimeSec(keluarTime),
-                                    masukFullTimeStr = DateUtils.formatTimeSec(dt),
-                                    durasiSecs = durasi,
-                                    isOngoing = false,
-                                    lastEventDt = dt,
-                                )
-                            )
-                            pendingCheckout = null
-                        } else {
-                            sessions.add(
-                                RentalTripSession(
-                                    id = entry.id,
-                                    scooterId = scooterId,
-                                    scooterType = scooterType,
-                                    keluarDt = dt,
-                                    masukDt = dt,
-                                    keluarTimeStr = DateUtils.formatTime(dt),
-                                    masukTimeStr = DateUtils.formatTime(dt),
-                                    keluarFullTimeStr = DateUtils.formatTimeSec(dt),
-                                    masukFullTimeStr = DateUtils.formatTimeSec(dt),
-                                    durasiSecs = 0L,
-                                    isOngoing = false,
-                                    lastEventDt = dt,
-                                )
-                            )
-                        }
-                    }
-                }
-            }
-
-            if (pendingCheckout != null) {
-                val durasi = Duration.between(pendingCheckout.second, nowWib).seconds.coerceAtLeast(0)
-                sessions.add(
-                    RentalTripSession(
-                        id = pendingCheckout.first.id,
-                        scooterId = scooterId,
-                        scooterType = scooterType,
-                        keluarDt = pendingCheckout.second,
-                        masukDt = null,
-                        keluarTimeStr = DateUtils.formatTime(pendingCheckout.second),
-                        masukTimeStr = null,
-                        keluarFullTimeStr = DateUtils.formatTimeSec(pendingCheckout.second),
-                        masukFullTimeStr = null,
-                        durasiSecs = durasi,
-                        isOngoing = true,
-                        lastEventDt = pendingCheckout.second,
-                    )
-                )
-            }
-        }
-
-        sessions.sortByDescending { it.lastEventDt }
-        sessions
+        RentalTripUtils.buildSessions(activityLog, scooters, todayStr)
     }
 
     var expandedSessionId by rememberSaveable { mutableStateOf<String?>(null) }
