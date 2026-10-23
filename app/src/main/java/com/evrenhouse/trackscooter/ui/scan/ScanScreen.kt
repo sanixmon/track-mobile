@@ -182,26 +182,6 @@ fun ScanScreen(
             onBack?.invoke()
         }
 
-        // ── Header ──
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (onBack != null) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier.size(36.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Kembali ke Beranda",
-                        tint = TextPrimary,
-                    )
-                }
-                Spacer(modifier = Modifier.width(6.dp))
-            }
-            Text("Scan QR", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        }
         // ── 2 Sub Tab Selector (Sub Tab 1: Scan, Sub Tab 2: By ID) ──
         Row(
             modifier = Modifier

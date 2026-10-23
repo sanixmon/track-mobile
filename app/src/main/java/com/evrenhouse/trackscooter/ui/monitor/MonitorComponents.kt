@@ -604,16 +604,13 @@ object RentalTripUtils {
 }
 
 
-/** ── Section Unit Ready (Pindah ke bawah daftar Sesi Berjalan) ── */
-@OptIn(ExperimentalMaterial3Api::class)
+/** ── Section Unit Ready (Grid 3 Kolom) ── */
 @Composable
 fun ReadyUnitsSection(
     readyUnits: List<StandbyUnitInfo>,
     onOpenDetail: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    var showSheet by rememberSaveable { mutableStateOf(false) }
-
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -621,7 +618,7 @@ fun ReadyUnitsSection(
             .background(Surface)
             .border(1.dp, Border, RoundedCornerShape(14.dp))
             .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -649,81 +646,39 @@ fun ReadyUnitsSection(
         HorizontalDivider(color = Border.copy(alpha = 0.5f), thickness = 0.5.dp)
 
         if (readyUnits.isEmpty()) {
-            Text(
-                text = "Tidak ada unit ready saat ini.",
-                color = TextMuted,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(vertical = 12.dp),
-            )
-        } else {
-            // Tampilkan 5 unit yang paling lama menganggur
-            readyUnits.take(5).forEach { u ->
-                ReadyUnitRow(
-                    unit = u,
-                    onClick = { onOpenDetail?.invoke(u.id) },
-                )
-                HorizontalDivider(color = Border.copy(alpha = 0.35f), thickness = 0.5.dp)
-            }
-
-            if (readyUnits.size > 5) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { showSheet = true }
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "Lihat semua (${readyUnits.size})",
-                        color = Accent,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-        }
-    }
-
-    if (showSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showSheet = false },
-            containerColor = Surface,
-        ) {
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                    .padding(vertical = 16.dp),
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "Daftar Unit Ready (${readyUnits.size})",
-                    color = TextPrimary,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = "Diurutkan dari unit yang paling lama menganggur",
+                    text = "Tidak ada unit ready saat ini.",
                     color = TextMuted,
-                    fontSize = 11.5.sp,
+                    fontSize = 12.sp,
                 )
-                HorizontalDivider(color = Border, thickness = 0.5.dp)
-
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 32.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    items(readyUnits, key = { it.id }) { u ->
-                        ReadyUnitRow(
-                            unit = u,
-                            onClick = {
-                                showSheet = false
-                                onOpenDetail?.invoke(u.id)
-                            },
-                        )
-                        HorizontalDivider(color = Border.copy(alpha = 0.35f), thickness = 0.5.dp)
+            }
+        } else {
+            val rows = remember(readyUnits) { readyUnits.chunked(3) }
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                rows.forEach { rowUnits ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        rowUnits.forEach { u ->
+                            ReadyUnitGridCard(
+                                unit = u,
+                                onClick = { onOpenDetail?.invoke(u.id) },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        repeat(3 - rowUnits.size) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
                 }
             }
@@ -731,8 +686,14 @@ fun ReadyUnitsSection(
     }
 }
 
+/**
+ * Kartu Grid Unit Ready (3 Kolom).
+ * Warna kartu dinamis berdasarkan waktu menganggur:
+ * - Baru dipakai (< 15 menit): Latar & border Merah (Red)
+ * - Siap sewa / istirahat cukup (>= 15 menit): Latar & border Hijau (Green)
+ */
 @Composable
-fun ReadyUnitRow(
+fun ReadyUnitGridCard(
     unit: StandbyUnitInfo,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -741,47 +702,50 @@ fun ReadyUnitRow(
     val nameColor = remember(unit.id, isDark) {
         ScooterColors.getScooterNameColor(null, unit.id, null, isDark)
     }
-    val greenTextColor = if (isDark) Color(0xFF4ADE80) else Color(0xFF15803D)
-    Row(
+
+    val isCooledDown = unit.breakSeconds >= 900L || unit.isReady
+    val cardBg = if (isCooledDown) {
+        if (isDark) Green.copy(alpha = 0.14f) else Color(0xFFDCFCE7)
+    } else {
+        if (isDark) Red.copy(alpha = 0.16f) else Color(0xFFFEE2E2)
+    }
+    val cardBorder = if (isCooledDown) {
+        if (isDark) Green.copy(alpha = 0.40f) else Color(0xFF86EFAC)
+    } else {
+        if (isDark) Red.copy(alpha = 0.45f) else Color(0xFFFCA5A5)
+    }
+    val statusTextColor = if (isCooledDown) {
+        if (isDark) Color(0xFF4ADE80) else Color(0xFF15803D)
+    } else {
+        if (isDark) Red else Color(0xFFB91C1C)
+    }
+
+    Column(
         modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(10.dp))
+            .background(cardBg)
+            .border(1.dp, cardBorder, RoundedCornerShape(10.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 4.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .padding(vertical = 10.dp, horizontal = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = unit.id,
-                color = nameColor,
-                fontSize = 13.5.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
-            )
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(if (isDark) Green.copy(alpha = 0.15f) else Color(0xFFDCFCE7))
-                    .padding(horizontal = 6.dp, vertical = 2.dp),
-            ) {
-                Text(
-                    text = "Ready",
-                    color = greenTextColor,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
+        Text(
+            text = unit.id,
+            color = nameColor,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace,
+            maxLines = 1,
+        )
 
         Text(
-            text = "Menganggur ${unit.breakText}",
-            color = TextSubtle,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
+            text = if (unit.breakText.isBlank() || unit.breakText == "-") "Ready" else unit.breakText,
+            color = statusTextColor,
+            fontSize = 10.5.sp,
+            fontWeight = FontWeight.SemiBold,
+            fontFamily = FontFamily.Monospace,
+            maxLines = 1,
         )
     }
 }
@@ -1134,7 +1098,9 @@ private fun ReadyUnitsSectionPreview() {
     val sampleReady = listOf(
         StandbyUnitInfo("SB-02", "7 hari 22 j", 684000L, true),
         StandbyUnitInfo("FZ-10", "1 j 39 mnt", 5940L, true),
-        StandbyUnitInfo("EX-04", "59 mnt", 3540L, true),
+        StandbyUnitInfo("EX-04", "5 mnt", 300L, false),
+        StandbyUnitInfo("SD-01", "12 mnt", 720L, false),
+        StandbyUnitInfo("SM-03", "45 mnt", 2700L, true),
     )
     TrackScooterTheme(isDark = false) {
         Box(modifier = Modifier.padding(16.dp)) {
